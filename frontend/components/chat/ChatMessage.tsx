@@ -6,11 +6,14 @@ import { MarkdownRenderer } from "./MarkdownRenderer";
 import {
   User, Bot, Copy, FileText, Image, FileSpreadsheet,
   AlertTriangle, RefreshCw, Pencil, Check, X, BookmarkPlus, MessageSquareQuote,
+  BookPlus, Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { SaveNoteDialog } from "./SaveNoteDialog";
 import { SaveFeedbackDialog } from "./SaveFeedbackDialog";
+import { WordEditor } from "@/components/vocabulary/WordEditor";
+import { SentenceEditor } from "@/components/vocabulary/SentenceEditor";
 
 interface Attachment {
   file_id: string;
@@ -88,6 +91,10 @@ export function ChatMessage({ message, isStreaming, onRetry, isLastUserMessage, 
   const [selectedText, setSelectedText] = useState("");
   const popupRef = useRef<HTMLDivElement>(null);
 
+  // 单词本 & 佳句
+  const [showWordEditor, setShowWordEditor] = useState(false);
+  const [showSentenceEditor, setShowSentenceEditor] = useState(false);
+
   const bubbleRef = useRef<HTMLDivElement>(null);
   const [bubbleWidth, setBubbleWidth] = useState<number | undefined>(undefined);
 
@@ -128,12 +135,11 @@ export function ChatMessage({ message, isStreaming, onRetry, isLastUserMessage, 
       return;
     }
 
-    // 计算浮动按钮位置（相对于 contentRef）
+    // 计算浮动按钮位置（使用视口坐标，配合 fixed 定位）
     const rangeRect = range.getBoundingClientRect();
-    const containerRect = contentRef.current.getBoundingClientRect();
     setSelectionPopup({
-      x: rangeRect.left - containerRect.left + rangeRect.width / 2,
-      y: rangeRect.top - containerRect.top - 8,
+      x: rangeRect.left + rangeRect.width / 2,
+      y: rangeRect.top - 8,
     });
     setSelectedText(text);
   }, []);
@@ -167,6 +173,18 @@ export function ChatMessage({ message, isStreaming, onRetry, isLastUserMessage, 
   const handleSaveFeedbackSelection = () => {
     setSaveFeedbackContent(selectedText);
     setSaveFeedbackOpen(true);
+    setSelectionPopup(null);
+    window.getSelection()?.removeAllRanges();
+  };
+
+  const handleAddWordSelection = () => {
+    setShowWordEditor(true);
+    setSelectionPopup(null);
+    window.getSelection()?.removeAllRanges();
+  };
+
+  const handleAddSentenceSelection = () => {
+    setShowSentenceEditor(true);
     setSelectionPopup(null);
     window.getSelection()?.removeAllRanges();
   };
@@ -327,43 +345,64 @@ export function ChatMessage({ message, isStreaming, onRetry, isLastUserMessage, 
               </div>
             </div>
           ) : (
-            <div className="overflow-x-auto relative" ref={contentRef}>
+            <div className="overflow-x-auto" ref={contentRef} data-chat-content>
               <MarkdownRenderer content={message.content} />
               {isStreaming && (
                 <span className="inline-block w-2 h-4 bg-foreground/60 animate-pulse ml-0.5" />
               )}
-              {/* 框选浮动保存按钮 */}
-              {selectionPopup && !isStreaming && (
-                <div
-                  ref={popupRef}
-                  className="absolute z-50 -translate-x-1/2 -translate-y-full animate-in fade-in zoom-in-95 duration-150"
-                  style={{ left: selectionPopup.x, top: selectionPopup.y }}
-                >
-                  <div className="flex gap-1 bg-background border rounded-full shadow-lg p-1">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 px-3 text-xs rounded-full gap-1.5"
-                      onClick={handleSaveSelection}
-                    >
-                      <BookmarkPlus className="h-3.5 w-3.5" />
-                      保存为笔记
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 px-3 text-xs rounded-full gap-1.5"
-                      onClick={handleSaveFeedbackSelection}
-                    >
-                      <MessageSquareQuote className="h-3.5 w-3.5" />
-                      保存为反馈
-                    </Button>
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>
+        )}
+        {/* 框选浮动工具条 - 使用 fixed 定位避免被 overflow 裁切 */}
+        {selectionPopup && !isStreaming && !isUser && (
+          <div
+            ref={popupRef}
+            className="fixed z-[9999] -translate-x-1/2 -translate-y-full animate-in fade-in zoom-in-95 duration-150"
+            style={{ left: selectionPopup.x, top: selectionPopup.y }}
+          >
+            <div className="flex items-center gap-1 bg-popover border rounded-lg shadow-lg p-1">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 px-2 text-xs gap-1.5"
+                onClick={handleSaveSelection}
+              >
+                <BookmarkPlus className="h-3.5 w-3.5" />
+                笔记
+              </Button>
+              <div className="w-px h-5 bg-border" />
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 px-2 text-xs gap-1.5"
+                onClick={handleSaveFeedbackSelection}
+              >
+                <MessageSquareQuote className="h-3.5 w-3.5" />
+                反馈
+              </Button>
+              <div className="w-px h-5 bg-border" />
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 px-2 text-xs gap-1.5"
+                onClick={handleAddWordSelection}
+              >
+                <BookPlus className="h-3.5 w-3.5" />
+                单词本
+              </Button>
+              <div className="w-px h-5 bg-border" />
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 px-2 text-xs gap-1.5"
+                onClick={handleAddSentenceSelection}
+              >
+                <Star className="h-3.5 w-3.5" />
+                佳句
+              </Button>
+            </div>
+          </div>
         )}
         {/* 操作按钮区域 */}
         {isUser && !isEditing && !isStreaming && (
@@ -456,6 +495,26 @@ export function ChatMessage({ message, isStreaming, onRetry, isLastUserMessage, 
             content={saveFeedbackContent}
           />
         )}
+        {/* 单词本编辑器 */}
+        <WordEditor
+          open={showWordEditor}
+          onOpenChange={setShowWordEditor}
+          initialWord={selectedText}
+          onSaved={() => {
+            setShowWordEditor(false);
+            setSelectedText("");
+          }}
+        />
+        {/* 佳句编辑器 */}
+        <SentenceEditor
+          open={showSentenceEditor}
+          onOpenChange={setShowSentenceEditor}
+          initialContent={selectedText}
+          onSaved={() => {
+            setShowSentenceEditor(false);
+            setSelectedText("");
+          }}
+        />
       </div>
     </div>
   );

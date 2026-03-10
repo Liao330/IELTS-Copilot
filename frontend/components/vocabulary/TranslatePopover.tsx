@@ -52,6 +52,11 @@ export function TranslatePopover() {
       if (text && text.length > 0 && text.length < 500) {
         const range = selection?.getRangeAt(0);
         if (range) {
+          // 跳过聊天消息内容区域（ChatMessage 有自己的框选工具条）
+          const ancestor = range.commonAncestorContainer;
+          const chatBubble = (ancestor instanceof Element ? ancestor : ancestor.parentElement)?.closest('[data-chat-content]');
+          if (chatBubble) return;
+
           const rect = range.getBoundingClientRect();
           setSelectedText(text);
           setToolbarPos({
