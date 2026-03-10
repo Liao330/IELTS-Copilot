@@ -111,11 +111,11 @@ export function TranslatePopover() {
     setShowSentenceEditor(true);
   };
 
-  const handleWordSaved = (word: VocabularyWord) => {
+  const handleWordSaved = (_word: VocabularyWord) => {
     closeAll();
   };
 
-  const handleSentenceSaved = (sentence: FavoriteSentence) => {
+  const handleSentenceSaved = (_sentence: FavoriteSentence) => {
     closeAll();
   };
 

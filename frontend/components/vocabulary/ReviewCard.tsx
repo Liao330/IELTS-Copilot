@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { VocabularyWord } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { RotateCcw, Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 
 interface ReviewCardProps {
   word: VocabularyWord;
