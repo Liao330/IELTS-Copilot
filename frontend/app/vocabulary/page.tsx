@@ -28,7 +28,6 @@ import {
   Brain,
   Trophy,
   Clock,
-  Sparkles,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -83,13 +82,13 @@ export default function VocabularyPage() {
         const params: Record<string, string | number | boolean> = {};
         if (category) params.category = category;
         if (search) params.search = search;
-        const wordsData = await api.getWords(params as any);
+        const wordsData = await api.getWords(params as { category?: string; search?: string });
         setWords(wordsData);
       } else if (tab === "sentences") {
         const params: Record<string, string> = {};
         if (category) params.category = category;
         if (search) params.search = search;
-        const sentencesData = await api.getSentences(params as any);
+        const sentencesData = await api.getSentences(params as { category?: string; search?: string });
         setSentences(sentencesData);
       } else if (tab === "review") {
         const dueWords = await api.getDueWords(30);
@@ -145,7 +144,7 @@ export default function VocabularyPage() {
       setDeletingWord(null);
       const newStats = await api.getVocabularyStats();
       setStats(newStats);
-    } catch (err) {
+    } catch {
       toast({ variant: "destructive", description: "删除失败" });
     } finally {
       setDeleting(false);
@@ -163,7 +162,7 @@ export default function VocabularyPage() {
       setDeletingSentence(null);
       const newStats = await api.getVocabularyStats();
       setStats(newStats);
-    } catch (err) {
+    } catch {
       toast({ variant: "destructive", description: "删除失败" });
     } finally {
       setDeleting(false);

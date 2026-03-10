@@ -120,6 +120,7 @@ function FilePreview({ fileId, fileName, mimeType }: { fileId: string; fileName:
     return (
       <div className="space-y-1.5">
         <p className="text-xs text-muted-foreground">{fileName}</p>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={api.getFileDownloadUrl(fileId)} alt={fileName} className="max-w-full max-h-96 rounded-md border" />
       </div>
     );

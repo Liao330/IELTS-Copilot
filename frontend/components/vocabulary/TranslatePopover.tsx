@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { api } from "@/lib/api";
-import type { TranslateResult, VocabularyWord, FavoriteSentence } from "@/types";
+import type { TranslateResult } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, BookPlus, Star, X, Copy } from "lucide-react";
@@ -111,11 +111,11 @@ export function TranslatePopover() {
     setShowSentenceEditor(true);
   };
 
-  const handleWordSaved = (_word: VocabularyWord) => {
+  const handleWordSaved = () => {
     closeAll();
   };
 
-  const handleSentenceSaved = (_sentence: FavoriteSentence) => {
+  const handleSentenceSaved = () => {
     closeAll();
   };
 

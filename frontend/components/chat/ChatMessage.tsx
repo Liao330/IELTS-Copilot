@@ -29,6 +29,7 @@ interface ChatMessageProps {
 
 function getFileIcon(mimeType?: string) {
   if (!mimeType) return <FileText className="h-5 w-5 text-gray-500" />;
+  // eslint-disable-next-line jsx-a11y/alt-text
   if (mimeType.startsWith("image/")) return <Image className="h-5 w-5 text-blue-500" />;
   if (mimeType === "application/pdf") return <FileText className="h-5 w-5 text-red-500" />;
   if (mimeType.includes("wordprocessingml")) return <FileSpreadsheet className="h-5 w-5 text-blue-600" />;
