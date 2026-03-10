@@ -1,0 +1,29 @@
+.git
+.gitignore
+.DS_Store
+.vscode
+.idea
+.codebuddy
+*.md
+
+# Python
+__pycache__
+*.pyc
+backend/.venv
+backend/venv
+
+# Node
+frontend/node_modules
+frontend/.next
+
+# Data (will be mounted as volume)
+backend/data
+
+# Logs
+*.log
+*.pid
+
+# Docker
+docker-compose.yml
+deploy.sh
+nginx/

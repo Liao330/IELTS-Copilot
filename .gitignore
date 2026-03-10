@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Node
+node_modules/
+.next/
+out/
+
+# Data
+backend/data/ielts_copilot.db
+backend/data/uploads/*
+!backend/data/uploads/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Deployment
+nginx/.htpasswd
+backend-data/
+
+# Startup script artifacts
+.backend.pid
+.frontend.pid
+.backend.log
+.frontend.log
+backend/.venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# CodeBuddy
+.codebuddy/
