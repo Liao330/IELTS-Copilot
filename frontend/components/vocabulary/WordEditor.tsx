@@ -59,6 +59,8 @@ export function WordEditor({ open, onOpenChange, word, initialWord, initialData,
   const [saving, setSaving] = useState(false);
   const [translating, setTranslating] = useState(false);
 
+  const [autoFillTriggered, setAutoFillTriggered] = useState(false);
+
   useEffect(() => {
     if (open) {
       if (word) {
@@ -77,6 +79,7 @@ export function WordEditor({ open, onOpenChange, word, initialWord, initialData,
           note: word.note || "",
           category: word.category,
         });
+        setAutoFillTriggered(false);
       } else if (initialData) {
         // 从翻译结果预填
         setForm({
@@ -90,6 +93,7 @@ export function WordEditor({ open, onOpenChange, word, initialWord, initialData,
           note: initialData.note || "",
           category: "general",
         });
+        setAutoFillTriggered(false);
       } else {
         // 新建模式
         setForm({
@@ -103,9 +107,22 @@ export function WordEditor({ open, onOpenChange, word, initialWord, initialData,
           note: "",
           category: "general",
         });
+        // 有初始单词时标记需要自动查词
+        setAutoFillTriggered(!!initialWord);
       }
+    } else {
+      setAutoFillTriggered(false);
     }
   }, [open, word, initialWord, initialData]);
+
+  // 自动触发 AI 查词
+  useEffect(() => {
+    if (autoFillTriggered && open && !word && !initialData) {
+      setAutoFillTriggered(false);
+      handleAutoFill();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFillTriggered, open]);
 
   const handleAutoFill = async () => {
     if (!form.word.trim()) {

@@ -60,6 +60,7 @@ export function SentenceEditor({
   });
   const [saving, setSaving] = useState(false);
   const [translating, setTranslating] = useState(false);
+  const [autoTranslateTriggered, setAutoTranslateTriggered] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -70,6 +71,7 @@ export function SentenceEditor({
           note: sentence.note || "",
           category: sentence.category,
         });
+        setAutoTranslateTriggered(false);
       } else {
         setForm({
           content: initialContent || "",
@@ -77,9 +79,22 @@ export function SentenceEditor({
           note: "",
           category: "general",
         });
+        // 有初始内容且无翻译时标记需要自动翻译
+        setAutoTranslateTriggered(!!initialContent && !initialTranslation);
       }
+    } else {
+      setAutoTranslateTriggered(false);
     }
   }, [open, sentence, initialContent, initialTranslation]);
+
+  // 自动触发 AI 翻译
+  useEffect(() => {
+    if (autoTranslateTriggered && open && !sentence) {
+      setAutoTranslateTriggered(false);
+      handleAutoTranslate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoTranslateTriggered, open]);
 
   const handleAutoTranslate = async () => {
     if (!form.content.trim()) {

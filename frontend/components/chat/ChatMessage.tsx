@@ -94,6 +94,8 @@ export function ChatMessage({ message, isStreaming, onRetry, isLastUserMessage, 
   // 单词本 & 佳句
   const [showWordEditor, setShowWordEditor] = useState(false);
   const [showSentenceEditor, setShowSentenceEditor] = useState(false);
+  const [wordEditorInitial, setWordEditorInitial] = useState("");
+  const [sentenceEditorInitial, setSentenceEditorInitial] = useState("");
 
   const bubbleRef = useRef<HTMLDivElement>(null);
   const [bubbleWidth, setBubbleWidth] = useState<number | undefined>(undefined);
@@ -178,12 +180,14 @@ export function ChatMessage({ message, isStreaming, onRetry, isLastUserMessage, 
   };
 
   const handleAddWordSelection = () => {
+    setWordEditorInitial(selectedText);
     setShowWordEditor(true);
     setSelectionPopup(null);
     window.getSelection()?.removeAllRanges();
   };
 
   const handleAddSentenceSelection = () => {
+    setSentenceEditorInitial(selectedText);
     setShowSentenceEditor(true);
     setSelectionPopup(null);
     window.getSelection()?.removeAllRanges();
@@ -499,20 +503,20 @@ export function ChatMessage({ message, isStreaming, onRetry, isLastUserMessage, 
         <WordEditor
           open={showWordEditor}
           onOpenChange={setShowWordEditor}
-          initialWord={selectedText}
+          initialWord={wordEditorInitial}
           onSaved={() => {
             setShowWordEditor(false);
-            setSelectedText("");
+            setWordEditorInitial("");
           }}
         />
         {/* 佳句编辑器 */}
         <SentenceEditor
           open={showSentenceEditor}
           onOpenChange={setShowSentenceEditor}
-          initialContent={selectedText}
+          initialContent={sentenceEditorInitial}
           onSaved={() => {
             setShowSentenceEditor(false);
-            setSelectedText("");
+            setSentenceEditorInitial("");
           }}
         />
       </div>
