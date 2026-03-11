@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, DragEvent } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import type { FileUploadResponse } from "@/types";
@@ -159,6 +159,7 @@ export default function BatchUploadPage() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addMoreInputRef = useRef<HTMLInputElement>(null);
+  const dragCounterRef = useRef(0);
 
   // 阶段：select = 选文件阶段，manage = 管理状态页
   const [phase, setPhase] = useState<"select" | "manage">("select");
@@ -192,14 +193,6 @@ export default function BatchUploadPage() {
     },
     [defaultDate]
   );
-
-  // ---- 拖拽处理 ----
-  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setDragOver(false);
-    const droppedFiles = Array.from(e.dataTransfer.files);
-    if (droppedFiles.length > 0) addFiles(droppedFiles);
-  };
 
   // ---- 上传所有 pending 文件 ----
   const handleUploadAll = async () => {
@@ -390,14 +383,32 @@ export default function BatchUploadPage() {
 
           {/* 拖拽上传区 */}
           <div
-            onDrop={handleDrop}
+            onDragEnter={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              dragCounterRef.current++;
+              setDragOver(true);
+            }}
             onDragOver={(e) => {
               e.preventDefault();
-              setDragOver(true);
+              e.stopPropagation();
             }}
             onDragLeave={(e) => {
               e.preventDefault();
+              e.stopPropagation();
+              dragCounterRef.current--;
+              if (dragCounterRef.current <= 0) {
+                dragCounterRef.current = 0;
+                setDragOver(false);
+              }
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              dragCounterRef.current = 0;
               setDragOver(false);
+              const droppedFiles = Array.from(e.dataTransfer.files);
+              if (droppedFiles.length > 0) addFiles(droppedFiles);
             }}
             onClick={() => fileInputRef.current?.click()}
             className={`flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-12 cursor-pointer transition-all ${
