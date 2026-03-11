@@ -57,41 +57,106 @@ export default function HomeworksPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // 日历导航状态
   const now = new Date();
-  const [viewYear, setViewYear] = useState(now.getFullYear());
-  const [viewMonth, setViewMonth] = useState(now.getMonth() + 1);
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+
+  const [calViewYear, setCalViewYear] = useState(currentYear);
+  // null = 未选月份（年视图），非 null = 已选月份（日视图）
+  const [filterYear, setFilterYear] = useState<number | null>(null);
+  const [filterMonth, setFilterMonth] = useState<number | null>(null);
+
+  // 每月作业计数（年视图用）
+  const [monthCounts, setMonthCounts] = useState<Record<number, number>>({});
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const startDate = `${viewYear}-${String(viewMonth).padStart(2, "0")}-01`;
-      const endMonth = viewMonth === 12 ? 1 : viewMonth + 1;
-      const endYear = viewMonth === 12 ? viewYear + 1 : viewYear;
-      const endDate = `${endYear}-${String(endMonth).padStart(2, "0")}-01`;
+      let startDate: string | undefined;
+      let endDate: string | undefined;
 
-      const [hw, cal] = await Promise.all([
-        api.getHomeworks({ category: category || undefined, start_date: startDate, end_date: endDate }),
-        api.getHomeworkCalendar(viewYear, viewMonth),
-      ]);
-      setHomeworks(hw);
-      setCalendarData(cal);
+      if (filterYear !== null && filterMonth !== null) {
+        startDate = `${filterYear}-${String(filterMonth).padStart(2, "0")}-01`;
+        const endM = filterMonth === 12 ? 1 : filterMonth + 1;
+        const endY = filterMonth === 12 ? filterYear + 1 : filterYear;
+        endDate = `${endY}-${String(endM).padStart(2, "0")}-01`;
+      }
+
+      const hwPromise = api.getHomeworks({ category: category || undefined, start_date: startDate, end_date: endDate });
+
+      if (filterYear !== null && filterMonth !== null) {
+        const [hw, cal] = await Promise.all([
+          hwPromise,
+          api.getHomeworkCalendar(filterYear, filterMonth),
+        ]);
+        setHomeworks(hw);
+        setCalendarData(cal);
+      } else {
+        const hw = await hwPromise;
+        setHomeworks(hw);
+        setCalendarData([]);
+      }
     } catch (err) {
       console.error(err);
       toast({ variant: "destructive", description: "加载失败" });
     } finally {
       setLoading(false);
     }
-  }, [category, viewYear, viewMonth, toast]);
+  }, [category, filterYear, filterMonth, toast]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  // 获取年视图下每月的作业计数
+  useEffect(() => {
+    const fetchMonthCounts = async () => {
+      const counts: Record<number, number> = {};
+      const promises = Array.from({ length: 12 }, (_, i) => i + 1).map(async (m) => {
+        try {
+          const cal = await api.getHomeworkCalendar(calViewYear, m);
+          const total = cal.reduce((sum, d) => sum + d.total, 0);
+          if (total > 0) counts[m] = total;
+        } catch { /* ignore */ }
+      });
+      await Promise.all(promises);
+      setMonthCounts(counts);
+    };
+    fetchMonthCounts();
+  }, [calViewYear]);
+
+  const handleSelectMonth = (month: number) => {
+    setFilterYear(calViewYear);
+    setFilterMonth(month);
+    setSelectedDate(null);
+  };
+
+  const handleBackToYear = () => {
+    setFilterYear(null);
+    setFilterMonth(null);
+    setSelectedDate(null);
+  };
+
   const prevMonth = () => {
-    if (viewMonth === 1) { setViewYear(viewYear - 1); setViewMonth(12); }
-    else setViewMonth(viewMonth - 1);
+    if (filterMonth === null || filterYear === null) return;
+    if (filterMonth === 1) {
+      setFilterYear(filterYear - 1);
+      setFilterMonth(12);
+      setCalViewYear(filterYear - 1);
+    } else {
+      setFilterMonth(filterMonth - 1);
+    }
+    setSelectedDate(null);
   };
   const nextMonth = () => {
-    if (viewMonth === 12) { setViewYear(viewYear + 1); setViewMonth(1); }
-    else setViewMonth(viewMonth + 1);
+    if (filterMonth === null || filterYear === null) return;
+    if (filterMonth === 12) {
+      setFilterYear(filterYear + 1);
+      setFilterMonth(1);
+      setCalViewYear(filterYear + 1);
+    } else {
+      setFilterMonth(filterMonth + 1);
+    }
+    setSelectedDate(null);
   };
 
   const handleDelete = async () => {
@@ -109,9 +174,6 @@ export default function HomeworksPage() {
     }
   };
 
-  // Reset selectedDate when month changes
-  useEffect(() => { setSelectedDate(null); }, [viewYear, viewMonth]);
-
   // Group homeworks by date
   const groupedByDate: Record<string, Homework[]> = {};
   for (const hw of homeworks) {
@@ -124,12 +186,14 @@ export default function HomeworksPage() {
     : Object.keys(groupedByDate);
   const sortedDates = filteredDates.sort((a, b) => b.localeCompare(a));
 
-  // Calendar grid
+  // Calendar grid (only when month is selected)
   const calendarMap = new Map(calendarData.map((d) => [d.date, d]));
-  const firstDay = new Date(viewYear, viewMonth - 1, 1);
-  const daysInMonth = new Date(viewYear, viewMonth, 0).getDate();
-  const startDow = firstDay.getDay(); // 0=Sun
+  const firstDay = filterYear !== null && filterMonth !== null ? new Date(filterYear, filterMonth - 1, 1) : null;
+  const daysInMonth = filterYear !== null && filterMonth !== null ? new Date(filterYear, filterMonth, 0).getDate() : 0;
+  const startDow = firstDay ? firstDay.getDay() : 0;
   const today = new Date().toISOString().slice(0, 10);
+
+  const MONTH_LABELS = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
 
   return (
     <div className="min-h-screen bg-background">
@@ -152,81 +216,152 @@ export default function HomeworksPage() {
       </header>
 
       <main className="container mx-auto px-4 py-6 max-w-5xl">
-        {/* 月份切换 + 日历 */}
+        {/* 两级日历导航 */}
         <div className="mb-6 rounded-lg border bg-card p-4">
-          <div className="flex items-center justify-between mb-3">
-            <Button variant="ghost" size="icon" onClick={prevMonth}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="font-medium">{viewYear}年{viewMonth}月</span>
-            <Button variant="ghost" size="icon" onClick={nextMonth}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
+          {filterMonth === null ? (
+            /* ===== 年视图：年份切换 + 12 月份网格 ===== */
+            <>
+              <div className="flex items-center justify-between mb-4">
+                <Button variant="ghost" size="icon" onClick={() => setCalViewYear(calViewYear - 1)}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="font-medium text-base">{calViewYear}年</span>
+                <Button variant="ghost" size="icon" onClick={() => setCalViewYear(calViewYear + 1)}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
 
-          <div className="grid grid-cols-7 gap-1 text-center text-xs text-muted-foreground mb-1">
-            {["日", "一", "二", "三", "四", "五", "六"].map((d) => (
-              <div key={d} className="py-1">{d}</div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-1">
-            {Array.from({ length: startDow }).map((_, i) => (
-              <div key={`empty-${i}`} />
-            ))}
-            {Array.from({ length: daysInMonth }).map((_, i) => {
-              const day = i + 1;
-              const dateStr = `${viewYear}-${String(viewMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-              const data = calendarMap.get(dateStr);
-              const isToday = dateStr === today;
-              const isSelected = dateStr === selectedDate;
-              const hasData = !!data;
+              <div className="grid grid-cols-4 gap-2">
+                {MONTH_LABELS.map((label, i) => {
+                  const month = i + 1;
+                  const count = monthCounts[month] || 0;
+                  const isCurrentMonth = calViewYear === currentYear && month === currentMonth;
+                  const isFuture = calViewYear > currentYear || (calViewYear === currentYear && month > currentMonth);
 
-              return (
-                <div
-                  key={day}
-                  onClick={() => {
-                    if (!hasData) return;
-                    setSelectedDate(isSelected ? null : dateStr);
-                  }}
-                  className={`relative flex flex-col items-center py-1.5 rounded-md text-sm transition-colors ${
-                    isSelected ? "bg-primary text-primary-foreground font-bold ring-2 ring-primary" :
-                    isToday ? "bg-primary/10 font-bold" : ""
-                  } ${hasData ? "cursor-pointer hover:bg-muted" : "text-muted-foreground cursor-default"}`}
-                >
-                  <span className={isSelected ? "" : isToday ? "text-primary" : ""}>{day}</span>
-                  {data && (
-                    <div className="flex gap-0.5 mt-0.5">
-                      {Object.keys(data.categories).map((cat) => (
-                        <span
-                          key={cat}
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            cat === "writing" ? "bg-blue-500" :
-                            cat === "speaking" ? "bg-green-500" :
-                            cat === "reading" ? "bg-purple-500" :
-                            "bg-orange-500"
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  )}
+                  return (
+                    <button
+                      key={month}
+                      onClick={() => handleSelectMonth(month)}
+                      className={`relative flex flex-col items-center py-3 rounded-lg text-sm font-medium transition-all ${
+                        isCurrentMonth
+                          ? "bg-primary/10 text-primary font-bold ring-1 ring-primary/30"
+                          : isFuture
+                          ? "text-muted-foreground/40 cursor-default"
+                          : count > 0
+                          ? "hover:bg-muted cursor-pointer"
+                          : "text-muted-foreground hover:bg-muted/50 cursor-pointer"
+                      }`}
+                    >
+                      <span>{label}</span>
+                      {count > 0 && (
+                        <span className={`mt-1 text-xs px-1.5 py-0.5 rounded-full ${
+                          isCurrentMonth
+                            ? "bg-primary/20 text-primary"
+                            : "bg-muted text-muted-foreground"
+                        }`}>
+                          {count}篇
+                        </span>
+                      )}
+                      {isCurrentMonth && !count && (
+                        <span className="mt-1 w-1.5 h-1.5 rounded-full bg-primary" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* 筛选状态提示 */}
+              <div className="mt-3 text-center text-xs text-muted-foreground">
+                点击月份查看详情，当前显示全部作业
+              </div>
+            </>
+          ) : (
+            /* ===== 月视图：月份切换 + 日期日历 ===== */
+            <>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="sm" className="text-xs gap-1 text-muted-foreground" onClick={handleBackToYear}>
+                    <ChevronLeft className="h-3 w-3" />
+                    返回年视图
+                  </Button>
                 </div>
-              );
-            })}
-          </div>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={prevMonth}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="font-medium min-w-[5rem] text-center">{filterYear}年{filterMonth}月</span>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={nextMonth}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="w-[5.5rem]" /> {/* 占位平衡 */}
+              </div>
 
-          <div className="flex gap-4 mt-3 justify-center text-xs text-muted-foreground">
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" />写作</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500" />口语</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-500" />阅读</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-500" />听力</span>
-          </div>
-          {selectedDate && (
-            <div className="mt-2 text-center">
-              <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => setSelectedDate(null)}>
-                已筛选: {formatDate(selectedDate)}
-                <span className="ml-1">✕</span>
-              </Button>
-            </div>
+              <div className="grid grid-cols-7 gap-1 text-center text-xs text-muted-foreground mb-1">
+                {["日", "一", "二", "三", "四", "五", "六"].map((d) => (
+                  <div key={d} className="py-1">{d}</div>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-1">
+                {Array.from({ length: startDow }).map((_, i) => (
+                  <div key={`empty-${i}`} />
+                ))}
+                {Array.from({ length: daysInMonth }).map((_, i) => {
+                  const day = i + 1;
+                  const dateStr = `${filterYear}-${String(filterMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                  const data = calendarMap.get(dateStr);
+                  const isToday = dateStr === today;
+                  const isSelected = dateStr === selectedDate;
+                  const hasData = !!data;
+
+                  return (
+                    <div
+                      key={day}
+                      onClick={() => {
+                        if (!hasData) return;
+                        setSelectedDate(isSelected ? null : dateStr);
+                      }}
+                      className={`relative flex flex-col items-center py-1.5 rounded-md text-sm transition-colors ${
+                        isSelected ? "bg-primary text-primary-foreground font-bold ring-2 ring-primary" :
+                        isToday ? "bg-primary/10 font-bold" : ""
+                      } ${hasData ? "cursor-pointer hover:bg-muted" : "text-muted-foreground cursor-default"}`}
+                    >
+                      <span className={isSelected ? "" : isToday ? "text-primary" : ""}>{day}</span>
+                      {data && (
+                        <div className="flex gap-0.5 mt-0.5">
+                          {Object.keys(data.categories).map((cat) => (
+                            <span
+                              key={cat}
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                cat === "writing" ? "bg-blue-500" :
+                                cat === "speaking" ? "bg-green-500" :
+                                cat === "reading" ? "bg-purple-500" :
+                                "bg-orange-500"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex gap-4 mt-3 justify-center text-xs text-muted-foreground">
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" />写作</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500" />口语</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-500" />阅读</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-500" />听力</span>
+              </div>
+              {selectedDate && (
+                <div className="mt-2 text-center">
+                  <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => setSelectedDate(null)}>
+                    已筛选: {formatDate(selectedDate)}
+                    <span className="ml-1">✕</span>
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -253,7 +388,7 @@ export default function HomeworksPage() {
           <div className="text-center py-12 text-muted-foreground animate-pulse">加载中...</div>
         ) : sortedDates.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground mb-2">本月还没有作业记录</p>
+            <p className="text-muted-foreground mb-2">还没有作业记录</p>
             <p className="text-sm text-muted-foreground">点击右上角「添加作业」开始记录</p>
           </div>
         ) : (
