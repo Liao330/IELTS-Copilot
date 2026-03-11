@@ -205,25 +205,43 @@ export function ChatMessage({ message, isStreaming, onRetry, isLastUserMessage, 
 
   const handleCopy = async () => {
     try {
-      // 尝试复制富文本（HTML + 纯文本），粘贴到富文本编辑器时保持表格等格式
-      if (!isUser && contentRef.current) {
-        const html = contentRef.current.innerHTML;
-        const blob = new Blob([html], { type: "text/html" });
-        const textBlob = new Blob([message.content], { type: "text/plain" });
-        await navigator.clipboard.write([
-          new ClipboardItem({
-            "text/html": blob,
-            "text/plain": textBlob,
-          }),
-        ]);
-      } else {
-        await navigator.clipboard.writeText(message.content);
+      // 优先使用 Clipboard API（需 HTTPS 或 localhost）
+      if (navigator.clipboard) {
+        if (!isUser && contentRef.current) {
+          const html = contentRef.current.innerHTML;
+          const blob = new Blob([html], { type: "text/html" });
+          const textBlob = new Blob([message.content], { type: "text/plain" });
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              "text/html": blob,
+              "text/plain": textBlob,
+            }),
+          ]);
+        } else {
+          await navigator.clipboard.writeText(message.content);
+        }
+        toast({ description: "已复制到剪贴板" });
+        return;
       }
+    } catch {
+      // Clipboard API 失败，走 fallback
+    }
+
+    // Fallback：使用 textarea + execCommand 方案（兼容 HTTP 环境）
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = message.content;
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      textarea.style.top = "-9999px";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
       toast({ description: "已复制到剪贴板" });
     } catch {
-      // fallback
-      navigator.clipboard.writeText(message.content);
-      toast({ description: "已复制到剪贴板" });
+      toast({ variant: "destructive", description: "复制失败，请手动选择文本复制" });
     }
   };
 

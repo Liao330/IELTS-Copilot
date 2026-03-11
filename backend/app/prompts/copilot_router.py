@@ -19,13 +19,14 @@ COPILOT_ROUTER_PROMPT = """\
 1. **追问优先**：如果用户明显在追问/延续上一轮的话题（如"展开说说"、"第二段呢"、"再给一个例子"），沿用上一轮使用的子助手
 2. **关键词识别**：
    - 提到"作文/essay/写作" + "反馈/批改报告/老师评价" → writing-assistant
-   - 提到"作文/essay/写作" + "怎么写/审题/构思/帮我改" → writing-coach
+   - 提到"作文/essay/写作" + "怎么写/审题/构思/帮我改/帮我写" → writing-coach
    - 提到"口语/speaking/part1/part2/part3" + "反馈/老师说" → speaking-feedback
-   - 提到"口语/speaking" + "修改/优化/准备/练习" → speaking-assistant
+   - 提到"口语/speaking" + "修改/优化/准备/练习/帮我写" → speaking-assistant
    - 提到"阅读/reading/passage" → reading-assistant
    - 提到"听力/listening/section" → listening-assistant
-3. **内容判断**：如果关键词不明确，根据用户发送的实际内容（如一段英文作文、一段口语答案）判断
-4. **不确定时**：如果实在无法判断，返回 writing-coach（最通用的助手）
+3. **复合请求**：如果用户的请求同时涉及多个领域（如"帮我写一篇作文和口语P2稿"），选择第一个提到的领域对应的助手。被选中的助手会尽力处理整个请求。
+4. **内容判断**：如果关键词不明确，根据用户发送的实际内容（如一段英文作文、一段口语答案）判断
+5. **不确定时**：如果实在无法判断，返回 writing-coach（最通用的助手）
 
 ## 输出格式
 
