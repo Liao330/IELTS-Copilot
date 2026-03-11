@@ -584,9 +584,9 @@ function EditHomeworkDialog({
             {visibleExisting.length > 0 && (
               <div className="space-y-1.5">
                 {visibleExisting.map((f) => (
-                  <div key={f.id} className="flex items-center gap-2 rounded-md border p-2 text-sm">
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                    <span className="truncate flex-1">{f.name}</span>
+                  <div key={f.id} className="flex items-center gap-2 rounded-md border p-2 text-sm overflow-hidden">
+                    <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="truncate flex-1 min-w-0">{f.name}</span>
                     <Button
                       variant="ghost" size="sm"
                       className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
@@ -603,8 +603,8 @@ function EditHomeworkDialog({
             {newFiles.length > 0 && (
               <div className="space-y-1.5">
                 {newFiles.map((f, i) => (
-                  <div key={`new-${i}`} className="flex items-center gap-2 rounded-md border p-2 text-sm bg-green-50 dark:bg-green-950/20">
-                    <span className="truncate flex-1">{f.name}</span>
+                  <div key={`new-${i}`} className="flex items-center gap-2 rounded-md border p-2 text-sm bg-green-50 dark:bg-green-950/20 overflow-hidden">
+                    <span className="truncate flex-1 min-w-0">{f.name}</span>
                     <Badge variant="outline" className="text-[10px] px-1.5 py-0">新</Badge>
                     <Button
                       variant="ghost" size="sm" className="h-6 w-6 p-0"
@@ -896,17 +896,17 @@ function EditFeedbackDialog({
             <div className="space-y-2">
               <Label>附件</Label>
               {file ? (
-                <div className="flex items-center gap-2 rounded-md border p-2 text-sm">
-                  <span className="truncate flex-1">{file.name}</span>
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setFile(null)}>
+                <div className="flex items-center gap-2 rounded-md border p-2 text-sm overflow-hidden">
+                  <span className="truncate flex-1 min-w-0">{file.name}</span>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 shrink-0 p-0" onClick={() => setFile(null)}>
                     <X className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               ) : !removeFile && feedback.file_id && feedback.file_name ? (
-                <div className="flex items-center gap-2 rounded-md border p-2 text-sm">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  <span className="truncate flex-1">{feedback.file_name}</span>
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={() => setRemoveFile(true)}>
+                <div className="flex items-center gap-2 rounded-md border p-2 text-sm overflow-hidden">
+                  <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="truncate flex-1 min-w-0">{feedback.file_name}</span>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 shrink-0 p-0 text-muted-foreground hover:text-destructive" onClick={() => setRemoveFile(true)}>
                     <X className="h-3.5 w-3.5" />
                   </Button>
                 </div>
