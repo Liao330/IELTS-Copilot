@@ -7,7 +7,7 @@ import type { Homework, HomeworkDateGroup } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  ArrowLeft, Plus, ChevronLeft, ChevronRight,
+  ArrowLeft, Plus, ChevronLeft, ChevronRight, Upload,
   FileText, Mic, BookOpen, Headphones, Calendar, Trash2, Pencil,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -140,6 +140,10 @@ export default function HomeworksPage() {
           </Button>
           <h1 className="text-lg font-semibold flex items-center gap-2">📚 作业库</h1>
           <div className="flex-1" />
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => router.push("/homeworks/batch-upload")}>
+            <Upload className="h-4 w-4" />
+            批量上传
+          </Button>
           <Button size="sm" className="gap-1.5" onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />
             添加作业
