@@ -42,6 +42,8 @@ export const api = {
     }),
   deleteConversation: (id: string) =>
     request<void>(`/api/conversations/${id}`, { method: "DELETE" }),
+  deleteMessage: (conversationId: string, messageId: string) =>
+    request<{ deleted_ids: string[] }>(`/api/conversations/${conversationId}/messages/${messageId}`, { method: "DELETE" }),
 
   // Files
   uploadFile: async (file: File): Promise<import("@/types").FileUploadResponse> => {

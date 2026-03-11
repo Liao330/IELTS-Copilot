@@ -23,6 +23,7 @@ interface ChatState {
   setStreamingContent: (content: string) => void;
   appendStreamingContent: (chunk: string) => void;
   setStreamingRoutedInfo: (info: RoutedInfo | null) => void;
+  removeMessages: (ids: string[]) => void;
   removeConversation: (id: string) => void;
 }
 
@@ -45,6 +46,10 @@ export const useChatStore = create<ChatState>((set) => ({
   appendStreamingContent: (chunk) =>
     set((state) => ({ streamingContent: state.streamingContent + chunk })),
   setStreamingRoutedInfo: (info) => set({ streamingRoutedInfo: info }),
+  removeMessages: (ids) =>
+    set((state) => ({
+      messages: state.messages.filter((m) => !ids.includes(m.id)),
+    })),
   removeConversation: (id) =>
     set((state) => ({
       conversations: state.conversations.filter((c) => c.id !== id),

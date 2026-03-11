@@ -6,7 +6,7 @@ import { MarkdownRenderer } from "./MarkdownRenderer";
 import {
   User, Bot, Copy, FileText, Image, FileSpreadsheet,
   AlertTriangle, RefreshCw, Pencil, Check, X, BookmarkPlus, MessageSquareQuote,
-  BookPlus, Star,
+  BookPlus, Star, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +27,7 @@ interface ChatMessageProps {
   onRetry?: () => void;
   isLastUserMessage?: boolean;
   onEdit?: (messageId: string, newContent: string) => void;
+  onDelete?: (messageId: string) => void;
   conversationId?: string;
 }
 
@@ -73,7 +74,7 @@ function AttachmentCards({ attachments }: { attachments: Attachment[] }) {
   );
 }
 
-export function ChatMessage({ message, isStreaming, onRetry, isLastUserMessage, onEdit, conversationId }: ChatMessageProps) {
+export function ChatMessage({ message, isStreaming, onRetry, isLastUserMessage, onEdit, onDelete, conversationId }: ChatMessageProps) {
   const { toast } = useToast();
   const isUser = message.role === "user";
   const isError = message.isError === true;
@@ -460,6 +461,17 @@ export function ChatMessage({ message, isStreaming, onRetry, isLastUserMessage, 
                 编辑
               </Button>
             )}
+            {onDelete && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
+                onClick={() => onDelete(message.id)}
+              >
+                <Trash2 className="h-3 w-3 mr-1" />
+                删除
+              </Button>
+            )}
           </div>
         )}
         {!isUser && !isStreaming && (
@@ -506,6 +518,17 @@ export function ChatMessage({ message, isStreaming, onRetry, isLastUserMessage, 
               >
                 <MessageSquareQuote className="h-3 w-3 mr-1" />
                 保存为反馈
+              </Button>
+            )}
+            {onDelete && !isError && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
+                onClick={() => onDelete(message.id)}
+              >
+                <Trash2 className="h-3 w-3 mr-1" />
+                删除
               </Button>
             )}
           </div>

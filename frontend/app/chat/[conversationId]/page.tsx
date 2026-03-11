@@ -34,6 +34,7 @@ export default function ChatPage() {
     messages,
     addMessage,
     setMessages,
+    removeMessages,
     isStreaming,
     setIsStreaming,
     streamingContent,
@@ -230,6 +231,17 @@ export default function ChatPage() {
     setStreamingContent("");
   }, [isStreaming, streamingContent, conversationId, addMessage, setIsStreaming, setStreamingContent]);
 
+  const handleDelete = useCallback(async (messageId: string) => {
+    if (isStreaming) return;
+    try {
+      const result = await api.deleteMessage(conversationId, messageId);
+      removeMessages(result.deleted_ids);
+      toast({ description: "已删除" });
+    } catch (err) {
+      toast({ variant: "destructive", description: err instanceof Error ? err.message : "删除失败" });
+    }
+  }, [conversationId, isStreaming, removeMessages, toast]);
+
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center">
@@ -322,6 +334,7 @@ export default function ChatPage() {
                     onRetry={enrichedMsg.isError ? handleRetry : undefined}
                     isLastUserMessage={enrichedMsg.id === lastUserMessageId}
                     onEdit={handleEdit}
+                    onDelete={handleDelete}
                     conversationId={conversationId}
                   />
                 );

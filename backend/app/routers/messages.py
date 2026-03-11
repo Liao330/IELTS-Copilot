@@ -380,6 +380,70 @@ async def retry_message(
     return _make_streaming_response(event_generator)
 
 
+@router.delete("/{conversation_id}/messages/{message_id}")
+async def delete_message(
+    conversation_id: str,
+    message_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """删除一条消息及其配对的问/答消息。
+
+    - 删除 user 消息时，同时删除紧跟其后的 assistant 回复
+    - 删除 assistant 消息时，同时删除其对应的上一条 user 提问
+    """
+    conv_result = await db.execute(
+        select(Conversation).where(Conversation.id == conversation_id)
+    )
+    conv = conv_result.scalar_one_or_none()
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    msg_result = await db.execute(
+        select(Message).where(
+            Message.id == message_id,
+            Message.conversation_id == conversation_id,
+        )
+    )
+    target_msg = msg_result.scalar_one_or_none()
+    if not target_msg:
+        raise HTTPException(status_code=404, detail="Message not found")
+
+    # 加载同一对话的所有消息，按时间排序
+    all_msgs_result = await db.execute(
+        select(Message)
+        .where(Message.conversation_id == conversation_id)
+        .order_by(Message.created_at)
+    )
+    all_msgs = list(all_msgs_result.scalars().all())
+
+    # 找到目标消息在列表中的索引
+    target_idx = next(
+        (i for i, m in enumerate(all_msgs) if m.id == message_id), None
+    )
+    if target_idx is None:
+        raise HTTPException(status_code=404, detail="Message not found")
+
+    ids_to_delete = [message_id]
+
+    if target_msg.role == "user":
+        # 删除 user 消息时，同时删除紧跟其后的 assistant 回复
+        if target_idx + 1 < len(all_msgs) and all_msgs[target_idx + 1].role == "assistant":
+            ids_to_delete.append(all_msgs[target_idx + 1].id)
+    elif target_msg.role == "assistant":
+        # 删除 assistant 消息时，同时删除其对应的上一条 user 提问
+        if target_idx - 1 >= 0 and all_msgs[target_idx - 1].role == "user":
+            ids_to_delete.append(all_msgs[target_idx - 1].id)
+
+    await db.execute(
+        delete(Message).where(Message.id.in_(ids_to_delete))
+    )
+
+    conv.updated_at = datetime.utcnow()
+    await db.commit()
+
+    return JSONResponse({"deleted_ids": ids_to_delete})
+
+
 @router.post("/{conversation_id}/edit")
 async def edit_message(
     conversation_id: str,
