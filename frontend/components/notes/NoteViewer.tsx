@@ -37,23 +37,42 @@ export function NoteViewer({ open, onOpenChange, note, onEdit }: NoteViewerProps
 
   const handleCopy = async () => {
     try {
-      if (contentRef.current) {
-        const html = contentRef.current.innerHTML;
-        const blob = new Blob([html], { type: "text/html" });
-        const textBlob = new Blob([note.content], { type: "text/plain" });
-        await navigator.clipboard.write([
-          new ClipboardItem({
-            "text/html": blob,
-            "text/plain": textBlob,
-          }),
-        ]);
-      } else {
-        await navigator.clipboard.writeText(note.content);
+      if (navigator.clipboard) {
+        if (contentRef.current) {
+          const html = contentRef.current.innerHTML;
+          const blob = new Blob([html], { type: "text/html" });
+          const textBlob = new Blob([note.content], { type: "text/plain" });
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              "text/html": blob,
+              "text/plain": textBlob,
+            }),
+          ]);
+        } else {
+          await navigator.clipboard.writeText(note.content);
+        }
+        toast({ description: "已复制到剪贴板" });
+        return;
       }
+    } catch {
+      // Clipboard API 失败，走 fallback
+    }
+
+    // Fallback：textarea + execCommand 方案（兼容 HTTP 环境）
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = note.content;
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      textarea.style.top = "-9999px";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
       toast({ description: "已复制到剪贴板" });
     } catch {
-      navigator.clipboard.writeText(note.content);
-      toast({ description: "已复制到剪贴板" });
+      toast({ variant: "destructive", description: "复制失败，请手动选择文本复制" });
     }
   };
 
