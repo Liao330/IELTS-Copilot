@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft, Plus, ChevronLeft, ChevronRight, Upload,
   FileText, Mic, BookOpen, Headphones, Calendar, Trash2, Pencil,
+  MessageSquarePlus,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { CreateHomeworkDialog } from "@/components/homework/CreateHomeworkDialog";
@@ -207,6 +208,10 @@ export default function HomeworksPage() {
           <Button size="sm" variant="outline" className="gap-1.5" onClick={() => router.push("/homeworks/batch-upload")}>
             <Upload className="h-4 w-4" />
             批量上传
+          </Button>
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => router.push("/homeworks/batch-feedback")}>
+            <MessageSquarePlus className="h-4 w-4" />
+            批量反馈
           </Button>
           <Button size="sm" className="gap-1.5" onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />
