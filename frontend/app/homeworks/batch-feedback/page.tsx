@@ -40,7 +40,6 @@ import {
   FileText,
   Mic,
   BookOpen,
-  Headphones,
   Settings2,
   Check,
   Trash2,
