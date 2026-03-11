@@ -12,6 +12,16 @@ import { ArrowLeft, Menu, X } from "lucide-react";
 import type { Message, SSEEvent } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 
+// 子助手名称和图标映射（主助手路由模式下使用）
+const AGENT_LABEL_MAP: Record<string, { icon: string; name: string }> = {
+  "writing-assistant": { icon: "✍️", name: "写作笔记整理" },
+  "writing-coach": { icon: "📝", name: "写作辅导" },
+  "speaking-assistant": { icon: "🎤", name: "口语优化" },
+  "speaking-feedback": { icon: "📋", name: "口语反馈整理" },
+  "reading-assistant": { icon: "📖", name: "阅读分析" },
+  "listening-assistant": { icon: "🎧", name: "听力分析" },
+};
+
 export default function ChatPage() {
   const params = useParams();
   const router = useRouter();
@@ -29,6 +39,8 @@ export default function ChatPage() {
     streamingContent,
     setStreamingContent,
     appendStreamingContent,
+    streamingRoutedInfo,
+    setStreamingRoutedInfo,
   } = useChatStore();
 
   const [loading, setLoading] = useState(true);
@@ -104,23 +116,32 @@ export default function ChatPage() {
   // SSE 事件处理器（发送和重试共用）
   const makeSSEHandlers = useCallback(() => ({
     onEvent: (event: SSEEvent) => {
-      if (event.type === "delta" && event.content) {
+      if (event.type === "start" && event.routed_agent_id) {
+        setStreamingRoutedInfo({
+          routed_agent_id: event.routed_agent_id,
+          routed_agent_icon: event.routed_agent_icon || "🤖",
+          routed_agent_name: event.routed_agent_name || "助手",
+        });
+      } else if (event.type === "delta" && event.content) {
         appendStreamingContent(event.content);
       } else if (event.type === "done") {
         setIsStreaming(false);
+        setStreamingRoutedInfo(null);
         api.getConversation(conversationId).then((conv) => {
           setCurrentConversation(conv);
         });
       } else if (event.type === "error") {
         setIsStreaming(false);
+        setStreamingRoutedInfo(null);
         showError(event.message || "消息发送失败");
       }
     },
     onError: (error: Error) => {
       setIsStreaming(false);
+      setStreamingRoutedInfo(null);
       showError(error.message || "网络错误");
     },
-  }), [conversationId, appendStreamingContent, setIsStreaming, setCurrentConversation, showError]);
+  }), [conversationId, appendStreamingContent, setIsStreaming, setCurrentConversation, setStreamingRoutedInfo, showError]);
 
   const handleSend = (content: string, attachments?: string[]) => {
     if (isStreaming) return;
@@ -225,6 +246,9 @@ export default function ChatPage() {
         content: streamingContent,
         attachments: null,
         token_count: null,
+        routed_agent_id: streamingRoutedInfo?.routed_agent_id,
+        routed_agent_icon: streamingRoutedInfo?.routed_agent_icon,
+        routed_agent_name: streamingRoutedInfo?.routed_agent_name,
         created_at: new Date().toISOString(),
       }
     : null;
@@ -282,16 +306,26 @@ export default function ChatPage() {
         <div className="flex-1 flex flex-col min-w-0">
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-4">
             <div className="max-w-3xl mx-auto py-4">
-              {messages.map((msg) => (
-                <ChatMessage
-                  key={msg.id}
-                  message={msg}
-                  onRetry={msg.isError ? handleRetry : undefined}
-                  isLastUserMessage={msg.id === lastUserMessageId}
-                  onEdit={handleEdit}
-                  conversationId={conversationId}
-                />
-              ))}
+              {messages.map((msg) => {
+                // 为从数据库加载的消息补充路由标签
+                const enrichedMsg = msg.routed_agent_id && !msg.routed_agent_name
+                  ? {
+                      ...msg,
+                      routed_agent_icon: AGENT_LABEL_MAP[msg.routed_agent_id]?.icon || "🤖",
+                      routed_agent_name: AGENT_LABEL_MAP[msg.routed_agent_id]?.name || msg.routed_agent_id,
+                    }
+                  : msg;
+                return (
+                  <ChatMessage
+                    key={enrichedMsg.id}
+                    message={enrichedMsg}
+                    onRetry={enrichedMsg.isError ? handleRetry : undefined}
+                    isLastUserMessage={enrichedMsg.id === lastUserMessageId}
+                    onEdit={handleEdit}
+                    conversationId={conversationId}
+                  />
+                );
+              })}
               {streamingMessage && (
                 <ChatMessage message={streamingMessage} isStreaming />
               )}

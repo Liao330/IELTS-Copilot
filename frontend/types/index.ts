@@ -30,6 +30,9 @@ export interface Message {
   content: string;
   attachments: string | null;
   token_count: number | null;
+  routed_agent_id?: string | null;
+  routed_agent_icon?: string;
+  routed_agent_name?: string;
   created_at: string;
   isError?: boolean;
 }
@@ -75,6 +78,9 @@ export interface SSEEvent {
   message_id?: string;
   message?: string;
   token_count?: number;
+  routed_agent_id?: string;
+  routed_agent_icon?: string;
+  routed_agent_name?: string;
 }
 
 export interface Note {

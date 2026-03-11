@@ -61,11 +61,34 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 max-w-4xl">
-        <h2 className="text-2xl font-bold mb-6 text-center">选择你的学习助手</h2>
+      <main className="container mx-auto px-4 py-8 max-w-5xl">
+        {/* 主助手统一入口 */}
+        <div className="mb-8">
+          <button
+            onClick={() => handleStartChat("ielts-copilot")}
+            className="w-full rounded-xl border-2 border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10 hover:from-primary/10 hover:to-primary/20 transition-all duration-300 p-6 text-left group"
+          >
+            <div className="flex items-center gap-4">
+              <span className="text-4xl">🎓</span>
+              <div className="flex-1">
+                <h2 className="text-xl font-bold mb-1 group-hover:text-primary transition-colors">
+                  IELTS Copilot
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  智能全能助手 — 直接提问或发送材料，自动调用最合适的专项助手为你解答
+                </p>
+              </div>
+              <div className="text-primary opacity-0 group-hover:opacity-100 transition-opacity text-2xl">
+                →
+              </div>
+            </div>
+          </button>
+        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
-          {agents.map((agent) => (
+        <h2 className="text-lg font-semibold mb-4 text-muted-foreground">或选择专项助手</h2>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+          {agents.filter(a => a.id !== "ielts-copilot").map((agent) => (
             <AgentCard
               key={agent.id}
               agent={agent}

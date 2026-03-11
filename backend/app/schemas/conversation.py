@@ -37,6 +37,7 @@ class MessageOut(BaseModel):
     content: str
     attachments: str | None = None
     token_count: int | None = None
+    routed_agent_id: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

@@ -19,6 +19,6 @@ async def get_db():
 
 
 async def init_db():
-    from app.models import Agent, Conversation, Message, File, Note, Setting, Homework, HomeworkFile, HomeworkFeedback, VocabularyWord, FavoriteSentence  # noqa
+    from app.models import Agent, Conversation, Message, File, Note, Setting, Homework, HomeworkFile, HomeworkFeedback, VocabularyWord, FavoriteSentence, ContextMaterial  # noqa
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

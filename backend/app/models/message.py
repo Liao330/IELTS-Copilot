@@ -17,6 +17,8 @@ class Message(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     attachments: Mapped[Optional[str]] = mapped_column(Text)  # JSON
     token_count: Mapped[Optional[int]] = mapped_column(Integer)
+    # 主助手路由模式下，记录该回复实际由哪个子 Agent 生成
+    routed_agent_id: Mapped[Optional[str]] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     conversation = relationship("Conversation", back_populates="messages")

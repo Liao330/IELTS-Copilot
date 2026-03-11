@@ -17,6 +17,12 @@ from app.models.file import File
 from app.models.setting import Setting
 from app.schemas.message import MessageCreate, MessageEdit
 from app.services.llm_service import stream_chat, complete_chat
+from app.services.router_service import (
+    identify_route,
+    save_material,
+    get_materials,
+    build_routed_messages,
+)
 
 router = APIRouter(prefix="/api/conversations", tags=["messages"])
 
@@ -171,6 +177,20 @@ async def send_message(
 
     await db.commit()
 
+    # ========== 主助手路由模式 ==========
+    if conv.agent_id == "ielts-copilot":
+        return await _handle_copilot_routed(
+            conversation_id=conversation_id,
+            user_msg_id=user_msg.id,
+            user_content=user_content,
+            model_name=model_name,
+            api_key=api_key,
+            api_base=api_base,
+            stream_enabled=stream_enabled,
+            context_window=context_window,
+        )
+
+    # ========== 普通子助手模式（原有逻辑） ==========
     history_result = await db.execute(
         select(Message)
         .where(Message.conversation_id == conversation_id)
@@ -492,3 +512,188 @@ async def edit_message(
             yield f"data: {json.dumps({'type': 'error', 'message': f'API 调用失败: {error_msg}'})}\n\n"
 
     return _make_streaming_response(edit_event_generator)
+
+
+# ==================== 主助手路由模式 ====================
+
+AGENT_NAME_MAP = {
+    "writing-assistant": ("✍️", "写作笔记整理"),
+    "writing-coach": ("📝", "写作辅导"),
+    "speaking-assistant": ("🎤", "口语优化"),
+    "speaking-feedback": ("📋", "口语反馈整理"),
+    "reading-assistant": ("📖", "阅读分析"),
+    "listening-assistant": ("🎧", "听力分析"),
+}
+
+
+async def _handle_copilot_routed(
+    conversation_id: str,
+    user_msg_id: str,
+    user_content: str,
+    model_name: str,
+    api_key: str,
+    api_base: str | None,
+    stream_enabled: bool,
+    context_window: int,
+):
+    """主助手路由模式：两步调用（意图识别 → 子助手回答）。"""
+    async with async_session() as db:
+        # --- 第一步：收集路由所需信息 ---
+
+        # 获取最近 5 条消息用于意图识别
+        recent_result = await db.execute(
+            select(Message)
+            .where(Message.conversation_id == conversation_id)
+            .order_by(desc(Message.created_at))
+            .limit(5)
+        )
+        recent_msgs = list(reversed(recent_result.scalars().all()))
+
+        recent_for_router = []
+        for msg in recent_msgs:
+            if msg.role in ("user", "assistant"):
+                # 截断过长内容，路由只需要概要
+                content = msg.content[:500] + ("..." if len(msg.content) > 500 else "")
+                recent_for_router.append({"role": msg.role, "content": content})
+
+        # 获取已有材料标题
+        materials = await get_materials(db, conversation_id)
+        material_titles = [m.title for m in materials]
+
+        # 快速检查：如果上一条 assistant 消息有 routed_agent_id，
+        # 且用户消息很短（可能是追问），可以直接沿用上一轮的 agent
+        last_assistant = None
+        for msg in reversed(recent_msgs):
+            if msg.role == "assistant" and msg.routed_agent_id:
+                last_assistant = msg
+                break
+
+        # --- 第二步：意图识别 ---
+        route_result = await identify_route(
+            model=model_name,
+            api_key=api_key,
+            api_base=api_base,
+            user_content=user_content[:800],  # 路由只需要前800字
+            recent_messages=recent_for_router,
+            material_titles=material_titles,
+        )
+
+        # 如果路由判断是追问且有上一轮 agent_id，优先使用上一轮的
+        if route_result.is_followup and last_assistant and last_assistant.routed_agent_id:
+            route_result.agent_id = last_assistant.routed_agent_id
+
+        # --- 第三步：保存关键材料（如果有） ---
+        if route_result.has_key_material and route_result.material_title:
+            await save_material(
+                db=db,
+                conversation_id=conversation_id,
+                title=route_result.material_title,
+                content=user_content,  # 保存完整用户消息作为材料
+                material_type=route_result.material_type or "other",
+                source_message_id=user_msg_id,
+            )
+            await db.commit()
+
+        # --- 第四步：获取子 Agent ---
+        sub_agent_result = await db.execute(
+            select(Agent).where(Agent.id == route_result.agent_id)
+        )
+        sub_agent = sub_agent_result.scalar_one_or_none()
+        if not sub_agent:
+            # fallback: 如果子 Agent 不存在，使用 writing-coach
+            sub_agent_result = await db.execute(
+                select(Agent).where(Agent.id == "writing-coach")
+            )
+            sub_agent = sub_agent_result.scalar_one_or_none()
+
+        if not sub_agent:
+            raise HTTPException(status_code=500, detail="子助手配置异常")
+
+        # --- 第五步：构建子 Agent 的消息列表 ---
+        llm_messages = await build_routed_messages(
+            db=db,
+            conversation_id=conversation_id,
+            sub_agent=sub_agent,
+            route_result=route_result,
+            user_content=user_content,
+            recent_count=context_window,
+        )
+
+    # --- 第六步：调用子 Agent 回答 ---
+    routed_agent_id = route_result.agent_id
+    agent_info = AGENT_NAME_MAP.get(routed_agent_id, ("🤖", "助手"))
+    agent_icon, agent_label = agent_info
+
+    assistant_msg_id = str(uuid.uuid4())
+
+    # SSE 起始事件中附带路由信息
+    start_payload = {
+        "type": "start",
+        "message_id": assistant_msg_id,
+        "routed_agent_id": routed_agent_id,
+        "routed_agent_icon": agent_icon,
+        "routed_agent_name": agent_label,
+    }
+
+    if not stream_enabled:
+        try:
+            full_content = await complete_chat(
+                model=model_name,
+                api_key=api_key,
+                api_base=api_base,
+                messages=llm_messages,
+            )
+            async with async_session() as save_db:
+                assistant_msg = Message(
+                    id=assistant_msg_id,
+                    conversation_id=conversation_id,
+                    role="assistant",
+                    content=full_content,
+                    routed_agent_id=routed_agent_id,
+                )
+                save_db.add(assistant_msg)
+                await save_db.commit()
+            return JSONResponse({
+                "id": assistant_msg_id,
+                "conversation_id": conversation_id,
+                "role": "assistant",
+                "content": full_content,
+                "routed_agent_id": routed_agent_id,
+                "routed_agent_icon": agent_icon,
+                "routed_agent_name": agent_label,
+            })
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"API 调用失败: {e}")
+
+    async def copilot_event_generator():
+        full_content = ""
+        yield f"data: {json.dumps(start_payload)}\n\n"
+
+        try:
+            async for chunk in stream_chat(
+                model=model_name,
+                api_key=api_key,
+                api_base=api_base,
+                messages=llm_messages,
+            ):
+                full_content += chunk
+                yield f"data: {json.dumps({'type': 'delta', 'content': chunk})}\n\n"
+
+            async with async_session() as save_db:
+                assistant_msg = Message(
+                    id=assistant_msg_id,
+                    conversation_id=conversation_id,
+                    role="assistant",
+                    content=full_content,
+                    routed_agent_id=routed_agent_id,
+                )
+                save_db.add(assistant_msg)
+                await save_db.commit()
+
+            yield f"data: {json.dumps({'type': 'done', 'message_id': assistant_msg_id})}\n\n"
+
+        except Exception as e:
+            error_msg = str(e)
+            yield f"data: {json.dumps({'type': 'error', 'message': f'API 调用失败: {error_msg}'})}\n\n"
+
+    return _make_streaming_response(copilot_event_generator)

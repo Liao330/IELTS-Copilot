@@ -350,6 +350,15 @@ export function ChatMessage({ message, isStreaming, onRetry, isLastUserMessage, 
             </div>
           ) : (
             <div className="overflow-x-auto" ref={contentRef} data-chat-content>
+              {/* 路由标签：显示该消息由哪个子助手生成 */}
+              {(message.routed_agent_id || message.routed_agent_name) && (
+                <div className="flex items-center gap-1.5 mb-2 pb-1.5 border-b border-border/50">
+                  <span className="text-sm">{message.routed_agent_icon || "🤖"}</span>
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {message.routed_agent_name || message.routed_agent_id}
+                  </span>
+                </div>
+              )}
               <MarkdownRenderer content={message.content} />
               {isStreaming && (
                 <span className="inline-block w-2 h-4 bg-foreground/60 animate-pulse ml-0.5" />

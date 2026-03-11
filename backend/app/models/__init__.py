@@ -8,5 +8,6 @@ from app.models.note import Note
 from app.models.setting import Setting
 from app.models.homework import Homework, HomeworkFile, HomeworkFeedback
 from app.models.vocabulary import VocabularyWord, FavoriteSentence
+from app.models.context_material import ContextMaterial
 
-__all__ = ["Agent", "Conversation", "Message", "File", "Note", "Setting", "Homework", "HomeworkFile", "HomeworkFeedback", "VocabularyWord", "FavoriteSentence"]
+__all__ = ["Agent", "Conversation", "Message", "File", "Note", "Setting", "Homework", "HomeworkFile", "HomeworkFeedback", "VocabularyWord", "FavoriteSentence", "ContextMaterial"]

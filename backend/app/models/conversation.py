@@ -20,3 +20,4 @@ class Conversation(Base):
 
     agent = relationship("Agent", back_populates="conversations")
     messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan", order_by="Message.created_at")
+    context_materials = relationship("ContextMaterial", back_populates="conversation", cascade="all, delete-orphan", order_by="ContextMaterial.created_at")
