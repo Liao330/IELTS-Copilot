@@ -28,6 +28,7 @@ async def stream_chat(
     api_key: str,
     api_base: str | None,
     messages: list[dict],
+    temperature: float = 0.3,
 ) -> AsyncGenerator[str, None]:
     try:
         response = await litellm.acompletion(
@@ -36,6 +37,7 @@ async def stream_chat(
             api_base=api_base,
             messages=messages,
             stream=True,
+            temperature=temperature,
         )
         async for chunk in response:
             delta = chunk.choices[0].delta
@@ -50,6 +52,7 @@ async def complete_chat(
     api_key: str,
     api_base: str | None,
     messages: list[dict],
+    temperature: float = 0.3,
 ) -> str:
     try:
         response = await litellm.acompletion(
@@ -58,6 +61,7 @@ async def complete_chat(
             api_base=api_base,
             messages=messages,
             stream=False,
+            temperature=temperature,
         )
         return response.choices[0].message.content or ""
     except Exception as e:
