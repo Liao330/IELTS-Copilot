@@ -54,14 +54,15 @@ async def generate_note_title(data: GenerateTitleRequest, db: AsyncSession = Dep
     if not content:
         raise HTTPException(status_code=400, detail="内容不能为空")
 
-    # Load settings
+    # Load settings (key-value table)
     result = await db.execute(select(Setting))
-    setting = result.scalar_one_or_none()
-    if not setting:
+    settings = {s.key: s.value for s in result.scalars().all()}
+    if not settings:
         raise HTTPException(status_code=500, detail="系统设置未初始化")
 
-    model_name = setting.default_model or "openai/qwen-turbo-2024-11-01"
-    providers = json.loads(setting.llm_providers) if setting.llm_providers else {}
+    model_name = settings.get("default_model", "openai/qwen-turbo-2024-11-01")
+    providers_raw = settings.get("llm_providers", "{}")
+    providers = json.loads(providers_raw) if providers_raw else {}
     api_key, api_base = _resolve_provider(model_name, providers)
 
     if not api_key:
