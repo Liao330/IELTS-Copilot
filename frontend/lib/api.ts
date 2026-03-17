@@ -84,6 +84,10 @@ export const api = {
     request<import("@/types").Note>(`/api/notes/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   deleteNote: (id: string) =>
     request<void>(`/api/notes/${id}`, { method: "DELETE" }),
+  generateNoteTitle: (content: string) =>
+    request<{ title: string }>("/api/notes/generate-title", {
+      method: "POST", body: JSON.stringify({ content }),
+    }),
 
   // Homeworks
   getHomeworks: (params?: { category?: string; start_date?: string; end_date?: string }) => {

@@ -21,6 +21,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Sparkles, Loader2 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const CATEGORIES = [
   { value: "writing", label: "写作" },
@@ -49,6 +56,26 @@ export function SaveNoteDialog({
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("general");
   const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+  const handleGenerateTitle = async () => {
+    if (!content.trim()) {
+      toast({ variant: "destructive", description: "笔记内容为空，无法生成标题" });
+      return;
+    }
+    setGenerating(true);
+    try {
+      const result = await api.generateNoteTitle(content);
+      setTitle(result.title);
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        description: err instanceof Error ? err.message : "AI 生成标题失败",
+      });
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const handleSave = async () => {
     const trimmedTitle = title.trim();
@@ -88,7 +115,33 @@ export function SaveNoteDialog({
         </DialogHeader>
         <div className="space-y-4 py-2 flex-1 overflow-hidden flex flex-col">
           <div className="space-y-2">
-            <Label htmlFor="note-title">标题</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="note-title">标题</Label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 gap-1 text-xs text-muted-foreground hover:text-primary"
+                      onClick={handleGenerateTitle}
+                      disabled={generating || saving}
+                    >
+                      {generating ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-3.5 w-3.5" />
+                      )}
+                      {generating ? "生成中..." : "AI 生成"}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>根据笔记内容自动生成标题</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <Input
               id="note-title"
               placeholder="输入笔记标题"

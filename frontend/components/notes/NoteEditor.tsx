@@ -22,6 +22,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Sparkles, Loader2 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const CATEGORIES = [
   { value: "writing", label: "写作" },
@@ -44,12 +51,32 @@ export function NoteEditor({ open, onOpenChange, note, onSaved }: NoteEditorProp
   const [content, setContent] = useState(note.content);
   const [category, setCategory] = useState<string>(note.category);
   const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     setTitle(note.title);
     setContent(note.content);
     setCategory(note.category);
   }, [note]);
+
+  const handleGenerateTitle = async () => {
+    if (!content.trim()) {
+      toast({ variant: "destructive", description: "笔记内容为空，无法生成标题" });
+      return;
+    }
+    setGenerating(true);
+    try {
+      const result = await api.generateNoteTitle(content);
+      setTitle(result.title);
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        description: err instanceof Error ? err.message : "AI 生成标题失败",
+      });
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -84,7 +111,33 @@ export function NoteEditor({ open, onOpenChange, note, onSaved }: NoteEditorProp
         </DialogHeader>
         <div className="space-y-4 py-2 flex-1 overflow-y-auto">
           <div className="space-y-2">
-            <Label htmlFor="edit-title">标题</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="edit-title">标题</Label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 gap-1 text-xs text-muted-foreground hover:text-primary"
+                      onClick={handleGenerateTitle}
+                      disabled={generating || saving}
+                    >
+                      {generating ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-3.5 w-3.5" />
+                      )}
+                      {generating ? "生成中..." : "AI 生成"}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>根据笔记内容自动生成标题</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <Input
               id="edit-title"
               value={title}
