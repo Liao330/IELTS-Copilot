@@ -50,7 +50,6 @@ import {
   FolderUp,
   Rocket,
   RotateCcw,
-  MessageSquarePlus,
   Image as ImageIcon,
   FileBarChart,
 } from "lucide-react";
