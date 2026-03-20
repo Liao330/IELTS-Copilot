@@ -233,13 +233,14 @@ async def send_message(
                 "conversation_id": conversation_id,
                 "role": "assistant",
                 "content": full_content,
+                "user_message_id": user_msg.id,
             })
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"API 调用失败: {e}")
 
     async def event_generator():
         full_content = ""
-        yield f"data: {json.dumps({'type': 'start', 'message_id': assistant_msg_id})}\n\n"
+        yield f"data: {json.dumps({'type': 'start', 'message_id': assistant_msg_id, 'user_message_id': user_msg.id})}\n\n"
 
         try:
             async for chunk in stream_chat(
@@ -303,6 +304,31 @@ async def retry_message(
             detail="未配置 API Key，请前往设置页面配置"
         )
 
+    # ========== 主助手路由模式 ==========
+    if conv.agent_id == "ielts-copilot":
+        # For retry, find the last user message to re-route
+        last_user_result = await db.execute(
+            select(Message)
+            .where(Message.conversation_id == conversation_id, Message.role == "user")
+            .order_by(desc(Message.created_at))
+            .limit(1)
+        )
+        last_user_msg = last_user_result.scalar_one_or_none()
+
+        if last_user_msg:
+            user_content = await _enrich_user_content_from_attachments(last_user_msg, db)
+            return await _handle_copilot_routed(
+                conversation_id=conversation_id,
+                user_msg_id=last_user_msg.id,
+                user_content=user_content,
+                model_name=model_name,
+                api_key=api_key,
+                api_base=api_base,
+                stream_enabled=stream_enabled,
+                context_window=context_window,
+            )
+
+    # ========== 普通子助手模式 ==========
     history_result = await db.execute(
         select(Message)
         .where(Message.conversation_id == conversation_id)
@@ -501,6 +527,21 @@ async def edit_message(
             detail="未配置 API Key，请前往设置页面配置"
         )
 
+    # ========== 主助手路由模式 ==========
+    if conv.agent_id == "ielts-copilot":
+        user_content = await _enrich_user_content_from_attachments(target_msg, db)
+        return await _handle_copilot_routed(
+            conversation_id=conversation_id,
+            user_msg_id=target_msg.id,
+            user_content=user_content,
+            model_name=model_name,
+            api_key=api_key,
+            api_base=api_base,
+            stream_enabled=stream_enabled,
+            context_window=context_window,
+        )
+
+    # ========== 普通子助手模式 ==========
     history_result = await db.execute(
         select(Message)
         .where(Message.conversation_id == conversation_id)
@@ -694,6 +735,7 @@ async def _handle_copilot_routed(
     start_payload = {
         "type": "start",
         "message_id": assistant_msg_id,
+        "user_message_id": user_msg_id,
         "routed_agent_id": routed_agent_id,
         "routed_agent_icon": agent_icon,
         "routed_agent_name": agent_label,
@@ -722,6 +764,7 @@ async def _handle_copilot_routed(
                 "conversation_id": conversation_id,
                 "role": "assistant",
                 "content": full_content,
+                "user_message_id": user_msg_id,
                 "routed_agent_id": routed_agent_id,
                 "routed_agent_icon": agent_icon,
                 "routed_agent_name": agent_label,

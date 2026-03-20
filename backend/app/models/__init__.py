@@ -9,5 +9,7 @@ from app.models.setting import Setting
 from app.models.homework import Homework, HomeworkFile, HomeworkFeedback
 from app.models.vocabulary import VocabularyWord, FavoriteSentence
 from app.models.context_material import ContextMaterial
+from app.models.study_plan import StudyPlan, StudyPlanDay
+from app.models.daily_report_cache import DailyReportCache
 
-__all__ = ["Agent", "Conversation", "Message", "File", "Note", "Setting", "Homework", "HomeworkFile", "HomeworkFeedback", "VocabularyWord", "FavoriteSentence", "ContextMaterial"]
+__all__ = ["Agent", "Conversation", "Message", "File", "Note", "Setting", "Homework", "HomeworkFile", "HomeworkFeedback", "VocabularyWord", "FavoriteSentence", "ContextMaterial", "StudyPlan", "StudyPlanDay", "DailyReportCache"]

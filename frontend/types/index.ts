@@ -76,6 +76,7 @@ export interface SSEEvent {
   type: "start" | "delta" | "done" | "error";
   content?: string;
   message_id?: string;
+  user_message_id?: string;
   message?: string;
   token_count?: number;
   routed_agent_id?: string;
@@ -288,4 +289,93 @@ export interface VocabularyStats {
   learning_words: number;
   new_words: number;
   due_review_count: number;
+}
+
+// ========== Reports (学习日报 & 趋势总结) ==========
+
+export interface HomeworkSummaryAI {
+  overview: string;
+  strengths: string[];
+  weaknesses: string[];
+  repeated_issues: string[];
+  next_actions: string[];
+  trend: string;
+  parse_error?: boolean;
+}
+
+export interface HomeworkSummaryStats {
+  total_homeworks: number;
+  categories: Record<string, number>;
+  total_feedbacks: number;
+  date_range: { start: string; end: string } | null;
+}
+
+export interface HomeworkSummaryResponse {
+  ai_summary: HomeworkSummaryAI;
+  stats: HomeworkSummaryStats;
+  source_homework_ids: string[];
+  source_count: number;
+}
+
+export interface DailyReportAI {
+  overview: string;
+  today_focus: string[];
+  today_issues: string[];
+  comparison_to_recent: string;
+  tomorrow_actions: string[];
+  parse_error?: boolean;
+}
+
+export interface DailyReportStats {
+  date: string;
+  homework_count: number;
+  categories: string[];
+  feedback_count: number;
+  has_data: boolean;
+}
+
+export interface DailyReportResponse {
+  ai_report: DailyReportAI;
+  stats: DailyReportStats;
+  date: string;
+}
+
+// ========== Study Plan (学习计划) ==========
+
+export interface StudyPlanDayOut {
+  id: string;
+  plan_id: string;
+  day_number: number;
+  listening: string | null;
+  speaking: string | null;
+  reading: string | null;
+  writing: string | null;
+  listening_image_id: string | null;
+  speaking_image_id: string | null;
+  reading_image_id: string | null;
+  writing_image_id: string | null;
+  listening_homework_id: string | null;
+  speaking_homework_id: string | null;
+  reading_homework_id: string | null;
+  writing_homework_id: string | null;
+}
+
+export interface StudyPlanOut {
+  id: string;
+  title: string;
+  file_id: string | null;
+  total_days: number;
+  current_day: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  days: StudyPlanDayOut[];
+}
+
+export interface StudyPlanCurrentDayOut {
+  plan_id: string;
+  plan_title: string;
+  current_day: number;
+  total_days: number;
+  day: StudyPlanDayOut | null;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, memo } from "react";
 import type { Message } from "@/types";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import {
@@ -74,7 +74,7 @@ function AttachmentCards({ attachments }: { attachments: Attachment[] }) {
   );
 }
 
-export function ChatMessage({ message, isStreaming, onRetry, isLastUserMessage, onEdit, onDelete, conversationId }: ChatMessageProps) {
+export const ChatMessage = memo(function ChatMessage({ message, isStreaming, onRetry, isLastUserMessage, onEdit, onDelete, conversationId }: ChatMessageProps) {
   const { toast } = useToast();
   const isUser = message.role === "user";
   const isError = message.isError === true;
@@ -572,4 +572,4 @@ export function ChatMessage({ message, isStreaming, onRetry, isLastUserMessage, 
       </div>
     </div>
   );
-}
+});

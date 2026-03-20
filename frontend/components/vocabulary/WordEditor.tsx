@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { api } from "@/lib/api";
 import type { VocabularyWord, TranslateResult } from "@/types";
 import {
@@ -60,58 +60,65 @@ export function WordEditor({ open, onOpenChange, word, initialWord, initialData,
   const [translating, setTranslating] = useState(false);
 
   const [autoFillTriggered, setAutoFillTriggered] = useState(false);
+  const prevOpenRef = useRef(false);
 
   useEffect(() => {
-    if (open) {
-      if (word) {
-        // 编辑模式
-        const syns = word.synonyms
-          ? (() => { try { return JSON.parse(word.synonyms).join(", "); } catch { return ""; } })()
-          : "";
-        setForm({
-          word: word.word,
-          phonetic: word.phonetic || "",
-          pos: word.pos || "",
-          meaning: word.meaning,
-          example: word.example || "",
-          example_cn: word.example_cn || "",
-          synonyms: syns,
-          note: word.note || "",
-          category: word.category,
-        });
-        setAutoFillTriggered(false);
-      } else if (initialData) {
-        // 从翻译结果预填
-        setForm({
-          word: initialData.word || initialWord || "",
-          phonetic: initialData.phonetic || "",
-          pos: initialData.pos || "",
-          meaning: initialData.meaning || "",
-          example: initialData.example || "",
-          example_cn: initialData.example_cn || "",
-          synonyms: initialData.synonyms?.join(", ") || "",
-          note: initialData.note || "",
-          category: "general",
-        });
-        setAutoFillTriggered(false);
-      } else {
-        // 新建模式
-        setForm({
-          word: initialWord || "",
-          phonetic: "",
-          pos: "",
-          meaning: "",
-          example: "",
-          example_cn: "",
-          synonyms: "",
-          note: "",
-          category: "general",
-        });
-        // 有初始单词时标记需要自动查词
-        setAutoFillTriggered(!!initialWord);
-      }
-    } else {
+    const wasOpen = prevOpenRef.current;
+    prevOpenRef.current = open;
+
+    // 只在弹窗从关闭→打开时初始化表单，已打开时 props 变化不重置
+    if (!open) {
       setAutoFillTriggered(false);
+      return;
+    }
+    if (wasOpen) return; // 已打开状态，跳过重新初始化
+
+    if (word) {
+      // 编辑模式
+      const syns = word.synonyms
+        ? (() => { try { return JSON.parse(word.synonyms).join(", "); } catch { return ""; } })()
+        : "";
+      setForm({
+        word: word.word,
+        phonetic: word.phonetic || "",
+        pos: word.pos || "",
+        meaning: word.meaning,
+        example: word.example || "",
+        example_cn: word.example_cn || "",
+        synonyms: syns,
+        note: word.note || "",
+        category: word.category,
+      });
+      setAutoFillTriggered(false);
+    } else if (initialData) {
+      // 从翻译结果预填
+      setForm({
+        word: initialData.word || initialWord || "",
+        phonetic: initialData.phonetic || "",
+        pos: initialData.pos || "",
+        meaning: initialData.meaning || "",
+        example: initialData.example || "",
+        example_cn: initialData.example_cn || "",
+        synonyms: initialData.synonyms?.join(", ") || "",
+        note: initialData.note || "",
+        category: "general",
+      });
+      setAutoFillTriggered(false);
+    } else {
+      // 新建模式
+      setForm({
+        word: initialWord || "",
+        phonetic: "",
+        pos: "",
+        meaning: "",
+        example: "",
+        example_cn: "",
+        synonyms: "",
+        note: "",
+        category: "general",
+      });
+      // 有初始单词时标记需要自动查词
+      setAutoFillTriggered(!!initialWord);
     }
   }, [open, word, initialWord, initialData]);
 

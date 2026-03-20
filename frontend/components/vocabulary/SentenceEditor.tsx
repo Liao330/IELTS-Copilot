@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { api } from "@/lib/api";
 import type { FavoriteSentence } from "@/types";
 import {
@@ -61,29 +61,36 @@ export function SentenceEditor({
   const [saving, setSaving] = useState(false);
   const [translating, setTranslating] = useState(false);
   const [autoTranslateTriggered, setAutoTranslateTriggered] = useState(false);
+  const prevOpenRef = useRef(false);
 
   useEffect(() => {
-    if (open) {
-      if (sentence) {
-        setForm({
-          content: sentence.content,
-          translation: sentence.translation || "",
-          note: sentence.note || "",
-          category: sentence.category,
-        });
-        setAutoTranslateTriggered(false);
-      } else {
-        setForm({
-          content: initialContent || "",
-          translation: initialTranslation || "",
-          note: "",
-          category: "general",
-        });
-        // 有初始内容且无翻译时标记需要自动翻译
-        setAutoTranslateTriggered(!!initialContent && !initialTranslation);
-      }
-    } else {
+    const wasOpen = prevOpenRef.current;
+    prevOpenRef.current = open;
+
+    // 只在弹窗从关闭→打开时初始化表单，已打开时 props 变化不重置
+    if (!open) {
       setAutoTranslateTriggered(false);
+      return;
+    }
+    if (wasOpen) return; // 已打开状态，跳过重新初始化
+
+    if (sentence) {
+      setForm({
+        content: sentence.content,
+        translation: sentence.translation || "",
+        note: sentence.note || "",
+        category: sentence.category,
+      });
+      setAutoTranslateTriggered(false);
+    } else {
+      setForm({
+        content: initialContent || "",
+        translation: initialTranslation || "",
+        note: "",
+        category: "general",
+      });
+      // 有初始内容且无翻译时标记需要自动翻译
+      setAutoTranslateTriggered(!!initialContent && !initialTranslation);
     }
   }, [open, sentence, initialContent, initialTranslation]);
 

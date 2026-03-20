@@ -19,6 +19,7 @@ interface ChatState {
   setCurrentConversation: (conv: ConversationDetail | null) => void;
   setMessages: (messages: Message[]) => void;
   addMessage: (message: Message) => void;
+  replaceMessageId: (tempId: string, realId: string) => void;
   setIsStreaming: (val: boolean) => void;
   setStreamingContent: (content: string) => void;
   appendStreamingContent: (chunk: string) => void;
@@ -41,6 +42,12 @@ export const useChatStore = create<ChatState>((set) => ({
   setMessages: (messages) => set({ messages }),
   addMessage: (message) =>
     set((state) => ({ messages: [...state.messages, message] })),
+  replaceMessageId: (tempId, realId) =>
+    set((state) => ({
+      messages: state.messages.map((m) =>
+        m.id === tempId ? { ...m, id: realId } : m
+      ),
+    })),
   setIsStreaming: (val) => set({ isStreaming: val }),
   setStreamingContent: (content) => set({ streamingContent: content }),
   appendStreamingContent: (chunk) =>

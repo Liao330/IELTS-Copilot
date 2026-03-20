@@ -35,6 +35,7 @@ export default function ChatPage() {
     addMessage,
     setMessages,
     removeMessages,
+    replaceMessageId,
     isStreaming,
     setIsStreaming,
     streamingContent,
@@ -71,6 +72,17 @@ export default function ChatPage() {
   }, []);
 
   useEffect(() => {
+    // Reset state when switching conversations (same dynamic route, no remount)
+    setLoading(true);
+    setIsStreaming(false);
+    setStreamingContent("");
+    setStreamingRoutedInfo(null);
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
+    userScrolledUpRef.current = false;
+
     api
       .getConversation(conversationId)
       .then((conv) => {
@@ -86,10 +98,15 @@ export default function ChatPage() {
     return () => {
       if (abortRef.current) abortRef.current.abort();
     };
-  }, [conversationId, router, setCurrentConversation, toast]);
+  }, [conversationId, router, setCurrentConversation, setIsStreaming, setStreamingContent, setStreamingRoutedInfo, toast]);
 
-  // 只在用户没有主动上滚时自动滚到底部
+  // 只在用户没有主动上滚、且没有框选文本时自动滚到底部
   useEffect(() => {
+    // Don't auto-scroll if user has active text selection (would disrupt copying)
+    const sel = window.getSelection();
+    const hasSelection = sel && !sel.isCollapsed;
+    if (hasSelection) return;
+
     if (!userScrolledUpRef.current && scrollRef.current) {
       programmaticScrollRef.current = true;
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -117,12 +134,18 @@ export default function ChatPage() {
   // SSE 事件处理器（发送和重试共用）
   const makeSSEHandlers = useCallback(() => ({
     onEvent: (event: SSEEvent) => {
-      if (event.type === "start" && event.routed_agent_id) {
-        setStreamingRoutedInfo({
-          routed_agent_id: event.routed_agent_id,
-          routed_agent_icon: event.routed_agent_icon || "🤖",
-          routed_agent_name: event.routed_agent_name || "助手",
-        });
+      if (event.type === "start") {
+        // Replace temp user message ID with real DB ID
+        if (event.user_message_id) {
+          replaceMessageId(`temp-${conversationId}`, event.user_message_id);
+        }
+        if (event.routed_agent_id) {
+          setStreamingRoutedInfo({
+            routed_agent_id: event.routed_agent_id,
+            routed_agent_icon: event.routed_agent_icon || "🤖",
+            routed_agent_name: event.routed_agent_name || "助手",
+          });
+        }
       } else if (event.type === "delta" && event.content) {
         appendStreamingContent(event.content);
       } else if (event.type === "done") {
@@ -142,13 +165,13 @@ export default function ChatPage() {
       setStreamingRoutedInfo(null);
       showError(error.message || "网络错误");
     },
-  }), [conversationId, appendStreamingContent, setIsStreaming, setCurrentConversation, setStreamingRoutedInfo, showError]);
+  }), [conversationId, appendStreamingContent, setIsStreaming, setCurrentConversation, setStreamingRoutedInfo, replaceMessageId, showError]);
 
   const handleSend = (content: string, attachments?: string[]) => {
     if (isStreaming) return;
 
     const userMsg: Message = {
-      id: `temp-${Date.now()}`,
+      id: `temp-${conversationId}`,
       conversation_id: conversationId,
       role: "user",
       content,
@@ -213,23 +236,18 @@ export default function ChatPage() {
       abortRef.current = null;
     }
 
-    // 将已生成的流式内容保存为助手消息
-    if (streamingContent.trim()) {
-      const partialMsg: Message = {
-        id: `stopped-${Date.now()}`,
-        conversation_id: conversationId,
-        role: "assistant",
-        content: streamingContent,
-        attachments: null,
-        token_count: null,
-        created_at: new Date().toISOString(),
-      };
-      addMessage(partialMsg);
-    }
+    // Don't save partial streaming content as a local message —
+    // it doesn't exist in the backend and would cause context divergence.
+    // The user can retry if they want a new response.
 
     setIsStreaming(false);
     setStreamingContent("");
-  }, [isStreaming, streamingContent, conversationId, addMessage, setIsStreaming, setStreamingContent]);
+
+    // Reload conversation to get the actual server state
+    api.getConversation(conversationId).then((conv) => {
+      setCurrentConversation(conv);
+    });
+  }, [isStreaming, conversationId, setIsStreaming, setStreamingContent, setCurrentConversation]);
 
   const handleDelete = useCallback(async (messageId: string) => {
     if (isStreaming) return;
@@ -241,14 +259,6 @@ export default function ChatPage() {
       toast({ variant: "destructive", description: err instanceof Error ? err.message : "删除失败" });
     }
   }, [conversationId, isStreaming, removeMessages, toast]);
-
-  if (loading) {
-    return (
-      <div className="h-screen flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">加载中...</div>
-      </div>
-    );
-  }
 
   const streamingMessage: Message | null = isStreaming
     ? {
@@ -316,6 +326,12 @@ export default function ChatPage() {
 
         {/* Chat Area */}
         <div className="flex-1 flex flex-col min-w-0">
+          {loading ? (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="animate-pulse text-muted-foreground">加载中...</div>
+            </div>
+          ) : (
+          <>
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-4">
             <div className="max-w-3xl mx-auto py-4">
               {messages.map((msg) => {
@@ -347,6 +363,8 @@ export default function ChatPage() {
           <div className="max-w-3xl mx-auto w-full">
             <ChatInput onSend={handleSend} onStop={handleStop} isStreaming={isStreaming} conversationId={conversationId} />
           </div>
+          </>
+          )}
         </div>
       </div>
     </div>

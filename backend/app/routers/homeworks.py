@@ -21,6 +21,52 @@ from app.schemas.homework import (
 router = APIRouter(prefix="/api/homeworks", tags=["homeworks"])
 
 
+async def _file_has_references(db: AsyncSession, file_id: str, exclude_homework_file: bool = False) -> bool:
+    """Check whether a File record is still referenced by other tables.
+
+    Checks: HomeworkFile (other rows), Homework.file_id, HomeworkFeedback.file_id,
+    StudyPlanDay image columns, StudyPlan.file_id.
+    """
+    from app.models.study_plan import StudyPlanDay, StudyPlan
+
+    if not exclude_homework_file:
+        r = await db.execute(select(func.count()).select_from(HomeworkFile).where(HomeworkFile.file_id == file_id))
+        if r.scalar() > 0:
+            return True
+    else:
+        # Check if other HomeworkFile rows reference it (the one being deleted is already gone)
+        r = await db.execute(select(func.count()).select_from(HomeworkFile).where(HomeworkFile.file_id == file_id))
+        if r.scalar() > 0:
+            return True
+
+    # Homework.file_id (legacy single-file)
+    r = await db.execute(select(func.count()).select_from(Homework).where(Homework.file_id == file_id))
+    if r.scalar() > 0:
+        return True
+
+    # HomeworkFeedback.file_id
+    r = await db.execute(select(func.count()).select_from(HomeworkFeedback).where(HomeworkFeedback.file_id == file_id))
+    if r.scalar() > 0:
+        return True
+
+    # StudyPlan.file_id
+    r = await db.execute(select(func.count()).select_from(StudyPlan).where(StudyPlan.file_id == file_id))
+    if r.scalar() > 0:
+        return True
+
+    # StudyPlanDay image columns
+    r = await db.execute(select(func.count()).select_from(StudyPlanDay).where(
+        (StudyPlanDay.listening_image_id == file_id) |
+        (StudyPlanDay.speaking_image_id == file_id) |
+        (StudyPlanDay.reading_image_id == file_id) |
+        (StudyPlanDay.writing_image_id == file_id)
+    ))
+    if r.scalar() > 0:
+        return True
+
+    return False
+
+
 # ---- File serving (MUST be defined BEFORE /{homework_id} to avoid route shadowing) ----
 
 @router.get("/files/{file_id}/download")
@@ -44,8 +90,9 @@ async def preview_file(file_id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="文件已丢失，请重新上传")
     return FileResponse(
         f.filepath,
+        filename=f.filename,
         media_type=f.mime_type,
-        headers={"Content-Disposition": f'inline; filename="{f.filename}"'},
+        content_disposition_type="inline",
     )
 
 
@@ -245,7 +292,7 @@ async def add_homework_file(homework_id: str, file_id: str = Query(...), db: Asy
 
 @router.delete("/{homework_id}/files/{file_id}", status_code=200, response_model=HomeworkOut)
 async def remove_homework_file(homework_id: str, file_id: str, db: AsyncSession = Depends(get_db)):
-    """Remove a file from a homework (also deletes the file record and disk file)."""
+    """Remove a file from a homework. Only deletes the physical file if no other references exist."""
     stmt = select(HomeworkFile).where(
         HomeworkFile.homework_id == homework_id,
         HomeworkFile.file_id == file_id,
@@ -257,20 +304,22 @@ async def remove_homework_file(homework_id: str, file_id: str, db: AsyncSession 
 
     await db.delete(hf)
 
-    # Also delete the file record & disk file
-    f = await db.get(File, file_id)
-    if f:
-        try:
-            if os.path.exists(f.filepath):
-                os.remove(f.filepath)
-        except OSError:
-            pass
-        await db.delete(f)
-
     # Update legacy file_id if it pointed to this file
     hw = await db.get(Homework, homework_id)
     if hw and hw.file_id == file_id:
         hw.file_id = None
+
+    # Only delete the File record & disk file if nothing else references it
+    f = await db.get(File, file_id)
+    if f:
+        has_refs = await _file_has_references(db, file_id, exclude_homework_file=True)
+        if not has_refs:
+            try:
+                if os.path.exists(f.filepath):
+                    os.remove(f.filepath)
+            except OSError:
+                pass
+            await db.delete(f)
 
     await db.commit()
 

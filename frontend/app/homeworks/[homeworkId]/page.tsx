@@ -67,6 +67,9 @@ function FilePreview({ fileId, fileName, mimeType }: { fileId: string; fileName:
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const docxContainerRef = useRef<HTMLDivElement>(null);
+
+  const isDocx = /\.docx$/i.test(fileName);
 
   const handlePreview = async () => {
     setShowPreview(true);
@@ -79,7 +82,28 @@ function FilePreview({ fileId, fileName, mimeType }: { fileId: string; fileName:
         throw new Error(err.detail || `预览失败 (${res.status})`);
       }
       const blob = await res.blob();
-      setPreviewUrl(URL.createObjectURL(blob));
+
+      if (isDocx) {
+        // Use docx-preview to render .docx locally
+        const { renderAsync } = await import("docx-preview");
+        // Wait for the container to mount
+        setTimeout(() => {
+          if (docxContainerRef.current) {
+            renderAsync(blob, docxContainerRef.current, undefined, {
+              className: "docx-preview-wrapper",
+              inWrapper: true,
+              ignoreWidth: false,
+              ignoreHeight: false,
+              ignoreFonts: false,
+              breakPages: true,
+            }).catch((e: unknown) => {
+              setPreviewError(e instanceof Error ? e.message : "DOCX 渲染失败");
+            });
+          }
+        }, 0);
+      } else {
+        setPreviewUrl(URL.createObjectURL(blob));
+      }
     } catch (e) {
       setPreviewError(e instanceof Error ? e.message : "预览加载失败");
     } finally {
@@ -127,8 +151,6 @@ function FilePreview({ fileId, fileName, mimeType }: { fileId: string; fileName:
   }
 
   // PDF / Word / other documents — click to preview
-  const isWord = /\.(docx?|DOC)$/i.test(fileName);
-
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -178,15 +200,14 @@ function FilePreview({ fileId, fileName, mimeType }: { fileId: string; fileName:
               <span className="text-sm text-destructive">{previewError}</span>
             </div>
           )}
-          {previewUrl && !previewError && (
-            isWord ? (
-              <iframe
-                src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(api.getFilePreviewUrl(fileId))}`}
-                className="w-full rounded-md border"
-                style={{ height: "70vh" }}
-                title={fileName}
-              />
-            ) : (
+          {isDocx ? (
+            <div
+              ref={docxContainerRef}
+              className="w-full rounded-md border bg-white overflow-auto"
+              style={{ height: "70vh" }}
+            />
+          ) : (
+            previewUrl && !previewError && (
               <iframe
                 src={previewUrl}
                 className="w-full rounded-md border"
@@ -534,7 +555,7 @@ function EditHomeworkDialog({
         title: title.trim(),
         category,
         homework_date: homeworkDate,
-        description: description.trim() || undefined,
+        description: description.trim() || "",
         file_ids: finalFileIds,
       });
       toast({ description: "作业已更新" });
@@ -752,9 +773,9 @@ function AddFeedbackDialog({
             <div className="space-y-2">
               <Label>上传文件{feedbackType === "ai_report" && content.trim() ? "（可选）" : ""}</Label>
               {file ? (
-                <div className="flex items-center gap-2 rounded-md border p-2 text-sm">
-                  <span className="truncate flex-1">{file.name}</span>
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setFile(null)}>
+                <div className="flex items-center gap-2 rounded-md border p-2 text-sm overflow-hidden">
+                  <span className="truncate flex-1 min-w-0">{file.name}</span>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 shrink-0 p-0" onClick={() => setFile(null)}>
                     <X className="h-3.5 w-3.5" />
                   </Button>
                 </div>
