@@ -4,7 +4,7 @@
 
 ## ✨ 核心功能
 
-### 🤖 智能 AI 助手
+### 🤖 智能 AI 助手（1 主路由 + 6 子 Agent）
 - **IELTS Copilot 主路由** — 智能意图识别，自动调度最合适的专项助手，无需手动切换
 - **✍️ 写作辅导** — 审题构思、作文批改、范文参考、表达升级，遵循最小修改原则
 - **📝 写作笔记整理** — 基于 AI 报告和老师反馈自动整理学习笔记
@@ -35,6 +35,8 @@
 - **作业 CRUD** — 创建、编辑、删除，支持多文件上传
 - **日历视图** — 按月份查看作业完成情况，一目了然
 - **反馈管理** — 支持 AI 报告 / 老师文字 / 老师音频 / 老师图片 四种反馈类型
+- **📊 评分解析 + 雷达图** — 自动从 AI 报告中提取口语/写作各维度分数，雷达图可视化展示
+- **🔄 AI 复盘笔记** — 一键生成精华复盘笔记，综合 AI 报告 + 老师反馈（支持多模态 Vision 识别老师图片批注）
 - **批量上传 / 批量反馈** — 高效管理大量作业材料
 - **文件预览** — 在线预览 DOCX、PDF 等作业附件
 
@@ -65,7 +67,8 @@
 |------|------|
 | 前端 | Next.js 14 + TailwindCSS + shadcn/ui + Zustand |
 | 后端 | FastAPI + SQLAlchemy 2.0 + SQLite (异步) |
-| AI | LiteLLM（支持千问/DeepSeek/OpenAI/Claude/Gemini/豆包等多模型） |
+| AI | LiteLLM（支持千问/DeepSeek/OpenAI/Claude/Gemini/豆包等多模型，含多模态 Vision） |
+| 图表 | Recharts（评分雷达图） |
 | Markdown | react-markdown + remark-gfm + rehype-raw |
 | 文件处理 | python-docx + PyPDF2 + Pillow + docx-preview |
 | 部署 | Docker Compose + Nginx (反向代理 + Basic Auth) |
@@ -81,7 +84,7 @@
 #### 第 1 步：克隆项目
 
 ```bash
-git clone git@github.com:Liao330/IELTS-Copilot.git
+git clone https://github.com/Liao330/IELTS-Copilot.git
 cd IELTS-Copilot
 ```
 
@@ -131,19 +134,36 @@ chmod +x start.sh
 
 **前提条件**：一台 Linux 服务器（已安装 Docker），本地有 SSH 访问权限
 
-#### 第 1 步：首次安装 Docker（如服务器没装过）
+#### 第 1 步：配置部署参数
+
+```bash
+cp .env.deploy.example .env.deploy
+```
+
+编辑 `.env.deploy`，填入你的服务器信息：
+
+```env
+DEPLOY_SERVER_IP=你的服务器IP
+DEPLOY_SERVER_USER=root
+DEPLOY_PORT=8391
+CORS_ORIGINS=http://你的服务器IP:8391
+```
+
+> 💡 `.env.deploy` 已在 `.gitignore` 中，不会被提交到 Git。
+
+#### 第 2 步：首次安装 Docker（如服务器没装过）
 
 ```bash
 ./deploy.sh setup
 ```
 
-#### 第 2 步：设置访问密码
+#### 第 3 步：设置访问密码
 
 ```bash
 ./deploy.sh password 你的密码
 ```
 
-#### 第 3 步：部署
+#### 第 4 步：部署
 
 ```bash
 ./deploy.sh deploy
@@ -185,7 +205,7 @@ IELTS-Copilot/
 │   ├── app/
 │   │   ├── main.py                 # FastAPI 入口
 │   │   ├── database.py             # 数据库初始化
-│   │   ├── models/                 # 数据模型（15 个）
+│   │   ├── models/                 # 数据模型（12 个文件）
 │   │   │   ├── agent.py            # AI 助手配置
 │   │   │   ├── conversation.py     # 对话记录
 │   │   │   ├── message.py          # 消息
@@ -197,25 +217,26 @@ IELTS-Copilot/
 │   │   │   ├── context_material.py # 上下文材料缓存
 │   │   │   ├── study_plan.py       # 学习计划 + 每日任务
 │   │   │   └── daily_report_cache.py # 日报缓存
-│   │   ├── routers/                # API 路由
+│   │   ├── routers/                # API 路由（11 个文件）
 │   │   │   ├── agents.py           # Agent 管理
 │   │   │   ├── conversations.py    # 对话管理
 │   │   │   ├── messages.py         # 消息收发 (SSE)
 │   │   │   ├── files.py            # 文件上传
 │   │   │   ├── notes.py            # 笔记管理
 │   │   │   ├── settings.py         # 设置管理
-│   │   │   ├── homeworks.py        # 作业管理
+│   │   │   ├── homeworks.py        # 作业管理（含评分解析 + 复盘笔记）
 │   │   │   ├── vocabulary.py       # 单词本 + 佳句 + AI翻译
 │   │   │   ├── reports.py          # 学习报告
 │   │   │   └── study_plan.py       # 学习计划
 │   │   ├── schemas/                # Pydantic 请求/响应模型
-│   │   ├── services/               # 业务逻辑
+│   │   ├── services/               # 业务逻辑（7 个文件）
 │   │   │   ├── llm_service.py      # LLM 调用封装
 │   │   │   ├── file_service.py     # 文件处理
 │   │   │   ├── router_service.py   # 主 Agent 路由调度
 │   │   │   ├── report_service.py   # 学习报告生成
-│   │   │   └── study_plan_service.py # 学习计划解析
-│   │   ├── prompts/                # AI Prompt 模板
+│   │   │   ├── study_plan_service.py # 学习计划解析
+│   │   │   └── review_note_service.py # 复盘笔记生成（多模态 Vision）
+│   │   ├── prompts/                # AI Prompt 模板（9 个文件）
 │   │   │   ├── copilot_router.py   # 主路由智能调度
 │   │   │   ├── writing_coach.py    # 写作辅导教练
 │   │   │   ├── writing_assistant.py # 写作笔记整理
@@ -223,13 +244,15 @@ IELTS-Copilot/
 │   │   │   ├── speaking_feedback.py # 口语反馈整理
 │   │   │   ├── reading_assistant.py # 阅读分析
 │   │   │   ├── listening_assistant.py # 听力分析
-│   │   │   └── translate_prompt.py # AI 翻译/查词
-│   │   └── utils/                  # 工具函数
+│   │   │   ├── translate_prompt.py # AI 翻译/查词
+│   │   │   └── review_note.py      # 复盘笔记生成提示词
+│   │   └── utils/                  # 工具函数（4 个文件）
 │   │       ├── file_parser.py      # 文件文本提取
-│   │       └── pdf_images.py       # PDF 图片提取
+│   │       ├── pdf_images.py       # PDF 图片提取
+│   │       └── score_parser.py     # AI 报告评分解析
 │   └── requirements.txt
 ├── frontend/                       # Next.js 前端
-│   ├── app/                        # 页面
+│   ├── app/                        # 页面（12 个文件）
 │   │   ├── page.tsx                # 首页（今日任务 + 日报 + 助手入口）
 │   │   ├── chat/[conversationId]/  # 对话页
 │   │   ├── homeworks/              # 作业库（列表/详情/批量上传/批量反馈）
@@ -241,7 +264,7 @@ IELTS-Copilot/
 │   ├── components/                 # 组件
 │   │   ├── ui/                     # shadcn/ui 基础组件
 │   │   ├── chat/                   # 对话组件
-│   │   ├── homework/               # 作业组件
+│   │   ├── homework/               # 作业组件（含 ScoreRadar 雷达图）
 │   │   ├── vocabulary/             # 单词/佳句组件
 │   │   ├── notes/                  # 笔记组件
 │   │   └── reports/                # 报告组件
@@ -286,6 +309,9 @@ IELTS-Copilot/
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐       │
 │  │ 上下文   │ │ 学习报告 │ │ 学习计划 │ │ LLM      │       │
 │  │ 材料管理 │ │ 生成     │ │ 解析     │ │ 适配层   │       │
+│  ├──────────┤ ├──────────┤ ├──────────┤ ├──────────┤       │
+│  │ 评分解析 │ │ 复盘笔记 │ │          │ │ 多模态   │       │
+│  │ 雷达图   │ │ Vision   │ │          │ │ Vision   │       │
 │  └──────────┘ └──────────┘ └──────────┘ └──────────┘       │
 │                                                              │
 └──────────────────────┬───────────────────────────────────────┘
@@ -294,7 +320,7 @@ IELTS-Copilot/
 │                  Storage Layer                                │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
 │  │ SQLite       │  │ Local File   │  │ LLM APIs     │       │
-│  │ (15 个数据表) │  │ Storage      │  │ (千问/DS/    │       │
+│  │ (12 个数据模型)│  │ Storage      │  │ (千问/DS/    │       │
 │  │              │  │ (上传文件)    │  │  Claude/GPT) │       │
 │  └──────────────┘  └──────────────┘  └──────────────┘       │
 └──────────────────────────────────────────────────────────────┘
@@ -304,4 +330,4 @@ IELTS-Copilot/
 
 ## 📄 License
 
-本项目仅供个人学习使用。
+MIT License — 欢迎自由使用、修改和分发。

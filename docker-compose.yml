@@ -8,7 +8,7 @@ services:
     container_name: ielts-backend
     restart: unless-stopped
     environment:
-      - CORS_ORIGINS=http://193.112.79.136:8391
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:8391}
     volumes:
       - ./backend-data:/app/data
     networks:

@@ -1,14 +1,22 @@
 #!/bin/bash
 # ================================================
-# IELTS Copilot - 一键部署到腾讯云服务器
+# IELTS Copilot - 一键部署到服务器
 # ================================================
 set -e
 
-# === 配置 ===
-SERVER_IP="193.112.79.136"
-SERVER_USER="root"
-REMOTE_DIR="/opt/ielts-copilot"
-PORT=8391
+# === 加载部署配置 ===
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "${SCRIPT_DIR}/.env.deploy" ]; then
+    set -a
+    source "${SCRIPT_DIR}/.env.deploy"
+    set +a
+fi
+
+# === 配置（从 .env.deploy 或环境变量读取） ===
+SERVER_IP="${DEPLOY_SERVER_IP:?请创建 .env.deploy 文件或设置环境变量 DEPLOY_SERVER_IP}"
+SERVER_USER="${DEPLOY_SERVER_USER:-root}"
+REMOTE_DIR="${DEPLOY_REMOTE_DIR:-/opt/ielts-copilot}"
+PORT="${DEPLOY_PORT:-8391}"
 
 # 颜色
 GREEN='\033[0;32m'
@@ -106,6 +114,9 @@ deploy)
     # 创建远程目录
     ssh ${SERVER_USER}@${SERVER_IP} "mkdir -p ${REMOTE_DIR}/backend-data/uploads"
     
+    # 同步 CORS_ORIGINS 等环境变量到服务器 .env（docker-compose 会读取）
+    ssh ${SERVER_USER}@${SERVER_IP} "echo 'CORS_ORIGINS=${CORS_ORIGINS:-http://${SERVER_IP}:${PORT}}' > ${REMOTE_DIR}/.env"
+    
     # rsync 同步（排除不需要的文件）
     rsync -avz --delete \
         --exclude '.git' \
@@ -122,8 +133,7 @@ deploy)
         --exclude '.frontend.pid' \
         --exclude '*.log' \
         --exclude '.env' \
-        --exclude '.env.local' \
-        --exclude '.env.production' \
+        --exclude '.env.*' \
         "${PROJECT_DIR}/" "${SERVER_USER}@${SERVER_IP}:${REMOTE_DIR}/"
     
     log "文件同步完成"
@@ -158,6 +168,9 @@ REMOTE_DEPLOY
 update)
     log "快速同步代码到服务器..."
     
+    # 同步环境变量
+    ssh ${SERVER_USER}@${SERVER_IP} "echo 'CORS_ORIGINS=${CORS_ORIGINS:-http://${SERVER_IP}:${PORT}}' > ${REMOTE_DIR}/.env"
+    
     rsync -avz --delete \
         --exclude '.git' \
         --exclude '.DS_Store' \
@@ -173,8 +186,7 @@ update)
         --exclude '.frontend.pid' \
         --exclude '*.log' \
         --exclude '.env' \
-        --exclude '.env.local' \
-        --exclude '.env.production' \
+        --exclude '.env.*' \
         "${PROJECT_DIR}/" "${SERVER_USER}@${SERVER_IP}:${REMOTE_DIR}/"
     
     log "文件同步完成，重新构建并重启..."

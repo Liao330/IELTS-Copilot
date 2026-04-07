@@ -13,6 +13,9 @@ out/
 
 # Data
 backend/data/ielts_copilot.db
+backend/data/*.db-journal
+backend/data/*.db-wal
+backend/data/*.db-shm
 backend/data/uploads/*
 !backend/data/uploads/.gitkeep
 
@@ -22,8 +25,8 @@ backend/data/uploads/*
 
 # Environment
 .env
-.env.local
-.env.production
+.env.*
+!.env.deploy.example
 
 # Deployment
 nginx/.htpasswd
@@ -45,6 +48,7 @@ backend/nohup.out
 nohup.out
 samples/
 *.pdf
+*.docx
 
 # CodeBuddy
 .codebuddy/
