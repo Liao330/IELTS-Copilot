@@ -40,5 +40,11 @@ backend/.venv/
 .DS_Store
 Thumbs.db
 
+# Misc
+backend/nohup.out
+nohup.out
+samples/
+*.pdf
+
 # CodeBuddy
 .codebuddy/
