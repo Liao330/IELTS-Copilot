@@ -122,7 +122,7 @@ export interface HomeworkFileInfo {
 export interface HomeworkFeedback {
   id: string;
   homework_id: string;
-  feedback_type: "ai_report" | "teacher_text" | "teacher_audio" | "teacher_image";
+  feedback_type: "ai_report" | "teacher_text" | "teacher_audio" | "teacher_image" | "review_note";
   content: string | null;
   file_id: string | null;
   file_name: string | null;

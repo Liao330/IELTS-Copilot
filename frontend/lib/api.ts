@@ -121,6 +121,8 @@ export const api = {
     request<import("@/types").Homework>(`/api/homeworks/${homeworkId}/files?file_id=${fileId}`, { method: "POST" }),
   removeHomeworkFile: (homeworkId: string, fileId: string) =>
     request<import("@/types").Homework>(`/api/homeworks/${homeworkId}/files/${fileId}`, { method: "DELETE" }),
+  generateReviewNote: (homeworkId: string) =>
+    request<import("@/types").HomeworkFeedback>(`/api/homeworks/${homeworkId}/generate-review-note`, { method: "POST" }),
   getFileDownloadUrl: (fileId: string) => `${API_BASE}/api/homeworks/files/${fileId}/download`,
   getFilePreviewUrl: (fileId: string) => `${API_BASE}/api/homeworks/files/${fileId}/preview`,
 

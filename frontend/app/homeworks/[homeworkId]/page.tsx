@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   ArrowLeft, Download, Trash2, Plus, FileText, Mic, MessageSquare,
-  Image as ImageIcon, Bot, Upload, X, Pencil,
+  Image as ImageIcon, Bot, Upload, X, Pencil, BookOpen, Loader2, RefreshCw,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
@@ -39,6 +39,7 @@ const FEEDBACK_TYPE_INFO: Record<string, { label: string; icon: typeof Bot; colo
   teacher_text: { label: "老师文字点评", icon: MessageSquare, color: "text-green-600" },
   teacher_audio: { label: "老师语音点评", icon: Mic, color: "text-purple-600" },
   teacher_image: { label: "老师图片点评", icon: ImageIcon, color: "text-orange-600" },
+  review_note: { label: "复盘笔记", icon: BookOpen, color: "text-amber-600" },
 };
 
 const HOMEWORK_FILE_ACCEPT: Record<string, string> = {
@@ -237,6 +238,7 @@ export default function HomeworkDetailPage() {
   const [addFeedbackOpen, setAddFeedbackOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(searchParams.get("edit") === "1");
   const [editingFeedback, setEditingFeedback] = useState<HomeworkFeedback | null>(null);
+  const [generatingNote, setGeneratingNote] = useState(false);
 
   const fetchHomework = useCallback(async () => {
     try {
@@ -281,6 +283,19 @@ export default function HomeworkDetailPage() {
       fetchHomework();
     } catch {
       toast({ variant: "destructive", description: "删除文件失败" });
+    }
+  };
+
+  const handleGenerateReviewNote = async () => {
+    setGeneratingNote(true);
+    try {
+      await api.generateReviewNote(homeworkId);
+      toast({ description: "复盘笔记已生成" });
+      fetchHomework();
+    } catch (err) {
+      toast({ variant: "destructive", description: err instanceof Error ? err.message : "生成失败，请确保作业已有反馈" });
+    } finally {
+      setGeneratingNote(false);
     }
   };
 
@@ -378,10 +393,38 @@ export default function HomeworkDetailPage() {
                 <span className="text-xs text-muted-foreground font-normal">({homework.feedbacks.length}条)</span>
               )}
             </h2>
-            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAddFeedbackOpen(true)}>
-              <Plus className="h-3.5 w-3.5" />
-              添加反馈
-            </Button>
+            <div className="flex items-center gap-2">
+              {homework.feedbacks.filter(fb => fb.feedback_type !== "review_note").length > 0 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={handleGenerateReviewNote}
+                  disabled={generatingNote}
+                >
+                  {generatingNote ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      生成中...
+                    </>
+                  ) : homework.feedbacks.some(fb => fb.feedback_type === "review_note") ? (
+                    <>
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      重新生成复盘
+                    </>
+                  ) : (
+                    <>
+                      <BookOpen className="h-3.5 w-3.5" />
+                      生成复盘笔记
+                    </>
+                  )}
+                </Button>
+              )}
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAddFeedbackOpen(true)}>
+                <Plus className="h-3.5 w-3.5" />
+                添加反馈
+              </Button>
+            </div>
           </div>
 
           {homework.feedbacks.length === 0 ? (
@@ -405,12 +448,14 @@ export default function HomeworkDetailPage() {
                         </span>
                       </div>
                       <div className="flex items-center gap-0.5">
-                        <Button
-                          variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
-                          onClick={() => setEditingFeedback(fb)}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
+                        {fb.feedback_type !== "review_note" && (
+                          <Button
+                            variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
+                            onClick={() => setEditingFeedback(fb)}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
                           onClick={() => handleDeleteFeedback(fb)}

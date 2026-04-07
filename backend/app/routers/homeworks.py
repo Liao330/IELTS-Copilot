@@ -445,3 +445,43 @@ async def delete_feedback(homework_id: str, feedback_id: str, db: AsyncSession =
         raise HTTPException(status_code=404, detail="反馈不存在")
     await db.delete(fb)
     await db.commit()
+
+
+@router.post("/{homework_id}/generate-review-note", response_model=HomeworkFeedbackOut, status_code=201)
+async def generate_review_note(homework_id: str, db: AsyncSession = Depends(get_db)):
+    """根据作业内容和已有反馈，自动生成复盘笔记并保存为 review_note 类型的反馈。"""
+    hw = await db.get(Homework, homework_id)
+    if not hw:
+        raise HTTPException(status_code=404, detail="作业不存在")
+
+    from app.services.review_note_service import generate_review_note as gen_review
+
+    try:
+        content = await gen_review(db, homework_id)
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # Delete any existing review_note for this homework (only keep the latest)
+    stmt = select(HomeworkFeedback).where(
+        HomeworkFeedback.homework_id == homework_id,
+        HomeworkFeedback.feedback_type == "review_note",
+    )
+    result = await db.execute(stmt)
+    for old in result.scalars().all():
+        await db.delete(old)
+
+    fb = HomeworkFeedback(
+        id=str(uuid.uuid4()),
+        homework_id=homework_id,
+        feedback_type="review_note",
+        content=content,
+    )
+    db.add(fb)
+    await db.commit()
+    await db.refresh(fb)
+
+    return HomeworkFeedbackOut(
+        id=fb.id, homework_id=fb.homework_id, feedback_type=fb.feedback_type,
+        content=fb.content, file_id=None, file_name=None, file_mime_type=None,
+        scores=None, created_at=fb.created_at,
+    )
