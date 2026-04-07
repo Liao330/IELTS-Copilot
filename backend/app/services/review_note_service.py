@@ -7,7 +7,9 @@ a concise, actionable review note.
 
 from __future__ import annotations
 
+import base64
 import json
+import os
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -55,11 +57,41 @@ def _truncate(text: str | None, limit: int) -> str:
     return text[:limit] + "…" if len(text) > limit else text
 
 
-async def _get_file_text(db: AsyncSession, file_id: str | None) -> str:
+async def _get_file(db: AsyncSession, file_id: str | None) -> File | None:
     if not file_id:
+        return None
+    return await db.get(File, file_id)
+
+
+def _get_file_text(f: File | None) -> str:
+    if not f:
         return ""
-    f = await db.get(File, file_id)
-    return (f.text_content or "").strip() if f else ""
+    return (f.text_content or "").strip()
+
+
+def _is_image(f: File | None) -> bool:
+    if not f:
+        return False
+    return (f.mime_type or "").startswith("image/")
+
+
+def _is_audio(f: File | None) -> bool:
+    if not f:
+        return False
+    return (f.mime_type or "").startswith("audio/")
+
+
+def _encode_image_base64(f: File) -> str | None:
+    """Read an image file from disk and return its base64 data URL string."""
+    if not f or not os.path.exists(f.filepath):
+        return None
+    try:
+        with open(f.filepath, "rb") as fh:
+            data = fh.read()
+        mime = f.mime_type or "image/png"
+        return f"data:{mime};base64,{base64.b64encode(data).decode()}"
+    except Exception:
+        return None
 
 
 async def _resolve_llm_config(db: AsyncSession) -> tuple[str, str, str | None]:
@@ -94,12 +126,19 @@ async def _resolve_llm_config(db: AsyncSession) -> tuple[str, str, str | None]:
 
 
 # ---------------------------------------------------------------------------
-# Context builder
+# Context builder (returns text + image list for vision-capable LLM)
 # ---------------------------------------------------------------------------
 
-async def _build_homework_material(hw: Homework, db: AsyncSession) -> str:
-    """Build a text block containing the homework content and all feedbacks."""
+async def _build_homework_material(
+    hw: Homework, db: AsyncSession
+) -> tuple[str, list[str]]:
+    """Build a text block and a list of base64 image URLs from homework + feedbacks.
+
+    Returns:
+        (text_material, image_urls) where image_urls are data: URIs for vision input.
+    """
     parts: list[str] = []
+    images: list[str] = []
 
     cat_label = CATEGORY_LABELS.get(hw.category, hw.category)
     parts.append(f"# 作业信息\n- 科目：{cat_label}\n- 标题：{hw.title}\n- 日期：{hw.homework_date}")
@@ -109,15 +148,27 @@ async def _build_homework_material(hw: Homework, db: AsyncSession) -> str:
 
     # Homework files text content
     for hf in (hw.homework_files or []):
-        text = await _get_file_text(db, hf.file_id)
+        f = await _get_file(db, hf.file_id)
+        text = _get_file_text(f)
         if text:
             parts.append(f"\n## 作业原文\n{_truncate(text, MAX_FILE_TEXT_CHARS)}")
+        elif _is_image(f):
+            img_url = _encode_image_base64(f)
+            if img_url:
+                parts.append("\n## 作业原文（图片）\n[见附图]")
+                images.append(img_url)
 
     # Legacy single file
     if hw.file_id and not hw.homework_files:
-        text = await _get_file_text(db, hw.file_id)
+        f = await _get_file(db, hw.file_id)
+        text = _get_file_text(f)
         if text:
             parts.append(f"\n## 作业原文\n{_truncate(text, MAX_FILE_TEXT_CHARS)}")
+        elif _is_image(f):
+            img_url = _encode_image_base64(f)
+            if img_url:
+                parts.append("\n## 作业原文（图片）\n[见附图]")
+                images.append(img_url)
 
     # Feedbacks (skip review_note type to avoid circular reference)
     fb_idx = 0
@@ -133,13 +184,30 @@ async def _build_homework_material(hw: Homework, db: AsyncSession) -> str:
         }.get(fb.feedback_type, fb.feedback_type)
 
         parts.append(f"\n## 反馈 {fb_idx}（{fb_type_label}）")
+
+        # Text content from the feedback itself
         if fb.content:
-            parts.append(_truncate(fb.content, MAX_FEEDBACK_TEXT_CHARS))
-        fb_file_text = await _get_file_text(db, fb.file_id)
+            if fb.feedback_type == "teacher_text":
+                parts.append(f"【老师文字点评 - 请重点参考】\n{_truncate(fb.content, MAX_FEEDBACK_TEXT_CHARS)}")
+            else:
+                parts.append(_truncate(fb.content, MAX_FEEDBACK_TEXT_CHARS))
+
+        # Feedback attached file
+        fb_file = await _get_file(db, fb.file_id)
+        fb_file_text = _get_file_text(fb_file)
+
         if fb_file_text:
             parts.append(f"反馈附件内容：\n{_truncate(fb_file_text, MAX_FILE_TEXT_CHARS)}")
+        elif _is_image(fb_file):
+            # Teacher image feedback -> send to vision model
+            img_url = _encode_image_base64(fb_file)
+            if img_url:
+                parts.append(f"[老师图片点评见附图 - 请仔细阅读图片中的标注和批改内容]")
+                images.append(img_url)
+        elif _is_audio(fb_file):
+            parts.append("[该反馈为语音点评，暂无法自动转文字。如有文字版本请补充到反馈内容中。]")
 
-    return "\n".join(parts)
+    return "\n".join(parts), images
 
 
 # ---------------------------------------------------------------------------
@@ -171,8 +239,8 @@ async def generate_review_note(
     if not real_feedbacks:
         raise RuntimeError("该作业暂无反馈，无法生成复盘笔记")
 
-    # Build material text
-    material = await _build_homework_material(hw, db)
+    # Build material text + images
+    material, images = await _build_homework_material(hw, db)
 
     # Get agent system prompt for the category (adds domain expertise)
     agent_id = CATEGORY_AGENT_MAP.get(hw.category, "writing-assistant")
@@ -193,11 +261,23 @@ async def generate_review_note(
                        f"请在整理复盘笔记时参考其专业标准：\n\n{agent.system_prompt[:800]}",
         })
 
-    # 3. User message with homework + feedbacks
-    messages.append({
-        "role": "user",
-        "content": f"请根据以下作业和反馈内容，生成一份精华复盘笔记：\n\n{material}",
-    })
+    # 3. User message with homework + feedbacks (multimodal if images exist)
+    if images:
+        # Build multimodal content: text + image(s)
+        content_parts: list[dict] = [
+            {"type": "text", "text": f"请根据以下作业和反馈内容，生成一份精华复盘笔记：\n\n{material}"},
+        ]
+        for img_url in images:
+            content_parts.append({
+                "type": "image_url",
+                "image_url": {"url": img_url},
+            })
+        messages.append({"role": "user", "content": content_parts})
+    else:
+        messages.append({
+            "role": "user",
+            "content": f"请根据以下作业和反馈内容，生成一份精华复盘笔记：\n\n{material}",
+        })
 
     # Call LLM
     model, api_key, api_base = await _resolve_llm_config(db)
