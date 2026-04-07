@@ -25,6 +25,8 @@ async def init_db():
         await conn.run_sync(Base.metadata.create_all)
         # Add new columns if they don't exist (SQLite doesn't support IF NOT EXISTS for columns)
         await _migrate_add_columns(conn)
+    # Backfill scores for existing AI report feedbacks that haven't been parsed yet
+    await _backfill_feedback_scores()
 
 
 async def _migrate_add_columns(conn):
@@ -51,6 +53,7 @@ async def _migrate_add_columns(conn):
         ("study_plan_days", "reading_image_id", "VARCHAR"),
         ("study_plan_days", "writing_image_id", "VARCHAR"),
         ("daily_report_cache", "include_notes", "BOOLEAN DEFAULT 0"),
+        ("homework_feedbacks", "scores", "TEXT"),
     ]
     for table, column, col_type in new_columns:
         try:
@@ -58,3 +61,49 @@ async def _migrate_add_columns(conn):
         except Exception:
             # Column already exists
             pass
+
+
+async def _backfill_feedback_scores():
+    """One-time backfill: parse scores for existing ai_report feedbacks that have no scores yet."""
+    import json
+    from sqlalchemy import select
+    from app.models.homework import HomeworkFeedback, Homework
+    from app.models.file import File
+    from app.utils.score_parser import parse_scores
+
+    async with async_session() as db:
+        # Find all ai_report feedbacks where scores is NULL and content is not empty
+        stmt = select(HomeworkFeedback).where(
+            HomeworkFeedback.feedback_type == "ai_report",
+            HomeworkFeedback.scores.is_(None),
+        )
+        result = await db.execute(stmt)
+        feedbacks = result.scalars().all()
+
+        if not feedbacks:
+            return
+
+        updated = 0
+        for fb in feedbacks:
+            # Get homework category
+            hw = await db.get(Homework, fb.homework_id)
+            category = hw.category if hw else ""
+
+            # Try content first, then file text_content
+            parse_text = fb.content or ""
+            if not parse_text and fb.file_id:
+                f = await db.get(File, fb.file_id)
+                if f and hasattr(f, "text_content") and f.text_content:
+                    parse_text = f.text_content
+
+            if not parse_text:
+                continue
+
+            scores = parse_scores(parse_text, category)
+            if scores:
+                fb.scores = json.dumps(scores, ensure_ascii=False)
+                updated += 1
+
+        if updated:
+            await db.commit()
+            print(f"[backfill] Parsed scores for {updated}/{len(feedbacks)} existing AI report feedbacks.")

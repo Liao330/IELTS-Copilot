@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import ScoreRadar from "@/components/homework/ScoreRadar";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -359,6 +360,14 @@ export default function HomeworkDetailPage() {
             </div>
           )}
         </div>
+
+        {/* AI 评分可视化（从反馈中提取，作为独立区块展示） */}
+        {(() => {
+          const aiScores = homework.feedbacks.find(
+            (fb) => fb.feedback_type === "ai_report" && fb.scores
+          )?.scores;
+          return aiScores ? <ScoreRadar scores={aiScores} /> : null;
+        })()}
 
         {/* 反馈区域 */}
         <div>

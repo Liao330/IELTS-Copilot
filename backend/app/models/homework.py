@@ -41,6 +41,7 @@ class HomeworkFeedback(Base):
     feedback_type = Column(String, nullable=False)  # ai_report / teacher_text / teacher_audio / teacher_image
     content = Column(Text, nullable=True)  # 文字内容
     file_id = Column(String, ForeignKey("files.id"), nullable=True)  # 关联文件（pdf/word/audio/image）
+    scores = Column(Text, nullable=True)  # JSON: 从 AI 报告中提取的评分数据
     created_at = Column(DateTime, default=datetime.utcnow)
 
     homework = relationship("Homework", back_populates="feedbacks")

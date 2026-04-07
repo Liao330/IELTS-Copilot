@@ -127,6 +127,16 @@ export interface HomeworkFeedback {
   file_id: string | null;
   file_name: string | null;
   file_mime_type: string | null;
+  scores: {
+    dimensions: {
+      key: string;
+      label: string;
+      label_en: string;
+      score: number;
+    }[];
+    overall: number;
+    category: string;
+  } | null;
   created_at: string;
 }
 

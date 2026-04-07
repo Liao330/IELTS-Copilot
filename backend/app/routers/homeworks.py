@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import uuid
 from collections import defaultdict
@@ -116,10 +117,18 @@ async def _resolve_homework_out(hw: Homework, db: AsyncSession) -> HomeworkOut:
 
     feedbacks = []
     for fb in (hw.feedbacks or []):
+        # Deserialize scores JSON string
+        scores_data = None
+        if fb.scores:
+            try:
+                scores_data = json.loads(fb.scores)
+            except (json.JSONDecodeError, TypeError):
+                pass
+
         fb_dict = {
             "id": fb.id, "homework_id": fb.homework_id, "feedback_type": fb.feedback_type,
             "content": fb.content, "file_id": fb.file_id,
-            "file_name": None, "file_mime_type": None, "created_at": fb.created_at,
+            "file_name": None, "file_mime_type": None, "scores": scores_data, "created_at": fb.created_at,
         }
         if fb.file_id:
             f = await db.get(File, fb.file_id)
@@ -337,20 +346,43 @@ async def add_feedback(homework_id: str, data: FeedbackCreate, db: AsyncSession 
     if not hw:
         raise HTTPException(status_code=404, detail="作业不存在")
 
+    # Auto-parse scores from AI report text
+    scores_json = None
+    if data.feedback_type == "ai_report":
+        from app.utils.score_parser import parse_scores
+        parse_text = data.content or ""
+        # If a file is attached and has text_content, also try that
+        if data.file_id and not parse_text:
+            f = await db.get(File, data.file_id)
+            if f and hasattr(f, "text_content") and f.text_content:
+                parse_text = f.text_content
+        scores = parse_scores(parse_text, hw.category)
+        if scores:
+            scores_json = json.dumps(scores, ensure_ascii=False)
+
     fb = HomeworkFeedback(
         id=str(uuid.uuid4()),
         homework_id=homework_id,
         feedback_type=data.feedback_type,
         content=data.content,
         file_id=data.file_id,
+        scores=scores_json,
     )
     db.add(fb)
     await db.commit()
     await db.refresh(fb)
 
+    scores_data = None
+    if fb.scores:
+        try:
+            scores_data = json.loads(fb.scores)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
     out = {
         "id": fb.id, "homework_id": fb.homework_id, "feedback_type": fb.feedback_type,
         "content": fb.content, "file_id": fb.file_id, "created_at": fb.created_at,
+        "scores": scores_data,
     }
     if fb.file_id:
         f = await db.get(File, fb.file_id)
@@ -370,12 +402,33 @@ async def update_feedback(
 
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(fb, field, value)
+
+    # Re-parse scores if this is an AI report and content changed
+    if fb.feedback_type == "ai_report":
+        from app.utils.score_parser import parse_scores
+        hw = await db.get(Homework, homework_id)
+        parse_text = fb.content or ""
+        if fb.file_id and not parse_text:
+            f = await db.get(File, fb.file_id)
+            if f and hasattr(f, "text_content") and f.text_content:
+                parse_text = f.text_content
+        scores = parse_scores(parse_text, hw.category if hw else "")
+        fb.scores = json.dumps(scores, ensure_ascii=False) if scores else None
+
     await db.commit()
     await db.refresh(fb)
+
+    scores_data = None
+    if fb.scores:
+        try:
+            scores_data = json.loads(fb.scores)
+        except (json.JSONDecodeError, TypeError):
+            pass
 
     out = {
         "id": fb.id, "homework_id": fb.homework_id, "feedback_type": fb.feedback_type,
         "content": fb.content, "file_id": fb.file_id, "created_at": fb.created_at,
+        "scores": scores_data,
     }
     if fb.file_id:
         f = await db.get(File, fb.file_id)

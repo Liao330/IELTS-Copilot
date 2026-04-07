@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Optional
+from typing import Optional, Any
 from pydantic import BaseModel
 
 
@@ -19,6 +19,7 @@ class HomeworkFeedbackOut(BaseModel):
     file_id: Optional[str] = None
     file_name: Optional[str] = None
     file_mime_type: Optional[str] = None
+    scores: Optional[dict[str, Any]] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
