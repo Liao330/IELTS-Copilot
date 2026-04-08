@@ -3,12 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import type { Agent, Conversation, DailyReportResponse, StudyPlanCurrentDayOut } from "@/types";
+import type { Agent, Conversation, DailyReportResponse } from "@/types";
 import { AgentCard } from "@/components/agent/AgentCard";
 import {
   Settings, BookMarked, Library, BookOpen, TrendingUp, ArrowRight,
-  Target, Loader2, Sparkles, ChevronRight, CheckCircle2, Circle,
-  CalendarCheck, FileText, Mic, Headphones, RefreshCw,
+  Target, Loader2, Sparkles, ChevronRight, RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,10 +26,6 @@ export default function HomePage() {
   const [dailyLoading, setDailyLoading] = useState(true);
   const [dailyError, setDailyError] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
-
-  // Study plan state
-  const [planDay, setPlanDay] = useState<StudyPlanCurrentDayOut | null>(null);
-  const [planLoading, setPlanLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
