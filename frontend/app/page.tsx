@@ -16,13 +16,6 @@ import {
 } from "@/components/ui/sheet";
 import { DailyBriefContent } from "@/components/reports/DailyBriefContent";
 
-const SUBJECT_META: Record<string, { label: string; icon: typeof FileText; color: string }> = {
-  listening: { label: "听力", icon: Headphones, color: "text-orange-600 dark:text-orange-400" },
-  speaking: { label: "口语", icon: Mic, color: "text-green-600 dark:text-green-400" },
-  reading: { label: "阅读", icon: BookOpen, color: "text-purple-600 dark:text-purple-400" },
-  writing: { label: "写作", icon: FileText, color: "text-blue-600 dark:text-blue-400" },
-};
-
 export default function HomePage() {
   const router = useRouter();
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -101,19 +94,6 @@ export default function HomePage() {
   const todayCount = dailyReport?.stats?.homework_count ?? 0;
   const todayFeedback = dailyReport?.stats?.feedback_count ?? 0;
 
-  // Build task items from plan day
-  const planTasks = planDay?.day
-    ? (["listening", "speaking", "reading", "writing"] as const)
-        .filter((subj) => planDay.day![subj])
-        .map((subj) => ({
-          subject: subj,
-          task: planDay.day![subj]!,
-          completed: !!planDay.day![`${subj}_homework_id` as keyof typeof planDay.day],
-        }))
-    : [];
-  const completedCount = planTasks.filter((t) => t.completed).length;
-  const progressPercent = planTasks.length > 0 ? Math.round((completedCount / planTasks.length) * 100) : 0;
-
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
@@ -132,106 +112,6 @@ export default function HomePage() {
       </header>
 
       <main className="container mx-auto px-4 py-8 max-w-5xl">
-        {/* ====== Study Plan - Today's Tasks Card ====== */}
-        {!planLoading && planDay && planTasks.length > 0 && (
-          <div className="mb-6">
-            <button
-              onClick={() => router.push("/study-plan")}
-              className="w-full rounded-xl border-2 border-emerald-300/40 bg-gradient-to-br from-emerald-50 via-teal-50/60 to-cyan-50 dark:from-emerald-950/30 dark:via-teal-950/20 dark:to-cyan-950/20 dark:border-emerald-700/30 hover:shadow-lg hover:shadow-emerald-100/50 dark:hover:shadow-emerald-900/20 transition-all duration-300 p-5 text-left group"
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 text-white shadow-sm">
-                    <CalendarCheck className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h2 className="text-base font-bold group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
-                      今日任务 · Day {planDay.current_day}
-                    </h2>
-                    <p className="text-xs text-muted-foreground">
-                      {planDay.plan_title} · 共 {planDay.total_days} 天
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                  管理计划
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </div>
-              </div>
-
-              {/* Progress bar */}
-              <div className="mb-3">
-                <div className="flex items-center justify-between text-xs mb-1.5">
-                  <span className="text-muted-foreground">今日进度</span>
-                  <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                    {completedCount}/{planTasks.length} 完成
-                  </span>
-                </div>
-                <div className="h-2 rounded-full bg-emerald-100 dark:bg-emerald-900/40 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-500 transition-all duration-500"
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Task list */}
-              <div className="space-y-1.5">
-                {planTasks.map((t) => {
-                  const meta = SUBJECT_META[t.subject];
-                  const Icon = meta.icon;
-                  return (
-                    <div
-                      key={t.subject}
-                      className={`flex items-start gap-2 text-sm rounded-lg px-2.5 py-1.5 ${
-                        t.completed
-                          ? "bg-emerald-100/60 dark:bg-emerald-900/20"
-                          : "bg-white/60 dark:bg-white/5"
-                      }`}
-                    >
-                      {t.completed ? (
-                        <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0 text-emerald-500" />
-                      ) : (
-                        <Circle className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground/40" />
-                      )}
-                      <Icon className={`h-4 w-4 mt-0.5 shrink-0 ${meta.color}`} />
-                      <span className={`flex-1 line-clamp-1 ${t.completed ? "line-through text-muted-foreground" : "text-foreground/80"}`}>
-                        <span className="font-medium">{meta.label}</span>
-                        <span className="mx-1 text-muted-foreground/40">|</span>
-                        {t.task}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </button>
-          </div>
-        )}
-
-        {/* No active plan — subtle prompt */}
-        {!planLoading && !planDay && (
-          <div className="mb-6">
-            <button
-              onClick={() => router.push("/study-plan")}
-              className="w-full rounded-xl border border-dashed border-muted-foreground/20 hover:border-emerald-400/50 hover:bg-emerald-50/30 dark:hover:bg-emerald-950/10 transition-all duration-300 p-4 text-left group flex items-center gap-3"
-            >
-              <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-muted/50 group-hover:bg-gradient-to-br group-hover:from-emerald-400 group-hover:to-teal-500 group-hover:text-white transition-all">
-                <CalendarCheck className="h-5 w-5" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
-                  上传学习计划 PDF，开始每日打卡
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  支持解析老师的 40 天雅思备考计划
-                </p>
-              </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-emerald-500 transition-colors" />
-            </button>
-          </div>
-        )}
-
         {/* ====== Daily Brief Card — 首页亮点区域 ====== */}
         <div className="mb-8">
           <button
@@ -377,14 +257,6 @@ export default function HomePage() {
         )}
 
         <div className="mt-8 space-y-3">
-          <Button
-            variant="outline"
-            className="w-full h-12 text-base gap-2"
-            onClick={() => router.push("/study-plan")}
-          >
-            <CalendarCheck className="h-5 w-5" />
-            📋 学习计划
-          </Button>
           <Button
             variant="outline"
             className="w-full h-12 text-base gap-2"

@@ -48,10 +48,6 @@ async def _migrate_add_columns(conn):
             pass
 
     new_columns = [
-        ("study_plan_days", "listening_image_id", "VARCHAR"),
-        ("study_plan_days", "speaking_image_id", "VARCHAR"),
-        ("study_plan_days", "reading_image_id", "VARCHAR"),
-        ("study_plan_days", "writing_image_id", "VARCHAR"),
         ("daily_report_cache", "include_notes", "BOOLEAN DEFAULT 0"),
         ("homework_feedbacks", "scores", "TEXT"),
     ]

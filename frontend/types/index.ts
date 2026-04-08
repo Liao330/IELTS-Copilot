@@ -350,42 +350,4 @@ export interface DailyReportResponse {
   date: string;
 }
 
-// ========== Study Plan (学习计划) ==========
 
-export interface StudyPlanDayOut {
-  id: string;
-  plan_id: string;
-  day_number: number;
-  listening: string | null;
-  speaking: string | null;
-  reading: string | null;
-  writing: string | null;
-  listening_image_id: string | null;
-  speaking_image_id: string | null;
-  reading_image_id: string | null;
-  writing_image_id: string | null;
-  listening_homework_id: string | null;
-  speaking_homework_id: string | null;
-  reading_homework_id: string | null;
-  writing_homework_id: string | null;
-}
-
-export interface StudyPlanOut {
-  id: string;
-  title: string;
-  file_id: string | null;
-  total_days: number;
-  current_day: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-  days: StudyPlanDayOut[];
-}
-
-export interface StudyPlanCurrentDayOut {
-  plan_id: string;
-  plan_title: string;
-  current_day: number;
-  total_days: number;
-  day: StudyPlanDayOut | null;
-}

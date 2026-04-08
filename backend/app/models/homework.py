@@ -12,7 +12,7 @@ class Homework(Base):
     id = Column(String, primary_key=True)
     title = Column(String, nullable=False)
     category = Column(String, nullable=False)  # writing / speaking / reading / listening
-    homework_date = Column(Date, nullable=False)  # 打卡日期
+    homework_date = Column(Date, nullable=False)  # 作业日期
     description = Column(Text, nullable=True)  # 备注说明
     file_id = Column(String, ForeignKey("files.id"), nullable=True)  # 兼容旧数据（单文件）
     created_at = Column(DateTime, default=datetime.utcnow)

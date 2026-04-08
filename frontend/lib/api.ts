@@ -195,27 +195,6 @@ export const api = {
     return request<import("@/types").DailyReportResponse>(`/api/reports/daily?${searchParams}`);
   },
 
-  // Study Plan
-  getActivePlan: () =>
-    request<import("@/types").StudyPlanOut | null>("/api/study-plan/active"),
-  getCurrentDay: () =>
-    request<import("@/types").StudyPlanCurrentDayOut | null>("/api/study-plan/current-day"),
-  parsePlanPdf: (fileId: string) =>
-    request<import("@/types").StudyPlanOut>(`/api/study-plan/parse?file_id=${fileId}`, { method: "POST" }),
-  advanceDay: () =>
-    request<import("@/types").StudyPlanCurrentDayOut>("/api/study-plan/advance-day", { method: "POST" }),
-  setCurrentDay: (day: number) =>
-    request<import("@/types").StudyPlanCurrentDayOut>(`/api/study-plan/current-day?day=${day}`, { method: "PUT" }),
-  linkHomework: (dayNumber: number, data: { homework_id: string; subject: string }) =>
-    request<import("@/types").StudyPlanDayOut>(`/api/study-plan/days/${dayNumber}/link-homework`, {
-      method: "POST", body: JSON.stringify(data),
-    }),
-  unlinkHomework: (dayNumber: number, subject: string) =>
-    request<import("@/types").StudyPlanDayOut>(`/api/study-plan/days/${dayNumber}/unlink-homework?subject=${subject}`, {
-      method: "DELETE",
-    }),
-  deletePlan: (planId: string) =>
-    request<void>(`/api/study-plan/${planId}`, { method: "DELETE" }),
 };
 
 // SSE helper

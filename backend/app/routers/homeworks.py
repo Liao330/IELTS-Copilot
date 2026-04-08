@@ -25,11 +25,8 @@ router = APIRouter(prefix="/api/homeworks", tags=["homeworks"])
 async def _file_has_references(db: AsyncSession, file_id: str, exclude_homework_file: bool = False) -> bool:
     """Check whether a File record is still referenced by other tables.
 
-    Checks: HomeworkFile (other rows), Homework.file_id, HomeworkFeedback.file_id,
-    StudyPlanDay image columns, StudyPlan.file_id.
+    Checks: HomeworkFile (other rows), Homework.file_id, HomeworkFeedback.file_id.
     """
-    from app.models.study_plan import StudyPlanDay, StudyPlan
-
     if not exclude_homework_file:
         r = await db.execute(select(func.count()).select_from(HomeworkFile).where(HomeworkFile.file_id == file_id))
         if r.scalar() > 0:
@@ -47,21 +44,6 @@ async def _file_has_references(db: AsyncSession, file_id: str, exclude_homework_
 
     # HomeworkFeedback.file_id
     r = await db.execute(select(func.count()).select_from(HomeworkFeedback).where(HomeworkFeedback.file_id == file_id))
-    if r.scalar() > 0:
-        return True
-
-    # StudyPlan.file_id
-    r = await db.execute(select(func.count()).select_from(StudyPlan).where(StudyPlan.file_id == file_id))
-    if r.scalar() > 0:
-        return True
-
-    # StudyPlanDay image columns
-    r = await db.execute(select(func.count()).select_from(StudyPlanDay).where(
-        (StudyPlanDay.listening_image_id == file_id) |
-        (StudyPlanDay.speaking_image_id == file_id) |
-        (StudyPlanDay.reading_image_id == file_id) |
-        (StudyPlanDay.writing_image_id == file_id)
-    ))
     if r.scalar() > 0:
         return True
 
