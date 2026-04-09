@@ -20,7 +20,7 @@ from app.models.file import File
 from app.models.setting import Setting
 from app.models.agent import Agent
 from app.services.llm_service import complete_chat
-from app.prompts.review_note import REVIEW_NOTE_PROMPT
+from app.prompts.review_note import REVIEW_NOTE_PROMPT, REVIEW_NOTE_SELF_ANALYSIS_PROMPT
 
 
 # ---------------------------------------------------------------------------
@@ -214,14 +214,35 @@ async def _build_homework_material(
 # Public API
 # ---------------------------------------------------------------------------
 
+async def _has_homework_content(hw: Homework, db: AsyncSession) -> bool:
+    """Check if the homework has any file content (text or images)."""
+    for hf in (hw.homework_files or []):
+        f = await _get_file(db, hf.file_id)
+        if _get_file_text(f) or _is_image(f):
+            return True
+    # Legacy single file
+    if hw.file_id and not hw.homework_files:
+        f = await _get_file(db, hw.file_id)
+        if _get_file_text(f) or _is_image(f):
+            return True
+    return False
+
+
+# Categories that support self-analysis (no feedback required if files exist)
+SELF_ANALYSIS_CATEGORIES = {"reading", "listening"}
+
+
 async def generate_review_note(
     db: AsyncSession,
     homework_id: str,
 ) -> str:
-    """Generate a review note for a homework with feedbacks.
+    """Generate a review note for a homework.
+
+    For writing/speaking: requires at least one feedback (teacher/AI).
+    For reading/listening: can generate self-analysis from homework files alone.
 
     Returns the generated markdown content string.
-    Raises RuntimeError if no feedbacks or LLM config issue.
+    Raises RuntimeError if insufficient material or LLM config issue.
     """
     # Load homework with relations
     stmt = (
@@ -236,8 +257,15 @@ async def generate_review_note(
 
     # Check that there are feedbacks (excluding existing review_notes)
     real_feedbacks = [fb for fb in (hw.feedbacks or []) if fb.feedback_type != "review_note"]
+    has_files = await _has_homework_content(hw, db)
+
+    # Determine mode: self-analysis (no feedback) vs feedback-based
+    is_self_analysis = False
     if not real_feedbacks:
-        raise RuntimeError("该作业暂无反馈，无法生成复盘笔记")
+        if hw.category in SELF_ANALYSIS_CATEGORIES and has_files:
+            is_self_analysis = True
+        else:
+            raise RuntimeError("该作业暂无反馈，无法生成复盘笔记")
 
     # Build material text + images
     material, images = await _build_homework_material(hw, db)
@@ -250,8 +278,16 @@ async def generate_review_note(
     # Build LLM messages
     messages: list[dict] = []
 
-    # 1. Review note system prompt (primary role)
-    messages.append({"role": "system", "content": REVIEW_NOTE_PROMPT})
+    # 1. Choose the appropriate system prompt
+    if is_self_analysis:
+        cat_label = CATEGORY_LABELS.get(hw.category, "学习")
+        system_prompt = REVIEW_NOTE_SELF_ANALYSIS_PROMPT.format(category=cat_label)
+        user_instruction = f"请根据以下做题内容，直接分析并生成一份复盘笔记：\n\n{material}"
+    else:
+        system_prompt = REVIEW_NOTE_PROMPT
+        user_instruction = f"请根据以下作业和反馈内容，生成一份精华复盘笔记：\n\n{material}"
+
+    messages.append({"role": "system", "content": system_prompt})
 
     # 2. Agent domain expertise as supplementary context
     if agent and agent.system_prompt:
@@ -261,11 +297,11 @@ async def generate_review_note(
                        f"请在整理复盘笔记时参考其专业标准：\n\n{agent.system_prompt[:800]}",
         })
 
-    # 3. User message with homework + feedbacks (multimodal if images exist)
+    # 3. User message with homework content (multimodal if images exist)
     if images:
         # Build multimodal content: text + image(s)
         content_parts: list[dict] = [
-            {"type": "text", "text": f"请根据以下作业和反馈内容，生成一份精华复盘笔记：\n\n{material}"},
+            {"type": "text", "text": user_instruction},
         ]
         for img_url in images:
             content_parts.append({
@@ -276,7 +312,7 @@ async def generate_review_note(
     else:
         messages.append({
             "role": "user",
-            "content": f"请根据以下作业和反馈内容，生成一份精华复盘笔记：\n\n{material}",
+            "content": user_instruction,
         })
 
     # Call LLM

@@ -293,7 +293,7 @@ export default function HomeworkDetailPage() {
       toast({ description: "复盘笔记已生成" });
       fetchHomework();
     } catch (err) {
-      toast({ variant: "destructive", description: err instanceof Error ? err.message : "生成失败，请确保作业已有反馈" });
+      toast({ variant: "destructive", description: err instanceof Error ? err.message : "生成失败，请确保作业已有反馈或做题文件" });
     } finally {
       setGeneratingNote(false);
     }
@@ -394,7 +394,10 @@ export default function HomeworkDetailPage() {
               )}
             </h2>
             <div className="flex items-center gap-2">
-              {homework.feedbacks.filter(fb => fb.feedback_type !== "review_note").length > 0 && (
+              {/* 显示复盘笔记按钮条件：有非review_note反馈 OR 阅读/听力有作业文件 */}
+              {(homework.feedbacks.filter(fb => fb.feedback_type !== "review_note").length > 0 ||
+                (["reading", "listening"].includes(homework.category) && hwFiles.length > 0)
+              ) && (
                 <Button
                   size="sm"
                   variant="outline"

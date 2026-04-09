@@ -45,11 +45,7 @@ export default function HomePage() {
       .catch(() => setDailyError(true))
       .finally(() => setDailyLoading(false));
 
-    // Load current study plan day
-    api.getCurrentDay()
-      .then(setPlanDay)
-      .catch(() => {})
-      .finally(() => setPlanLoading(false));
+
   }, []);
 
   // Force-regenerate daily report
