@@ -211,7 +211,6 @@ app.include_router(settings.router)
 app.include_router(homeworks.router)
 app.include_router(vocabulary.router)
 app.include_router(reports.router)
-app.include_router(study_plan.router)
 
 
 @app.get("/api/health")
