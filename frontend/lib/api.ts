@@ -90,11 +90,12 @@ export const api = {
     }),
 
   // Homeworks
-  getHomeworks: (params?: { category?: string; start_date?: string; end_date?: string }) => {
+  getHomeworks: (params?: { category?: string; start_date?: string; end_date?: string; min_score?: number }) => {
     const searchParams = new URLSearchParams();
     if (params?.category) searchParams.set("category", params.category);
     if (params?.start_date) searchParams.set("start_date", params.start_date);
     if (params?.end_date) searchParams.set("end_date", params.end_date);
+    if (params?.min_score !== undefined) searchParams.set("min_score", String(params.min_score));
     return request<import("@/types").Homework[]>(`/api/homeworks?${searchParams}`);
   },
   getHomeworkCalendar: (year: number, month: number) =>

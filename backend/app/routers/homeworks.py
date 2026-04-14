@@ -137,6 +137,7 @@ async def list_homeworks(
     category: str | None = None,
     start_date: date | None = None,
     end_date: date | None = None,
+    min_score: float | None = Query(None, ge=0, le=9, description="最低总分筛选（仅口语/写作有效）"),
     db: AsyncSession = Depends(get_db),
 ):
     stmt = select(Homework).options(*_load_options()).order_by(desc(Homework.homework_date), desc(Homework.created_at))
@@ -149,6 +150,23 @@ async def list_homeworks(
 
     result = await db.execute(stmt)
     homeworks = result.scalars().all()
+
+    # 按最低分数筛选：从 feedbacks 的 scores JSON 中提取 overall
+    if min_score is not None:
+        filtered = []
+        for hw in homeworks:
+            for fb in (hw.feedbacks or []):
+                if fb.feedback_type == "ai_report" and fb.scores:
+                    try:
+                        scores_data = json.loads(fb.scores)
+                        overall = scores_data.get("overall")
+                        if overall is not None and float(overall) >= min_score:
+                            filtered.append(hw)
+                            break
+                    except (json.JSONDecodeError, TypeError, ValueError):
+                        pass
+        homeworks = filtered
+
     return [await _resolve_homework_out(hw, db) for hw in homeworks]
 
 

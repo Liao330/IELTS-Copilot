@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft, Plus, ChevronLeft, ChevronRight, Upload,
   FileText, Mic, BookOpen, Headphones, Calendar, Trash2, Pencil,
-  MessageSquarePlus,
+  MessageSquarePlus, Star,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { CreateHomeworkDialog } from "@/components/homework/CreateHomeworkDialog";
@@ -57,6 +57,7 @@ export default function HomeworksPage() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [minScore, setMinScore] = useState<number | undefined>(undefined);
 
   // 日历导航状态
   const now = new Date();
@@ -84,7 +85,7 @@ export default function HomeworksPage() {
         endDate = `${endY}-${String(endM).padStart(2, "0")}-01`;
       }
 
-      const hwPromise = api.getHomeworks({ category: category || undefined, start_date: startDate, end_date: endDate });
+      const hwPromise = api.getHomeworks({ category: category || undefined, start_date: startDate, end_date: endDate, min_score: minScore });
 
       if (filterYear !== null && filterMonth !== null) {
         const [hw, cal] = await Promise.all([
@@ -104,7 +105,7 @@ export default function HomeworksPage() {
     } finally {
       setLoading(false);
     }
-  }, [category, filterYear, filterMonth, toast]);
+  }, [category, filterYear, filterMonth, minScore, toast]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -371,7 +372,7 @@ export default function HomeworksPage() {
         </div>
 
         {/* 分类筛选 */}
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="flex flex-wrap gap-2 mb-3">
           {CATEGORIES.map((c) => (
             <button
               key={c.value}
@@ -384,6 +385,31 @@ export default function HomeworksPage() {
             >
               <c.icon className="h-3.5 w-3.5" />
               {c.label}
+            </button>
+          ))}
+        </div>
+
+        {/* 高分筛选 */}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <Star className="h-3.5 w-3.5 text-amber-500" />
+          <span className="text-xs text-muted-foreground mr-1">按得分筛选:</span>
+          {[
+            { label: "不限", value: undefined },
+            { label: "≥6.0", value: 6.0 },
+            { label: "≥6.5", value: 6.5 },
+            { label: "≥7.0", value: 7.0 },
+            { label: "≥7.5", value: 7.5 },
+          ].map((opt) => (
+            <button
+              key={opt.label}
+              onClick={() => setMinScore(opt.value)}
+              className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                minScore === opt.value
+                  ? "bg-amber-500 text-white"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              }`}
+            >
+              {opt.label}
             </button>
           ))}
         </div>
@@ -407,6 +433,9 @@ export default function HomeworksPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {groupedByDate[dateStr].map((hw) => {
                     const CatIcon = CATEGORY_ICONS[hw.category] || FileText;
+                    const aiScore = hw.feedbacks.find(
+                      (fb) => fb.feedback_type === "ai_report" && fb.scores
+                    )?.scores;
                     return (
                       <div
                         key={hw.id}
@@ -414,6 +443,16 @@ export default function HomeworksPage() {
                         onClick={() => router.push(`/homeworks/${hw.id}`)}
                       >
                         <div className="absolute top-2 right-2 flex items-center gap-0.5">
+                          {aiScore && (
+                            <span className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-bold mr-1 ${
+                              aiScore.overall >= 7 ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" :
+                              aiScore.overall >= 6 ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300" :
+                              "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
+                            }`}>
+                              <Star className="h-3 w-3" />
+                              {aiScore.overall % 1 === 0 ? aiScore.overall.toFixed(0) : aiScore.overall.toFixed(1)}
+                            </span>
+                          )}
                           <button
                             className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
                             onClick={(e) => { e.stopPropagation(); router.push(`/homeworks/${hw.id}?edit=1`); }}
