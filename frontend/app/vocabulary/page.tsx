@@ -110,7 +110,7 @@ export default function VocabularyPage() {
 
   const handleSearch = () => setSearch(searchInput.trim());
   const handleSearchKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") handleSearch();
+    if (e.key === "Enter" && !e.nativeEvent.isComposing) handleSearch();
   };
 
   // 复习操作

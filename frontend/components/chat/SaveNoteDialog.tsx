@@ -148,7 +148,7 @@ export function SaveNoteDialog({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") handleSave();
+                if (e.key === "Enter" && !e.nativeEvent.isComposing) handleSave();
               }}
             />
           </div>
