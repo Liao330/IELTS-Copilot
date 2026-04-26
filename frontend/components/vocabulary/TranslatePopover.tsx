@@ -46,26 +46,48 @@ export function TranslatePopover() {
         return;
       }
 
+      // 忽略在 <textarea> / <input> 中的选择：
+      // textarea 的选区是 input selection，不属于 Document Selection —
+      // 直接读 window.getSelection() 可能返回旧的/空 Range，导致 rect={0,0,0,0}，
+      // 最终工具条会漂到页面左上角。
+      const target = e.target as HTMLElement | null;
+      const isInFormField =
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLInputElement ||
+        !!target?.closest("textarea, input");
+      if (isInFormField) {
+        closeAll();
+        return;
+      }
+
       const selection = window.getSelection();
       const text = selection?.toString().trim();
 
       if (text && text.length > 0 && text.length < 500) {
-        const range = selection?.getRangeAt(0);
-        if (range) {
-          // 跳过聊天消息内容区域（ChatMessage 有自己的框选工具条）
-          const ancestor = range.commonAncestorContainer;
-          const chatBubble = (ancestor instanceof Element ? ancestor : ancestor.parentElement)?.closest('[data-chat-content]');
-          if (chatBubble) return;
+        if (!selection || selection.rangeCount === 0) return;
+        const range = selection.getRangeAt(0);
 
-          const rect = range.getBoundingClientRect();
-          setSelectedText(text);
-          setToolbarPos({
-            x: rect.left + rect.width / 2,
-            y: rect.top - 10,
-          });
-          setTranslateResult(null);
-          setResultPos(null);
+        // 跳过聊天消息内容区域（ChatMessage 有自己的框选工具条）
+        const ancestor = range.commonAncestorContainer;
+        const chatBubble = (ancestor instanceof Element ? ancestor : ancestor.parentElement)?.closest('[data-chat-content]');
+        if (chatBubble) return;
+
+        const rect = range.getBoundingClientRect();
+
+        // 过滤掉无效 rect（宽高都为 0 说明 Range 没对应到真实 DOM 节点，
+        // 常见于 textarea 选择后残留的空 Range）
+        if (rect.width === 0 && rect.height === 0) {
+          closeAll();
+          return;
         }
+
+        setSelectedText(text);
+        setToolbarPos({
+          x: rect.left + rect.width / 2,
+          y: rect.top - 10,
+        });
+        setTranslateResult(null);
+        setResultPos(null);
       } else if (!text) {
         closeAll();
       }
