@@ -9,6 +9,7 @@ class SettingsOut(BaseModel):
     default_model: str = "openai/qwen-turbo-2024-11-01"
     context_window_size: int = 20
     stream_enabled: bool = True
+    speech_providers: dict[str, Any] = {}
 
 
 class SettingsUpdate(BaseModel):
@@ -16,3 +17,4 @@ class SettingsUpdate(BaseModel):
     default_model: str | None = None
     context_window_size: int | None = None
     stream_enabled: bool | None = None
+    speech_providers: dict[str, Any] | None = None

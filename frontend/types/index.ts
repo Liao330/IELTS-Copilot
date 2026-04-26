@@ -70,6 +70,7 @@ export interface Settings {
   default_model: string;
   context_window_size: number;
   stream_enabled: boolean;
+  speech_providers?: SpeechProviders;
 }
 
 export interface SSEEvent {
@@ -429,4 +430,41 @@ export interface ListeningSessionUpdate {
 export interface ListeningGenerateResponse {
   sentence_id: string;
   blocks: ListeningGeneratedBlock[];
+}
+
+
+// ========== Speech (TTS / ASR) ==========
+
+export interface VoicePreset {
+  id: string;
+  label: string;
+  accent: string;
+}
+
+export interface VoiceListResponse {
+  voices: VoicePreset[];
+  default_voice: string;
+  configured: boolean;
+  asr_configured?: boolean;
+}
+
+export interface SpeechProviders {
+  asr?: {
+    model?: string;
+    // 历史字段（可能用户旧数据带着），保留兼容
+    api_key?: string;
+    api_base?: string;
+    provider?: string;
+  };
+  tts?: {
+    // 腾讯云
+    secret_id?: string;
+    secret_key?: string;
+    region?: string;
+    default_voice?: string;
+    default_rate?: string;
+    // 历史字段，保留兼容
+    provider?: string;
+    api_key?: string;
+  };
 }

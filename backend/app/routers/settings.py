@@ -28,6 +28,7 @@ async def get_settings(db: AsyncSession = Depends(get_db)):
         default_model=raw.get("default_model", "openai/qwen-turbo-2024-11-01"),
         context_window_size=int(raw.get("context_window_size", "20")),
         stream_enabled=raw.get("stream_enabled", "true") == "true",
+        speech_providers=json.loads(raw.get("speech_providers", "{}")),
     )
 
 
@@ -42,6 +43,8 @@ async def update_settings(data: SettingsUpdate, db: AsyncSession = Depends(get_d
         updates["context_window_size"] = str(data.context_window_size)
     if data.stream_enabled is not None:
         updates["stream_enabled"] = "true" if data.stream_enabled else "false"
+    if data.speech_providers is not None:
+        updates["speech_providers"] = json.dumps(data.speech_providers, ensure_ascii=False)
 
     for key, value in updates.items():
         result = await db.execute(select(Setting).where(Setting.key == key))

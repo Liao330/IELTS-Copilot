@@ -235,6 +235,27 @@ export const api = {
       { method: "POST", body: JSON.stringify(data ?? {}) },
     ),
 
+  // Speech (TTS / ASR)
+  getVoices: () => request<import("@/types").VoiceListResponse>("/api/speech/voices"),
+  /** 一次 TTS 请求，返回音频 Blob（mp3）；前端可用 URL.createObjectURL 播放 */
+  ttsFetchBlob: async (text: string, voice?: string, rate?: string): Promise<Blob> => {
+    const res = await fetch(`${API_BASE}/api/speech/tts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, voice, rate }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || "TTS 请求失败");
+    }
+    return res.blob();
+  },
+  transcribeFile: (fileId: string) =>
+    request<{ id: string; text_content: string }>(
+      `/api/files/${fileId}/transcribe`,
+      { method: "POST" },
+    ),
+
 };
 
 // SSE helper

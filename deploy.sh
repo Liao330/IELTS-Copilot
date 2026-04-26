@@ -31,6 +31,10 @@ err()  { echo -e "${RED}[✗]${NC} $1"; exit 1; }
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$PROJECT_DIR"
 
+# SSH 保活参数：防止长时间 docker build 期间因无数据包而被 sshd/防火墙断开
+SSH_OPTS=(-o ServerAliveInterval=30 -o ServerAliveCountMax=120 -o TCPKeepAlive=yes)
+ssh_run() { ssh "${SSH_OPTS[@]}" "$@"; }
+
 # === 检查 SSH 连接 ===
 echo ""
 echo "========================================="
@@ -112,13 +116,14 @@ deploy)
     log "同步项目文件到服务器..."
     
     # 创建远程目录
-    ssh ${SERVER_USER}@${SERVER_IP} "mkdir -p ${REMOTE_DIR}/backend-data/uploads"
+    ssh_run ${SERVER_USER}@${SERVER_IP} "mkdir -p ${REMOTE_DIR}/backend-data/uploads"
     
     # 同步 CORS_ORIGINS 等环境变量到服务器 .env（docker-compose 会读取）
-    ssh ${SERVER_USER}@${SERVER_IP} "echo 'CORS_ORIGINS=${CORS_ORIGINS:-http://${SERVER_IP}:${PORT}}' > ${REMOTE_DIR}/.env"
+    ssh_run ${SERVER_USER}@${SERVER_IP} "echo 'CORS_ORIGINS=${CORS_ORIGINS:-http://${SERVER_IP}:${PORT}}' > ${REMOTE_DIR}/.env"
     
     # rsync 同步（排除不需要的文件）
     rsync -avz --delete \
+        -e "ssh ${SSH_OPTS[*]}" \
         --exclude '.git' \
         --exclude '.DS_Store' \
         --exclude '.codebuddy' \
@@ -139,7 +144,7 @@ deploy)
     log "文件同步完成"
     
     log "在服务器上构建并启动服务..."
-    ssh ${SERVER_USER}@${SERVER_IP} << REMOTE_DEPLOY
+    ssh_run ${SERVER_USER}@${SERVER_IP} << REMOTE_DEPLOY
     set -e
     cd ${REMOTE_DIR}
     

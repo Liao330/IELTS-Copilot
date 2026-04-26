@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Save, Eye, EyeOff, Check } from "lucide-react";
+import { ArrowLeft, Save, Eye, EyeOff, Check, Volume2, Mic } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const PROVIDER_CONFIGS: Record<
@@ -114,6 +114,34 @@ export default function SettingsPage() {
           ...settings.llm_providers[key],
           [field]: value,
         },
+      },
+    });
+  };
+
+  const updateAsr = (field: "api_key" | "api_base" | "model", value: string) => {
+    if (!settings) return;
+    setSettings({
+      ...settings,
+      speech_providers: {
+        ...(settings.speech_providers || {}),
+        asr: { ...(settings.speech_providers?.asr || {}), [field]: value },
+      },
+    });
+  };
+
+  const updateTts = (
+    field: "secret_id" | "secret_key" | "region" | "default_voice" | "default_rate",
+    value: string,
+  ) => {
+    if (!settings) return;
+    // SecretId/SecretKey 粘贴时常见尾空格/换行，统一 trim 防止签名失败
+    const trimmed =
+      field === "secret_id" || field === "secret_key" ? value.trim() : value;
+    setSettings({
+      ...settings,
+      speech_providers: {
+        ...(settings.speech_providers || {}),
+        tts: { ...(settings.speech_providers?.tts || {}), [field]: trimmed },
       },
     });
   };
@@ -267,6 +295,163 @@ export default function SettingsPage() {
                   setSettings({ ...settings, stream_enabled: v })
                 }
               />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 语音配置：TTS (腾讯云) + ASR (阿里云 Paraformer 复用千问 Key) */}
+        <Card>
+          <CardHeader>
+            <CardTitle>🎧 语音配置</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              配置后可在「听力精听复盘」使用拟人英音朗读，以及上传口语作业时自动识别为文字（让 AI 能分析内容）。
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* TTS - 腾讯云语音合成 */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                {settings.speech_providers?.tts?.secret_id ? (
+                  <Check className="h-4 w-4 text-green-500" />
+                ) : (
+                  <Volume2 className="h-4 w-4 text-muted-foreground" />
+                )}
+                <span className="font-medium">腾讯云语音合成（拟人朗读）</span>
+                <a
+                  href="https://console.cloud.tencent.com/cam/capi"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-sky-600 hover:underline ml-auto"
+                >
+                  获取 SecretId/Key →
+                </a>
+              </div>
+              <div className="ml-6 space-y-2">
+                <div>
+                  <Label className="text-xs">SecretId</Label>
+                  <Input
+                    value={settings.speech_providers?.tts?.secret_id || ""}
+                    onChange={(e) => updateTts("secret_id", e.target.value)}
+                    placeholder="AKID..."
+                    className="text-sm font-mono"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">SecretKey</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type={showKeys["tts"] ? "text" : "password"}
+                      value={settings.speech_providers?.tts?.secret_key || ""}
+                      onChange={(e) => updateTts("secret_key", e.target.value)}
+                      placeholder="腾讯云 SecretKey（32 位）"
+                      className="text-sm font-mono"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() =>
+                        setShowKeys((prev) => ({ ...prev, tts: !prev.tts }))
+                      }
+                    >
+                      {showKeys["tts"] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs">地域（可选）</Label>
+                  <Select
+                    value={settings.speech_providers?.tts?.region || "ap-guangzhou"}
+                    onValueChange={(v) => updateTts("region", v)}
+                  >
+                    <SelectTrigger className="text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ap-guangzhou">广州</SelectItem>
+                      <SelectItem value="ap-shanghai">上海</SelectItem>
+                      <SelectItem value="ap-beijing">北京</SelectItem>
+                      <SelectItem value="ap-hongkong">香港</SelectItem>
+                      <SelectItem value="ap-singapore">新加坡</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">默认音色</Label>
+                    <Select
+                      value={settings.speech_providers?.tts?.default_voice || "501009"}
+                      onValueChange={(v) => updateTts("default_voice", v)}
+                    >
+                      <SelectTrigger className="text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="101050">英文 · WeJack（男·精品）— 精品免费包</SelectItem>
+                        <SelectItem value="501009">英文 · WeWinny（女·大模型）— 需大模型资源包</SelectItem>
+                        <SelectItem value="501008">英文 · WeJames（男·大模型）— 需大模型资源包</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">默认语速</Label>
+                    <Select
+                      value={settings.speech_providers?.tts?.default_rate || "-10%"}
+                      onValueChange={(v) => updateTts("default_rate", v)}
+                    >
+                      <SelectTrigger className="text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="-25%">0.75x 慢速精听</SelectItem>
+                        <SelectItem value="-10%">0.9x 略慢（推荐）</SelectItem>
+                        <SelectItem value="+0%">1.0x 正常</SelectItem>
+                        <SelectItem value="+10%">1.1x 略快</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed pt-1">
+                  💡 腾讯云每月 <b>100 万字符</b>永久免费，精品/大模型音色共享额度。
+                  需要先在控制台 <a href="https://console.cloud.tencent.com/tts" target="_blank" rel="noreferrer" className="text-sky-600 hover:underline">开通语音合成</a> 并在 <a href="https://console.cloud.tencent.com/cam/capi" target="_blank" rel="noreferrer" className="text-sky-600 hover:underline">访问管理</a> 新建 API 密钥。
+                </p>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* ASR - 阿里云 Paraformer（复用千问 Key） */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                {settings.llm_providers?.openai?.api_key ? (
+                  <Check className="h-4 w-4 text-green-500" />
+                ) : (
+                  <Mic className="h-4 w-4 text-muted-foreground" />
+                )}
+                <span className="font-medium">阿里云 Paraformer（口语音频转写）</span>
+                <span className="text-xs text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400 rounded-full px-2 py-0.5 ml-auto">
+                  自动复用千问 Key
+                </span>
+              </div>
+              <div className="ml-6 space-y-2">
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  {settings.llm_providers?.openai?.api_key
+                    ? "✅ 已检测到上方「千问 (阿里云百炼)」的 API Key，将同一个 Key 用于 Paraformer 录音识别，无需重复配置。"
+                    : "⚠️ 请先在上方「千问 (阿里云百炼)」处填写 API Key，同一个 Key 自动用于 Paraformer 语音识别。"}
+                </p>
+                <div>
+                  <Label className="text-xs">模型（可选，默认 paraformer-realtime-v2）</Label>
+                  <Input
+                    value={settings.speech_providers?.asr?.model || ""}
+                    onChange={(e) => updateAsr("model", e.target.value)}
+                    placeholder="paraformer-realtime-v2"
+                    className="text-sm font-mono"
+                  />
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed pt-1">
+                  💡 新用户赠送 3 个月 <b>750 小时</b> 免费，之后 ￥0.15/分钟。
+                  支持 m4a/mp3/wav/mp4 等几乎所有格式（后端用 ffmpeg 自动转码）。
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>

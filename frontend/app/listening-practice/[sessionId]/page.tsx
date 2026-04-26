@@ -30,6 +30,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { SentenceEditor } from "@/components/listening/SentenceEditor";
 import { GenerateResultCard } from "@/components/listening/GenerateResultCard";
+import { DemoPreview } from "@/components/listening/DemoPreview";
+import { PlayButton } from "@/components/listening/PlayButton";
 
 export default function ListeningPracticeDetailPage() {
   const params = useParams<{ sessionId: string }>();
@@ -227,6 +229,11 @@ export default function ListeningPracticeDetailPage() {
     [session],
   );
 
+  const hasAnyGenerated = useMemo(
+    () => session?.sentences.some((s) => s.generated_blocks.length > 0) ?? false,
+    [session],
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -283,7 +290,7 @@ export default function ListeningPracticeDetailPage() {
       <main className="container mx-auto px-4 py-6 max-w-3xl">
         {/* 统计 + 说明 */}
         <div className="mb-5 rounded-lg border bg-gradient-to-br from-sky-50/60 to-cyan-50/40 dark:from-sky-950/20 dark:to-cyan-950/10 p-4">
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
             <div className="flex items-center gap-2 text-sm">
               <span className="inline-flex items-center gap-1 rounded-full bg-white dark:bg-white/10 px-2.5 py-1 font-medium border">
                 📝 {session.sentences.length} 句
@@ -292,10 +299,15 @@ export default function ListeningPracticeDetailPage() {
                 🎯 {totalBlockers} 障碍词
               </span>
             </div>
+            {/* 语速 + 音色控制（全局偏好） */}
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <span>🎧 朗读设置</span>
+              <PlayButton text="" gearOnly size="sm" />
+            </div>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
             点击答案句中的任意单词来标记/取消「障碍词」。标记后点击「生成精听练习」由 AI
-            根据难点类型产出 3-5 句梯度练习。标记的单词会自动入库单词本（category=listening）。
+            根据难点类型产出 3-5 句梯度练习。每句旁的 ▶️ 可用拟人语音播放（雅思英音默认，可切美/澳音）。
           </p>
         </div>
 
@@ -305,6 +317,9 @@ export default function ListeningPracticeDetailPage() {
           </div>
         ) : (
           <div className="space-y-5">
+            {!hasAnyGenerated && (
+              <DemoPreview />
+            )}
             {session.sentences.map((sentence, idx) => (
               <SentenceBlock
                 key={sentence.id}
@@ -430,6 +445,7 @@ function SentenceBlock({
                 保存中
               </span>
             )}
+            <PlayButton text={sentence.original_text} size="sm" />
             <button
               type="button"
               onClick={onDelete}

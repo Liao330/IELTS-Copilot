@@ -6,10 +6,13 @@ import type { ListeningGeneratedBlock, ListeningGeneratedExample } from "@/types
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { PlayButton } from "./PlayButton";
 
 interface Props {
   block: ListeningGeneratedBlock;
   defaultOpen?: boolean;
+  /** 只读模式：隐藏"加入佳句"等交互按钮，用于 Demo 预览 */
+  readOnly?: boolean;
 }
 
 const DIFFICULTY_COLORS: Record<string, string> = {
@@ -36,7 +39,7 @@ const LEVEL_STYLES: Record<number, { label: string; bg: string }> = {
   },
 };
 
-export function GenerateResultCard({ block, defaultOpen = true }: Props) {
+export function GenerateResultCard({ block, defaultOpen = true, readOnly = false }: Props) {
   const [open, setOpen] = useState(defaultOpen);
   const color = DIFFICULTY_COLORS[block.difficulty_type] ?? DIFFICULTY_COLORS["其他"];
 
@@ -84,6 +87,7 @@ export function GenerateResultCard({ block, defaultOpen = true }: Props) {
                   key={i}
                   example={ex}
                   word={block.blocker_word}
+                  readOnly={readOnly}
                 />
               ))}
           </div>
@@ -96,9 +100,11 @@ export function GenerateResultCard({ block, defaultOpen = true }: Props) {
 function ExampleRow({
   example,
   word,
+  readOnly = false,
 }: {
   example: ListeningGeneratedExample;
   word: string;
+  readOnly?: boolean;
 }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -134,20 +140,25 @@ function ExampleRow({
         <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
           Level {example.difficulty_level} · {style.label}
         </span>
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving || saved}
-          className={cn(
-            "inline-flex items-center gap-1 text-xs rounded-md px-2 py-0.5 transition-colors",
-            saved
-              ? "text-emerald-700 dark:text-emerald-400"
-              : "text-muted-foreground hover:text-sky-700 hover:bg-sky-50 dark:hover:bg-sky-950/30 cursor-pointer",
+        <div className="flex items-center gap-1">
+          {!readOnly && <PlayButton text={example.text} size="sm" />}
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || saved}
+              className={cn(
+                "inline-flex items-center gap-1 text-xs rounded-md px-2 py-0.5 transition-colors",
+                saved
+                  ? "text-emerald-700 dark:text-emerald-400"
+                  : "text-muted-foreground hover:text-sky-700 hover:bg-sky-50 dark:hover:bg-sky-950/30 cursor-pointer",
+              )}
+            >
+              {saved ? <Check className="h-3 w-3" /> : <BookmarkPlus className="h-3 w-3" />}
+              {saved ? "已收藏" : "加入佳句"}
+            </button>
           )}
-        >
-          {saved ? <Check className="h-3 w-3" /> : <BookmarkPlus className="h-3 w-3" />}
-          {saved ? "已收藏" : "加入佳句"}
-        </button>
+        </div>
       </div>
       <p className="text-sm font-medium leading-relaxed">{highlighted}</p>
       <p className="text-xs text-muted-foreground mt-1">{example.translation}</p>

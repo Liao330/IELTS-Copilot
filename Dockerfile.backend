@@ -2,6 +2,18 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# 安装系统依赖（ffmpeg 用于音视频格式转码 → 喂给 DashScope ASR）
+# 使用腾讯云内网 Debian 镜像源，下载提速 100 倍+
+# 兼容 Debian 12 (bookworm) / 13 (trixie) 的两种 sources 文件格式
+RUN set -eux; \
+    if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
+        sed -i 's|http://deb.debian.org|http://mirrors.tencentyun.com|g; s|http://security.debian.org|http://mirrors.tencentyun.com|g' /etc/apt/sources.list.d/debian.sources; \
+    fi; \
+    if [ -f /etc/apt/sources.list ]; then \
+        sed -i 's|http://deb.debian.org|http://mirrors.tencentyun.com|g; s|http://security.debian.org|http://mirrors.tencentyun.com|g' /etc/apt/sources.list; \
+    fi; \
+    apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
+
 # Install dependencies
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -i https://mirrors.cloud.tencent.com/pypi/simple -r requirements.txt
