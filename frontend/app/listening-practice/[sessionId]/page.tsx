@@ -30,7 +30,6 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { SentenceEditor } from "@/components/listening/SentenceEditor";
 import { GenerateResultCard } from "@/components/listening/GenerateResultCard";
-import { DemoPreview } from "@/components/listening/DemoPreview";
 import { PlayButton } from "@/components/listening/PlayButton";
 
 export default function ListeningPracticeDetailPage() {
@@ -76,6 +75,12 @@ export default function ListeningPracticeDetailPage() {
     sentence: ListeningSentence,
     token: { word: string; start: number; end: number },
   ) => {
+    if (session?.is_demo) {
+      toast({
+        description: "示例会话不可修改，请点击右上角返回并「新建练习」创建你自己的会话",
+      });
+      return;
+    }
     const key = `${token.start}-${token.end}`;
     const currentBlockers = sentence.blocker_words;
     const exists = currentBlockers.some(
@@ -229,10 +234,7 @@ export default function ListeningPracticeDetailPage() {
     [session],
   );
 
-  const hasAnyGenerated = useMemo(
-    () => session?.sentences.some((s) => s.generated_blocks.length > 0) ?? false,
-    [session],
-  );
+  const isDemo = !!session?.is_demo;
 
   if (loading) {
     return (
@@ -262,7 +264,11 @@ export default function ListeningPracticeDetailPage() {
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <Headphones className="h-5 w-5 text-sky-500 shrink-0" />
+            {isDemo ? (
+              <Sparkles className="h-5 w-5 text-amber-500 shrink-0" />
+            ) : (
+              <Headphones className="h-5 w-5 text-sky-500 shrink-0" />
+            )}
             <h1 className="text-lg font-semibold truncate">{session.title}</h1>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
@@ -275,19 +281,52 @@ export default function ListeningPracticeDetailPage() {
               <BookOpen className="h-4 w-4" />
               单词本
             </Button>
-            <Button
-              size="sm"
-              onClick={() => setShowAddDialog(true)}
-              className="gap-1.5"
-            >
-              <Plus className="h-4 w-4" />
-              追加
-            </Button>
+            {isDemo ? (
+              <Button
+                size="sm"
+                onClick={() => router.push("/listening-practice/new")}
+                className="gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
+              >
+                <Plus className="h-4 w-4" />
+                新建练习
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                onClick={() => setShowAddDialog(true)}
+                className="gap-1.5"
+              >
+                <Plus className="h-4 w-4" />
+                追加
+              </Button>
+            )}
           </div>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-6 max-w-3xl">
+        {/* 示例会话说明 banner */}
+        {isDemo && (
+          <div className="mb-4 rounded-lg border-2 border-amber-300/80 dark:border-amber-700/60 bg-gradient-to-br from-amber-50 to-orange-50/70 dark:from-amber-950/40 dark:to-orange-950/30 p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 text-white shrink-0">
+                <Sparkles className="h-4 w-4" />
+              </div>
+              <div className="flex-1 text-sm leading-relaxed">
+                <p className="font-semibold mb-1">这是 AI 示例会话 · 仅供预览效果</p>
+                <p className="text-xs text-muted-foreground">
+                  答案句和障碍词已预先标好，下方每组「精听练习」都是 AI 根据难点类型真实生成的梯度例句。
+                  体验完成后，请点击右上「新建练习」创建属于你的精听复盘。
+                  <br />
+                  <span className="text-amber-700 dark:text-amber-400">
+                    ⚠️ 本会话不支持修改障碍词、追加/删除句子、重新生成。
+                  </span>
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 统计 + 说明 */}
         <div className="mb-5 rounded-lg border bg-gradient-to-br from-sky-50/60 to-cyan-50/40 dark:from-sky-950/20 dark:to-cyan-950/10 p-4">
           <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
@@ -317,9 +356,6 @@ export default function ListeningPracticeDetailPage() {
           </div>
         ) : (
           <div className="space-y-5">
-            {!hasAnyGenerated && (
-              <DemoPreview />
-            )}
             {session.sentences.map((sentence, idx) => (
               <SentenceBlock
                 key={sentence.id}
@@ -330,6 +366,7 @@ export default function ListeningPracticeDetailPage() {
                 onToggleBlocker={(token) => toggleBlocker(sentence, token)}
                 onGenerate={(force) => handleGenerate(sentence, force)}
                 onDelete={() => setDeletingSentence(sentence)}
+                isDemo={isDemo}
               />
             ))}
           </div>
@@ -399,6 +436,7 @@ interface SentenceBlockProps {
   onToggleBlocker: (token: { word: string; start: number; end: number }) => void;
   onGenerate: (forceRefresh: boolean) => void;
   onDelete: () => void;
+  isDemo?: boolean;
 }
 
 function SentenceBlock({
@@ -409,6 +447,7 @@ function SentenceBlock({
   onToggleBlocker,
   onGenerate,
   onDelete,
+  isDemo = false,
 }: SentenceBlockProps) {
   const [showGenerated, setShowGenerated] = useState(true);
 
@@ -446,14 +485,16 @@ function SentenceBlock({
               </span>
             )}
             <PlayButton text={sentence.original_text} size="sm" />
-            <button
-              type="button"
-              onClick={onDelete}
-              className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
-              title="删除该句"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
+            {!isDemo && (
+              <button
+                type="button"
+                onClick={onDelete}
+                className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+                title="删除该句"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -466,7 +507,11 @@ function SentenceBlock({
 
         <div className="mt-4 flex items-center justify-between gap-3 flex-wrap">
           <div className="text-xs text-muted-foreground">
-            {sentence.blocker_words.length > 0 ? (
+            {isDemo ? (
+              <>
+                已预标 <span className="font-bold text-amber-600">{sentence.blocker_words.length}</span> 个障碍词（示例不可修改）
+              </>
+            ) : sentence.blocker_words.length > 0 ? (
               <>
                 已标记 <span className="font-bold text-sky-600">{sentence.blocker_words.length}</span> 个障碍词
               </>
@@ -474,38 +519,40 @@ function SentenceBlock({
               "点击上方单词标记障碍词"
             )}
           </div>
-          <div className="flex items-center gap-2">
-            {hasGenerated && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onGenerate(true)}
-                disabled={generating}
-                className="gap-1.5 text-xs"
-              >
-                <RefreshCw className={`h-3.5 w-3.5 ${generating ? "animate-spin" : ""}`} />
-                重新生成
-              </Button>
-            )}
-            <Button
-              size="sm"
-              onClick={() => onGenerate(false)}
-              disabled={generating || sentence.blocker_words.length === 0}
-              className="gap-1.5 bg-gradient-to-r from-sky-500 to-cyan-500 hover:from-sky-600 hover:to-cyan-600 text-white"
-            >
-              {generating ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  生成中...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-3.5 w-3.5" />
-                  {hasGenerated && needsRegen ? "补充生成" : hasGenerated ? "查看练习" : "生成精听练习"}
-                </>
+          {!isDemo && (
+            <div className="flex items-center gap-2">
+              {hasGenerated && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onGenerate(true)}
+                  disabled={generating}
+                  className="gap-1.5 text-xs"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${generating ? "animate-spin" : ""}`} />
+                  重新生成
+                </Button>
               )}
-            </Button>
-          </div>
+              <Button
+                size="sm"
+                onClick={() => onGenerate(false)}
+                disabled={generating || sentence.blocker_words.length === 0}
+                className="gap-1.5 bg-gradient-to-r from-sky-500 to-cyan-500 hover:from-sky-600 hover:to-cyan-600 text-white"
+              >
+                {generating ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    生成中...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-3.5 w-3.5" />
+                    {hasGenerated && needsRegen ? "补充生成" : hasGenerated ? "查看练习" : "生成精听练习"}
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 

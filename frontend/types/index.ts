@@ -405,6 +405,7 @@ export interface ListeningSessionSummary {
   blocker_count: number;
   created_at: string;
   updated_at: string;
+  is_demo?: boolean;
 }
 
 export interface ListeningSessionDetail {
@@ -414,6 +415,7 @@ export interface ListeningSessionDetail {
   created_at: string;
   updated_at: string;
   sentences: ListeningSentence[];
+  is_demo?: boolean;
 }
 
 export interface ListeningSessionCreate {
