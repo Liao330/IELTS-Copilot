@@ -196,6 +196,45 @@ export const api = {
     return request<import("@/types").DailyReportResponse>(`/api/reports/daily?${searchParams}`);
   },
 
+  // Listening Practice (精听复盘)
+  listListeningSessions: () =>
+    request<import("@/types").ListeningSessionSummary[]>("/api/listening-practice/sessions"),
+  createListeningSession: (data: import("@/types").ListeningSessionCreate) =>
+    request<import("@/types").ListeningSessionDetail>("/api/listening-practice/sessions", {
+      method: "POST", body: JSON.stringify(data),
+    }),
+  getListeningSession: (id: string) =>
+    request<import("@/types").ListeningSessionDetail>(`/api/listening-practice/sessions/${id}`),
+  updateListeningSession: (id: string, data: import("@/types").ListeningSessionUpdate) =>
+    request<import("@/types").ListeningSessionDetail>(`/api/listening-practice/sessions/${id}`, {
+      method: "PUT", body: JSON.stringify(data),
+    }),
+  deleteListeningSession: (id: string) =>
+    request<void>(`/api/listening-practice/sessions/${id}`, { method: "DELETE" }),
+  addListeningSentences: (sessionId: string, sentences: string[]) =>
+    request<import("@/types").ListeningSessionDetail>(
+      `/api/listening-practice/sessions/${sessionId}/sentences`,
+      { method: "POST", body: JSON.stringify({ sentences }) },
+    ),
+  deleteListeningSentence: (sentenceId: string) =>
+    request<void>(`/api/listening-practice/sentences/${sentenceId}`, { method: "DELETE" }),
+  updateListeningBlockers: (
+    sentenceId: string,
+    blocker_words: import("@/types").ListeningBlockerWord[],
+  ) =>
+    request<import("@/types").ListeningSentence>(
+      `/api/listening-practice/sentences/${sentenceId}/blockers`,
+      { method: "PUT", body: JSON.stringify({ blocker_words }) },
+    ),
+  generateListeningPractice: (
+    sentenceId: string,
+    data?: { words?: string[]; force_refresh?: boolean },
+  ) =>
+    request<import("@/types").ListeningGenerateResponse>(
+      `/api/listening-practice/sentences/${sentenceId}/generate`,
+      { method: "POST", body: JSON.stringify(data ?? {}) },
+    ),
+
 };
 
 // SSE helper

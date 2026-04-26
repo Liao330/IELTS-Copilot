@@ -10,5 +10,16 @@ from app.models.homework import Homework, HomeworkFile, HomeworkFeedback
 from app.models.vocabulary import VocabularyWord, FavoriteSentence
 from app.models.context_material import ContextMaterial
 from app.models.daily_report_cache import DailyReportCache
+from app.models.listening_practice import (
+    ListeningPracticeSession,
+    ListeningPracticeSentence,
+    ListeningPracticeGenerated,
+)
 
-__all__ = ["Agent", "Conversation", "Message", "File", "Note", "Setting", "Homework", "HomeworkFile", "HomeworkFeedback", "VocabularyWord", "FavoriteSentence", "ContextMaterial", "DailyReportCache"]
+__all__ = [
+    "Agent", "Conversation", "Message", "File", "Note", "Setting",
+    "Homework", "HomeworkFile", "HomeworkFeedback",
+    "VocabularyWord", "FavoriteSentence",
+    "ContextMaterial", "DailyReportCache",
+    "ListeningPracticeSession", "ListeningPracticeSentence", "ListeningPracticeGenerated",
+]

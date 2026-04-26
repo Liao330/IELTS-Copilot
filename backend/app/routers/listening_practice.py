@@ -1,0 +1,401 @@
+from __future__ import annotations
+
+import json
+import uuid
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select, desc, func, and_
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from app.database import get_db
+from app.models.listening_practice import (
+    ListeningPracticeSession,
+    ListeningPracticeSentence,
+    ListeningPracticeGenerated,
+)
+from app.models.vocabulary import VocabularyWord
+from app.schemas.listening_practice import (
+    SessionCreate,
+    SessionUpdate,
+    SessionSummaryOut,
+    SessionDetailOut,
+    SentenceOut,
+    SentenceBatchAdd,
+    BlockerWordsUpdate,
+    BlockerWord,
+    GeneratedBlockOut,
+    GeneratedExample,
+    GenerateForSentenceRequest,
+    GenerateForSentenceResponse,
+)
+from app.services.listening_practice_service import (
+    sync_blockers_to_vocabulary,
+    generate_for_sentence,
+    VOCAB_SOURCE_PREFIX,
+    _normalize_word,
+)
+
+
+router = APIRouter(prefix="/api/listening-practice", tags=["listening-practice"])
+
+
+# ==================== 序列化辅助 ====================
+
+def _parse_blockers(raw: str | None) -> list[BlockerWord]:
+    if not raw:
+        return []
+    try:
+        items = json.loads(raw)
+        return [BlockerWord(**it) for it in items]
+    except Exception:
+        return []
+
+
+def _serialize_generated(g: ListeningPracticeGenerated) -> GeneratedBlockOut:
+    try:
+        ex_list = json.loads(g.examples)
+    except Exception:
+        ex_list = []
+    examples = [GeneratedExample(**ex) for ex in ex_list]
+    return GeneratedBlockOut(
+        id=g.id,
+        sentence_id=g.sentence_id,
+        blocker_word=g.blocker_word,
+        difficulty_type=g.difficulty_type,
+        explanation=g.explanation,
+        examples=examples,
+        created_at=g.created_at,
+    )
+
+
+def _serialize_sentence(s: ListeningPracticeSentence) -> SentenceOut:
+    generated = [_serialize_generated(g) for g in (s.generated_blocks or [])]
+    return SentenceOut(
+        id=s.id,
+        session_id=s.session_id,
+        original_text=s.original_text,
+        order_index=s.order_index,
+        blocker_words=_parse_blockers(s.blocker_words),
+        generated_blocks=generated,
+        created_at=s.created_at,
+        updated_at=s.updated_at,
+    )
+
+
+async def _count_blockers_for_session(db: AsyncSession, session_id: str) -> int:
+    """汇总一个 session 下所有句子的障碍词总数"""
+    q = await db.execute(
+        select(ListeningPracticeSentence).where(ListeningPracticeSentence.session_id == session_id)
+    )
+    total = 0
+    for s in q.scalars().all():
+        total += len(_parse_blockers(s.blocker_words))
+    return total
+
+
+# ==================== Session CRUD ====================
+
+@router.get("/sessions", response_model=list[SessionSummaryOut])
+async def list_sessions(db: AsyncSession = Depends(get_db)):
+    q = await db.execute(
+        select(ListeningPracticeSession).order_by(desc(ListeningPracticeSession.updated_at))
+    )
+    sessions = list(q.scalars().all())
+
+    results: list[SessionSummaryOut] = []
+    for s in sessions:
+        # 句子数
+        cnt_q = await db.execute(
+            select(func.count(ListeningPracticeSentence.id)).where(
+                ListeningPracticeSentence.session_id == s.id
+            )
+        )
+        sentence_count = cnt_q.scalar() or 0
+        blocker_count = await _count_blockers_for_session(db, s.id)
+        results.append(SessionSummaryOut(
+            id=s.id,
+            title=s.title,
+            note=s.note,
+            sentence_count=sentence_count,
+            blocker_count=blocker_count,
+            created_at=s.created_at,
+            updated_at=s.updated_at,
+        ))
+    return results
+
+
+@router.post("/sessions", response_model=SessionDetailOut, status_code=201)
+async def create_session(data: SessionCreate, db: AsyncSession = Depends(get_db)):
+    session = ListeningPracticeSession(
+        id=str(uuid.uuid4()),
+        title=data.title.strip(),
+        note=data.note,
+    )
+    db.add(session)
+    await db.flush()
+
+    # 如果附带了初始答案句
+    if data.sentences:
+        cleaned = [t.strip() for t in data.sentences if t and t.strip()]
+        for idx, text in enumerate(cleaned):
+            db.add(ListeningPracticeSentence(
+                id=str(uuid.uuid4()),
+                session_id=session.id,
+                original_text=text,
+                order_index=idx,
+            ))
+
+    await db.commit()
+
+    # 重新 fetch 带 sentences + generated 的 detail
+    return await _load_session_detail(db, session.id)
+
+
+@router.get("/sessions/{session_id}", response_model=SessionDetailOut)
+async def get_session(session_id: str, db: AsyncSession = Depends(get_db)):
+    return await _load_session_detail(db, session_id)
+
+
+async def _load_session_detail(db: AsyncSession, session_id: str) -> SessionDetailOut:
+    q = await db.execute(
+        select(ListeningPracticeSession)
+        .where(ListeningPracticeSession.id == session_id)
+        .options(
+            selectinload(ListeningPracticeSession.sentences).selectinload(
+                ListeningPracticeSentence.generated_blocks
+            )
+        )
+    )
+    session = q.scalar_one_or_none()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    sentences = sorted(session.sentences or [], key=lambda x: x.order_index)
+    return SessionDetailOut(
+        id=session.id,
+        title=session.title,
+        note=session.note,
+        created_at=session.created_at,
+        updated_at=session.updated_at,
+        sentences=[_serialize_sentence(s) for s in sentences],
+    )
+
+
+@router.put("/sessions/{session_id}", response_model=SessionDetailOut)
+async def update_session(session_id: str, data: SessionUpdate, db: AsyncSession = Depends(get_db)):
+    q = await db.execute(
+        select(ListeningPracticeSession).where(ListeningPracticeSession.id == session_id)
+    )
+    session = q.scalar_one_or_none()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if data.title is not None:
+        session.title = data.title.strip()
+    if data.note is not None:
+        session.note = data.note
+    session.updated_at = datetime.utcnow()
+
+    await db.commit()
+    return await _load_session_detail(db, session_id)
+
+
+@router.delete("/sessions/{session_id}")
+async def delete_session(session_id: str, db: AsyncSession = Depends(get_db)):
+    q = await db.execute(
+        select(ListeningPracticeSession).where(ListeningPracticeSession.id == session_id)
+    )
+    session = q.scalar_one_or_none()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # 级联清理来源于本会话的单词本条目
+    source_id = f"{VOCAB_SOURCE_PREFIX}{session_id}"
+    vq = await db.execute(
+        select(VocabularyWord).where(
+            and_(
+                VocabularyWord.source_conversation_id == source_id,
+                VocabularyWord.category == "listening",
+            )
+        )
+    )
+    for vw in vq.scalars().all():
+        await db.delete(vw)
+
+    await db.delete(session)
+    await db.commit()
+    return {"detail": "Session deleted"}
+
+
+# ==================== Sentence 操作 ====================
+
+@router.post("/sessions/{session_id}/sentences", response_model=SessionDetailOut)
+async def add_sentences(
+    session_id: str, data: SentenceBatchAdd, db: AsyncSession = Depends(get_db)
+):
+    q = await db.execute(
+        select(ListeningPracticeSession).where(ListeningPracticeSession.id == session_id)
+    )
+    session = q.scalar_one_or_none()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # 当前最大 order_index
+    idx_q = await db.execute(
+        select(func.coalesce(func.max(ListeningPracticeSentence.order_index), -1)).where(
+            ListeningPracticeSentence.session_id == session_id
+        )
+    )
+    current_max = idx_q.scalar() or -1
+
+    cleaned = [t.strip() for t in data.sentences if t and t.strip()]
+    for i, text in enumerate(cleaned):
+        db.add(ListeningPracticeSentence(
+            id=str(uuid.uuid4()),
+            session_id=session_id,
+            original_text=text,
+            order_index=current_max + 1 + i,
+        ))
+
+    session.updated_at = datetime.utcnow()
+    await db.commit()
+    return await _load_session_detail(db, session_id)
+
+
+@router.delete("/sentences/{sentence_id}")
+async def delete_sentence(sentence_id: str, db: AsyncSession = Depends(get_db)):
+    q = await db.execute(
+        select(ListeningPracticeSentence).where(ListeningPracticeSentence.id == sentence_id)
+    )
+    sentence = q.scalar_one_or_none()
+    if not sentence:
+        raise HTTPException(status_code=404, detail="Sentence not found")
+
+    session_id = sentence.session_id
+    # 同步清理障碍词对应的单词本条目
+    old_blockers = _parse_blockers(sentence.blocker_words)
+    if old_blockers:
+        await sync_blockers_to_vocabulary(
+            db,
+            session_id=session_id,
+            old_blockers=[b.model_dump() for b in old_blockers],
+            new_blockers=[],
+        )
+
+    await db.delete(sentence)
+    await db.commit()
+    return {"detail": "Sentence deleted"}
+
+
+@router.put("/sentences/{sentence_id}/blockers", response_model=SentenceOut)
+async def update_sentence_blockers(
+    sentence_id: str, data: BlockerWordsUpdate, db: AsyncSession = Depends(get_db)
+):
+    q = await db.execute(
+        select(ListeningPracticeSentence)
+        .where(ListeningPracticeSentence.id == sentence_id)
+        .options(selectinload(ListeningPracticeSentence.generated_blocks))
+    )
+    sentence = q.scalar_one_or_none()
+    if not sentence:
+        raise HTTPException(status_code=404, detail="Sentence not found")
+
+    old_blockers_raw = _parse_blockers(sentence.blocker_words)
+    old_blockers = [b.model_dump() for b in old_blockers_raw]
+    new_blockers = [b.model_dump() for b in data.blocker_words]
+
+    # 基础校验：位置不能超出原文
+    text_len = len(sentence.original_text)
+    for nb in new_blockers:
+        if nb["start"] < 0 or nb["end"] > text_len or nb["start"] >= nb["end"]:
+            raise HTTPException(
+                status_code=400,
+                detail=f"障碍词位置非法: word={nb['word']} start={nb['start']} end={nb['end']}",
+            )
+
+    # 双向同步单词本
+    enriched = await sync_blockers_to_vocabulary(
+        db,
+        session_id=sentence.session_id,
+        old_blockers=old_blockers,
+        new_blockers=new_blockers,
+    )
+
+    # 清理已不再是障碍词的生成缓存
+    new_words_set = {_normalize_word(b["word"]) for b in new_blockers}
+    removed_norms = {_normalize_word(b["word"]) for b in old_blockers} - new_words_set
+    if removed_norms:
+        gq = await db.execute(
+            select(ListeningPracticeGenerated).where(
+                ListeningPracticeGenerated.sentence_id == sentence_id
+            )
+        )
+        for g in gq.scalars().all():
+            if g.blocker_word in removed_norms:
+                await db.delete(g)
+
+    sentence.blocker_words = json.dumps(enriched, ensure_ascii=False) if enriched else None
+    sentence.updated_at = datetime.utcnow()
+
+    # 更新 session 的 updated_at
+    sq = await db.execute(
+        select(ListeningPracticeSession).where(
+            ListeningPracticeSession.id == sentence.session_id
+        )
+    )
+    sess = sq.scalar_one_or_none()
+    if sess:
+        sess.updated_at = datetime.utcnow()
+
+    await db.commit()
+
+    # 重新加载
+    q2 = await db.execute(
+        select(ListeningPracticeSentence)
+        .where(ListeningPracticeSentence.id == sentence_id)
+        .options(selectinload(ListeningPracticeSentence.generated_blocks))
+    )
+    refreshed = q2.scalar_one()
+    return _serialize_sentence(refreshed)
+
+
+# ==================== AI 生成 ====================
+
+@router.post("/sentences/{sentence_id}/generate", response_model=GenerateForSentenceResponse)
+async def generate_practice(
+    sentence_id: str,
+    data: GenerateForSentenceRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    q = await db.execute(
+        select(ListeningPracticeSentence)
+        .where(ListeningPracticeSentence.id == sentence_id)
+        .options(selectinload(ListeningPracticeSentence.generated_blocks))
+    )
+    sentence = q.scalar_one_or_none()
+    if not sentence:
+        raise HTTPException(status_code=404, detail="Sentence not found")
+
+    # 默认使用已保存的障碍词
+    if data.words:
+        words = data.words
+    else:
+        words = [b.word for b in _parse_blockers(sentence.blocker_words)]
+
+    if not words:
+        raise HTTPException(status_code=400, detail="请先标记障碍词再生成练习")
+
+    blocks = await generate_for_sentence(
+        db,
+        sentence=sentence,
+        words=words,
+        force_refresh=data.force_refresh,
+    )
+    await db.commit()
+
+    return GenerateForSentenceResponse(
+        sentence_id=sentence.id,
+        blocks=[_serialize_generated(g) for g in blocks],
+    )

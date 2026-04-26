@@ -351,3 +351,82 @@ export interface DailyReportResponse {
 }
 
 
+// ========== Listening Practice (听力精听复盘) ==========
+
+export type ListeningDifficultyType =
+  | "连读"
+  | "弱读"
+  | "不熟词"
+  | "吞音"
+  | "相近发音"
+  | "其他";
+
+export interface ListeningBlockerWord {
+  word: string;
+  start: number;
+  end: number;
+  vocab_word_id?: string | null;
+}
+
+export interface ListeningGeneratedExample {
+  text: string;
+  translation: string;
+  difficulty_level: 1 | 2 | 3;
+  hint: string;
+}
+
+export interface ListeningGeneratedBlock {
+  id: string;
+  sentence_id: string;
+  blocker_word: string;
+  difficulty_type: ListeningDifficultyType | string;
+  explanation: string;
+  examples: ListeningGeneratedExample[];
+  created_at: string;
+}
+
+export interface ListeningSentence {
+  id: string;
+  session_id: string;
+  original_text: string;
+  order_index: number;
+  blocker_words: ListeningBlockerWord[];
+  generated_blocks: ListeningGeneratedBlock[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ListeningSessionSummary {
+  id: string;
+  title: string;
+  note: string | null;
+  sentence_count: number;
+  blocker_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ListeningSessionDetail {
+  id: string;
+  title: string;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+  sentences: ListeningSentence[];
+}
+
+export interface ListeningSessionCreate {
+  title: string;
+  note?: string;
+  sentences?: string[];
+}
+
+export interface ListeningSessionUpdate {
+  title?: string;
+  note?: string;
+}
+
+export interface ListeningGenerateResponse {
+  sentence_id: string;
+  blocks: ListeningGeneratedBlock[];
+}

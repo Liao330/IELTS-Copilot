@@ -7,7 +7,7 @@ import type { Agent, Conversation, DailyReportResponse } from "@/types";
 import { AgentCard } from "@/components/agent/AgentCard";
 import {
   Settings, BookMarked, Library, BookOpen, TrendingUp, ArrowRight,
-  Target, Loader2, Sparkles, ChevronRight, RefreshCw,
+  Target, Loader2, Sparkles, ChevronRight, RefreshCw, Headphones,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -248,6 +248,14 @@ export default function HomePage() {
         )}
 
         <div className="mt-8 space-y-3">
+          <Button
+            variant="outline"
+            className="w-full h-12 text-base gap-2"
+            onClick={() => router.push("/listening-practice")}
+          >
+            <Headphones className="h-5 w-5" />
+            🎧 听力精听复盘
+          </Button>
           <Button
             variant="outline"
             className="w-full h-12 text-base gap-2"
