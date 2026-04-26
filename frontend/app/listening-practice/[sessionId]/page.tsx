@@ -26,6 +26,9 @@ import {
   Trash2,
   BookOpen,
   RefreshCw,
+  MessageSquare,
+  Pencil,
+  Check,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { SentenceEditor } from "@/components/listening/SentenceEditor";
@@ -150,6 +153,44 @@ export default function ListeningPracticeDetailPage() {
         delete rest[sentence.id];
         return rest;
       });
+    }
+  };
+
+  // 编辑句子备注（AI 生成时会被作为上下文提示）
+  const handleUpdateNote = async (sentence: ListeningSentence, nextNote: string) => {
+    if (isDemo) {
+      toast({ description: "示例会话不可编辑备注" });
+      return;
+    }
+    const trimmed = nextNote.trim();
+    const payload = trimmed || null;
+    // 乐观更新
+    setSession((prev) =>
+      prev
+        ? {
+            ...prev,
+            sentences: prev.sentences.map((s) =>
+              s.id === sentence.id ? { ...s, note: payload } : s,
+            ),
+          }
+        : prev,
+    );
+    try {
+      await api.updateListeningSentenceNote(sentence.id, payload);
+    } catch (err) {
+      console.error(err);
+      toast({ variant: "destructive", description: "备注保存失败" });
+      // 回滚
+      setSession((prev) =>
+        prev
+          ? {
+              ...prev,
+              sentences: prev.sentences.map((s) =>
+                s.id === sentence.id ? { ...s, note: sentence.note } : s,
+              ),
+            }
+          : prev,
+      );
     }
   };
 
@@ -365,6 +406,7 @@ export default function ListeningPracticeDetailPage() {
                 generating={!!generatingMap[sentence.id]}
                 onToggleBlocker={(token) => toggleBlocker(sentence, token)}
                 onGenerate={(force) => handleGenerate(sentence, force)}
+                onUpdateNote={(next) => handleUpdateNote(sentence, next)}
                 onDelete={() => setDeletingSentence(sentence)}
                 isDemo={isDemo}
               />
@@ -435,6 +477,7 @@ interface SentenceBlockProps {
   generating: boolean;
   onToggleBlocker: (token: { word: string; start: number; end: number }) => void;
   onGenerate: (forceRefresh: boolean) => void;
+  onUpdateNote: (next: string) => void;
   onDelete: () => void;
   isDemo?: boolean;
 }
@@ -446,6 +489,7 @@ function SentenceBlock({
   generating,
   onToggleBlocker,
   onGenerate,
+  onUpdateNote,
   onDelete,
   isDemo = false,
 }: SentenceBlockProps) {
@@ -503,6 +547,12 @@ function SentenceBlock({
           blockers={sentence.blocker_words}
           onToggle={onToggleBlocker}
           tooltipMap={tooltipMap}
+        />
+
+        <SentenceNoteEditor
+          value={sentence.note || ""}
+          onCommit={onUpdateNote}
+          readOnly={isDemo}
         />
 
         <div className="mt-4 flex items-center justify-between gap-3 flex-wrap">
@@ -575,5 +625,112 @@ function SentenceBlock({
         </button>
       )}
     </div>
+  );
+}
+
+
+// ==================== 句子备注编辑（上下文） ====================
+
+interface SentenceNoteEditorProps {
+  value: string;
+  onCommit: (next: string) => void;
+  readOnly?: boolean;
+}
+
+function SentenceNoteEditor({ value, onCommit, readOnly = false }: SentenceNoteEditorProps) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  // 外部值变化时（例如切会话、回滚）同步本地 draft
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
+
+  const hasNote = value.trim().length > 0;
+
+  // 只读模式下：有备注显示；无备注不占空间
+  if (readOnly) {
+    if (!hasNote) return null;
+    return (
+      <div className="mt-3 flex items-start gap-2 text-xs rounded-md bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 px-2.5 py-1.5">
+        <MessageSquare className="h-3.5 w-3.5 mt-0.5 text-amber-600 dark:text-amber-400 shrink-0" />
+        <span className="text-amber-800 dark:text-amber-200 leading-relaxed whitespace-pre-wrap">
+          {value}
+        </span>
+      </div>
+    );
+  }
+
+  if (editing) {
+    return (
+      <div className="mt-3">
+        <div className="flex items-start gap-2 rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50/40 dark:bg-amber-950/20 px-2 py-1.5">
+          <MessageSquare className="h-3.5 w-3.5 mt-1 text-amber-600 dark:text-amber-400 shrink-0" />
+          <Textarea
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                onCommit(draft);
+                setEditing(false);
+              } else if (e.key === "Escape") {
+                setDraft(value);
+                setEditing(false);
+              }
+            }}
+            onBlur={() => {
+              if (draft !== value) onCommit(draft);
+              setEditing(false);
+            }}
+            placeholder="备注这条句子的情况（例如：听成了 camb / 拼写错了 October）…AI 生成梯度例句时会作为提示"
+            rows={2}
+            className="text-xs flex-1 resize-none border-0 focus-visible:ring-0 bg-transparent p-0 min-h-[20px]"
+          />
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              onCommit(draft);
+              setEditing(false);
+            }}
+            className="p-1 rounded hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-600 dark:text-amber-400 shrink-0"
+            title="保存 (Cmd/Ctrl + Enter)"
+          >
+            <Check className="h-3.5 w-3.5" />
+          </button>
+        </div>
+        <p className="text-[10px] text-muted-foreground mt-1 ml-1">
+          Cmd/Ctrl+Enter 保存 · Esc 取消
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      className={`mt-3 w-full flex items-start gap-2 text-xs rounded-md px-2.5 py-1.5 transition-colors text-left cursor-pointer group ${
+        hasNote
+          ? "bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40 hover:bg-amber-100/70 dark:hover:bg-amber-900/30"
+          : "border border-dashed border-muted-foreground/20 text-muted-foreground hover:border-amber-300 hover:text-amber-600 dark:hover:text-amber-400"
+      }`}
+    >
+      <MessageSquare
+        className={`h-3.5 w-3.5 mt-0.5 shrink-0 ${
+          hasNote ? "text-amber-600 dark:text-amber-400" : ""
+        }`}
+      />
+      <span
+        className={`flex-1 leading-relaxed whitespace-pre-wrap ${
+          hasNote ? "text-amber-800 dark:text-amber-200" : ""
+        }`}
+      >
+        {hasNote ? value : "添加上下文备注（AI 生成例句时会参考）"}
+      </span>
+      <Pencil className="h-3 w-3 mt-0.5 opacity-0 group-hover:opacity-60 shrink-0" />
+    </button>
   );
 }

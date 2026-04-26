@@ -8,7 +8,8 @@ LISTENING_PRACTICE_GENERATE_PROMPT = """你是一位资深雅思听力教练，�
 ```
 {
   "original_sentence": "...",    // 答案原句（英文）
-  "blocker_words": ["word1", "word2", ...]   // 需要训练的障碍词
+  "blocker_words": ["word1", "word2", ...],   // 需要训练的障碍词
+  "user_context": "可选，用户对这句的备注（例如：'听成了 camb'、'拼写错了 October'、'没听清要填什么'）"
 }
 ```
 
@@ -53,6 +54,11 @@ LISTENING_PRACTICE_GENERATE_PROMPT = """你是一位资深雅思听力教练，�
 5. **场景多样化**：三句应尽量分布在不同雅思常见场景（租房/校园讨论/学术讲座/生活对话等），避免重复套路。
 6. **防幻觉**：若障碍词在原句中实际不存在或拼写异常，difficulty_type 填 "其他"，explanation 写"该词未在原句中检出，以下为通用练习"。
 7. **hint 必须具体到发音层面**，避免笼统说"注意听这个词"。
+8. **善用 user_context（若提供）**：
+   - 如果用户备注里提到了"听成了 X" / "误写成 X"，应在 explanation 中点明"用户曾听成 X"并针对性解释该易混点；对应的 difficulty_type 优先判为"相近发音"。
+   - 如果备注提到"拼写错了 / 单词不熟"，difficulty_type 倾向"不熟词"，练习句要强化该词在句中清晰出现的场景。
+   - 如果备注只是经验或吐槽（如"听了四遍才听出来"），不必在输出中引用原文，但可以提高 hint 的精细度。
+   - user_context 只是提示，**不要让备注内容出现在英文练习句中**。
 
 ## 绝对禁止
 - 不要输出 markdown 代码块（不要 ```json ```）

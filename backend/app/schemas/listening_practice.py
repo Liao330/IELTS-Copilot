@@ -37,11 +37,19 @@ class GeneratedBlockOut(BaseModel):
 
 # ========== Session ==========
 
+class SentenceInput(BaseModel):
+    """创建会话时的单条答案句输入（带可选 note 和预标障碍词）"""
+    text: str = Field(..., min_length=1)
+    note: str | None = None
+    blocker_words: list[BlockerWord] | None = None
+
+
 class SessionCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
     note: str | None = None
-    # 可选：一次性创建会话并带入答案句
+    # 两种传法二选一，优先使用 sentences_with_context
     sentences: list[str] | None = None
+    sentences_with_context: list[SentenceInput] | None = None
 
 
 class SessionUpdate(BaseModel):
@@ -66,6 +74,7 @@ class SentenceOut(BaseModel):
     session_id: str
     original_text: str
     order_index: int
+    note: str | None = None
     blocker_words: list[BlockerWord] = []
     generated_blocks: list[GeneratedBlockOut] = []
     created_at: datetime
@@ -112,3 +121,25 @@ class GenerateResultItem(BaseModel):
 class GenerateForSentenceResponse(BaseModel):
     sentence_id: str
     blocks: list[GeneratedBlockOut]
+
+
+# ========== AI 笔记整理 ==========
+
+class CleanupRequest(BaseModel):
+    raw_text: str = Field(..., min_length=1)
+
+
+class CleanupSentenceItem(BaseModel):
+    text: str
+    note: str | None = None
+    target_words: list[str] = []
+    # Python 端已定位好的位置，前端可直接落库
+    prefilled_blockers: list[BlockerWord] = []
+
+
+class CleanupResponse(BaseModel):
+    sentences: list[CleanupSentenceItem]
+
+
+class SentenceNoteUpdate(BaseModel):
+    note: str | None = None

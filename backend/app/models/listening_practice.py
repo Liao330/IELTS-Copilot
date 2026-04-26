@@ -40,6 +40,10 @@ class ListeningPracticeSentence(Base):
     original_text: Mapped[str] = mapped_column(Text, nullable=False)
     order_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
+    # 用户笔记原文中对这条答案句的额外说明（例如：听成了 camb、拼写错误等）。
+    # 会作为上下文输入到"梯度例句生成"prompt，帮助 AI 更有针对性地出题。
+    note: Mapped[Optional[str]] = mapped_column(Text)
+
     # JSON: [{"word":"...", "start":N, "end":N, "vocab_word_id":"..."|null}]
     blocker_words: Mapped[Optional[str]] = mapped_column(Text)
 

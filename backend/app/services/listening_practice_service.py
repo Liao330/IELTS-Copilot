@@ -176,10 +176,17 @@ async def generate_for_sentence(
         if not api_key:
             raise HTTPException(status_code=400, detail="未配置 API Key，请前往设置页面配置")
 
-        user_payload = json.dumps({
+        payload: dict = {
             "original_sentence": sentence.original_text,
             "blocker_words": missing,
-        }, ensure_ascii=False)
+        }
+        # 若该句带有用户上下文笔记（例如"听成了 camb"、"拼写错误"），作为额外提示给 LLM
+        # 让梯度例句更贴合用户真实错题
+        user_note = (sentence.note or "").strip() if sentence.note else ""
+        if user_note:
+            payload["user_context"] = user_note
+
+        user_payload = json.dumps(payload, ensure_ascii=False)
 
         messages = [
             {"role": "system", "content": LISTENING_PRACTICE_GENERATE_PROMPT},

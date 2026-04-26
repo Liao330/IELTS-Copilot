@@ -234,6 +234,17 @@ export const api = {
       `/api/listening-practice/sentences/${sentenceId}/generate`,
       { method: "POST", body: JSON.stringify(data ?? {}) },
     ),
+  /** AI 整理粘贴的听力笔记，返回结构化的答案句列表（不落库） */
+  cleanupListeningNote: (raw_text: string) =>
+    request<import("@/types").ListeningCleanupResponse>(
+      `/api/listening-practice/cleanup`,
+      { method: "POST", body: JSON.stringify({ raw_text }) },
+    ),
+  updateListeningSentenceNote: (sentenceId: string, note: string | null) =>
+    request<import("@/types").ListeningSentence>(
+      `/api/listening-practice/sentences/${sentenceId}/note`,
+      { method: "PUT", body: JSON.stringify({ note }) },
+    ),
 
   // Speech (TTS / ASR)
   getVoices: () => request<import("@/types").VoiceListResponse>("/api/speech/voices"),

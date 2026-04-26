@@ -29,6 +29,9 @@ from app.schemas.listening_practice import (
     GeneratedExample,
     GenerateForSentenceRequest,
     GenerateForSentenceResponse,
+    CleanupRequest,
+    CleanupResponse,
+    SentenceNoteUpdate,
 )
 from app.services.listening_practice_service import (
     sync_blockers_to_vocabulary,
@@ -41,6 +44,7 @@ from app.services.listening_demo_service import (
     ensure_demo_generated,
     is_demo_session,
 )
+from app.services.listening_cleanup_service import cleanup_listening_note
 
 
 router = APIRouter(prefix="/api/listening-practice", tags=["listening-practice"])
@@ -82,6 +86,7 @@ def _serialize_sentence(s: ListeningPracticeSentence) -> SentenceOut:
         session_id=s.session_id,
         original_text=s.original_text,
         order_index=s.order_index,
+        note=s.note,
         blocker_words=_parse_blockers(s.blocker_words),
         generated_blocks=generated,
         created_at=s.created_at,
@@ -161,8 +166,36 @@ async def create_session(data: SessionCreate, db: AsyncSession = Depends(get_db)
     db.add(session)
     await db.flush()
 
-    # 如果附带了初始答案句
-    if data.sentences:
+    # 优先使用 sentences_with_context（AI 整理后或前端编辑过的结构化数据）
+    if data.sentences_with_context:
+        for idx, item in enumerate(data.sentences_with_context):
+            text = item.text.strip()
+            if not text:
+                continue
+            sentence_id = str(uuid.uuid4())
+            # 预标障碍词：校验 + 同步单词本
+            blockers_raw = [b.model_dump() for b in (item.blocker_words or [])]
+            # 基础校验
+            text_len = len(text)
+            valid_blockers = [
+                b for b in blockers_raw
+                if 0 <= b["start"] < b["end"] <= text_len
+            ]
+            enriched = await sync_blockers_to_vocabulary(
+                db,
+                session_id=session.id,
+                old_blockers=[],
+                new_blockers=valid_blockers,
+            )
+            db.add(ListeningPracticeSentence(
+                id=sentence_id,
+                session_id=session.id,
+                original_text=text,
+                order_index=idx,
+                note=item.note,
+                blocker_words=json.dumps(enriched, ensure_ascii=False) if enriched else None,
+            ))
+    elif data.sentences:
         cleaned = [t.strip() for t in data.sentences if t and t.strip()]
         for idx, text in enumerate(cleaned):
             db.add(ListeningPracticeSentence(
@@ -447,3 +480,44 @@ async def generate_practice(
         sentence_id=sentence.id,
         blocks=[_serialize_generated(g) for g in blocks],
     )
+
+
+# ==================== AI 笔记整理 ====================
+
+@router.post("/cleanup", response_model=CleanupResponse)
+async def cleanup_raw_note(data: CleanupRequest, db: AsyncSession = Depends(get_db)):
+    """把用户粘贴的原始笔记用 AI 整理为结构化的答案句列表。
+    不落库，由前端预览/编辑后调 create_session 接口保存。
+    """
+    items = await cleanup_listening_note(db, data.raw_text)
+    return CleanupResponse(sentences=items)
+
+
+# ==================== 句子 note 编辑 ====================
+
+@router.put("/sentences/{sentence_id}/note", response_model=SentenceOut)
+async def update_sentence_note(
+    sentence_id: str, data: SentenceNoteUpdate, db: AsyncSession = Depends(get_db)
+):
+    q = await db.execute(
+        select(ListeningPracticeSentence)
+        .where(ListeningPracticeSentence.id == sentence_id)
+        .options(selectinload(ListeningPracticeSentence.generated_blocks))
+    )
+    sentence = q.scalar_one_or_none()
+    if not sentence:
+        raise HTTPException(status_code=404, detail="Sentence not found")
+
+    _reject_if_demo(sentence.session_id, action="编辑备注")
+
+    sentence.note = (data.note or "").strip() or None
+    sentence.updated_at = datetime.utcnow()
+    await db.commit()
+
+    q2 = await db.execute(
+        select(ListeningPracticeSentence)
+        .where(ListeningPracticeSentence.id == sentence_id)
+        .options(selectinload(ListeningPracticeSentence.generated_blocks))
+    )
+    refreshed = q2.scalar_one()
+    return _serialize_sentence(refreshed)

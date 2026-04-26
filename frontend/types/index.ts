@@ -391,6 +391,7 @@ export interface ListeningSentence {
   session_id: string;
   original_text: string;
   order_index: number;
+  note: string | null;
   blocker_words: ListeningBlockerWord[];
   generated_blocks: ListeningGeneratedBlock[];
   created_at: string;
@@ -418,10 +419,17 @@ export interface ListeningSessionDetail {
   is_demo?: boolean;
 }
 
+export interface ListeningSentenceInput {
+  text: string;
+  note?: string | null;
+  blocker_words?: ListeningBlockerWord[];
+}
+
 export interface ListeningSessionCreate {
   title: string;
   note?: string;
   sentences?: string[];
+  sentences_with_context?: ListeningSentenceInput[];
 }
 
 export interface ListeningSessionUpdate {
@@ -432,6 +440,18 @@ export interface ListeningSessionUpdate {
 export interface ListeningGenerateResponse {
   sentence_id: string;
   blocks: ListeningGeneratedBlock[];
+}
+
+// AI 整理笔记
+export interface ListeningCleanupItem {
+  text: string;
+  note: string | null;
+  target_words: string[];
+  prefilled_blockers: ListeningBlockerWord[];
+}
+
+export interface ListeningCleanupResponse {
+  sentences: ListeningCleanupItem[];
 }
 
 
