@@ -18,7 +18,22 @@
 - **消息重试 / 编辑** — 不满意可重新生成，也可编辑消息后重新回复
 - **上下文材料系统** — 自动识别并缓存作文原文、口语答案等关键材料，减少 token 浪费
 - **路由 Agent 标识** — 每条消息标注由哪个子 Agent 处理
-- **文件附件** — 支持上传文档（PDF/DOCX/TXT）和图片，自动提取文本内容
+- **文件附件** — 支持上传文档（PDF/DOCX/TXT）、图片，以及 🆕 **音频/视频**（自动 ASR 转写文本）
+
+### 🎧 精听练习（新增）
+专为"听到的 ≠ 认识的"这类高频问题设计的精听闭环：
+- **AI 梯度例句生成** — 针对句子中的障碍词（连读/弱读/吞音/相近发音/不熟词），生成 Easy/Medium/Hard 三档包含该词的练习例句
+- **句内障碍词标注** — 多词短语（如 `a lot of`）跨 token 高亮，点击即可切换标记状态
+- **拟人 TTS 朗读** — 腾讯云精品英文音色（WeJack 男声 / WeWinny 女声 / WeJames 男声），自然连读弱读
+- **全局单例播放** — 一个按钮在播时自动停掉其它按钮，音色/语速可持久化偏好（默认 1.0x）
+- **磁盘级 SHA256 缓存** — `(text, voice, rate)` 组合只合成一次，重听 0 额度消耗
+- **AI 生成内容缓存** — 已生成的障碍词例句按 `(句子, 障碍词)` 精确缓存，仅补齐新增障碍词
+- **内置示例会话** — 首次打开服务端懒加载生成，所有用户共享一份琥珀色置顶的 demo 会话（只读防修改）
+
+### 🎤 语音识别（ASR）
+- **阿里云 Paraformer 实时语音识别** — 上传音频/视频文件自动转写为英文文本
+- **FFmpeg 统一转码** — 任意格式（m4a/mp4/webm/ogg/wav...）→ 16kHz 单声道 mp3 再送识别
+- **文件级一次性处理** — 识别结果写入附件的 `text_content`，后续对话复用不重复计费
 
 ### 📚 单词本
 - **单词管理** — 增删改查，支持分类、标签、来源追溯
@@ -58,13 +73,16 @@
 
 | 模块 | 技术 |
 |------|------|
-| 前端 | Next.js 14 + TailwindCSS + shadcn/ui + Zustand |
-| 后端 | FastAPI + SQLAlchemy 2.0 + SQLite (异步) |
-| AI | LiteLLM（支持千问/DeepSeek/OpenAI/Claude/Gemini/豆包等多模型，含多模态 Vision） |
+| 前端 | Next.js 14 + TailwindCSS + shadcn/ui + Zustand（含 persist） |
+| 后端 | FastAPI + SQLAlchemy 2.0 + SQLite（异步） |
+| LLM | LiteLLM 适配层（千问 / DeepSeek / OpenAI / Claude / Gemini / 豆包等，含多模态 Vision） |
+| TTS | 腾讯云语音合成 `TextToVoice` v20190823（英文精品 / 大模型音色） |
+| ASR | 阿里云百炼 DashScope Paraformer-realtime-v2 |
+| 媒体处理 | ffmpeg（统一转码 16kHz mp3）|
 | 图表 | Recharts（评分雷达图） |
 | Markdown | react-markdown + remark-gfm + rehype-raw |
 | 文件处理 | python-docx + PyPDF2 + Pillow + docx-preview |
-| 部署 | Docker Compose + Nginx (反向代理 + Basic Auth) |
+| 部署 | Docker Compose + Nginx（反向代理 + Basic Auth） |
 
 ---
 
@@ -72,7 +90,7 @@
 
 ### 方式一：本地开发（推荐新手）
 
-**前提条件**：电脑上已安装 [Python 3.10+](https://www.python.org/downloads/)、[Node.js 18+](https://nodejs.org/)
+**前提条件**：电脑上已安装 [Python 3.10+](https://www.python.org/downloads/)、[Node.js 18+](https://nodejs.org/)、[ffmpeg](https://ffmpeg.org/)（如需使用音视频上传转写）
 
 #### 第 1 步：克隆项目
 
@@ -94,7 +112,7 @@ cp .env.example .env
 NEXT_PUBLIC_API_BASE=http://localhost:8000
 ```
 
-> 💡 模型 API Key 在项目启动后，通过网页端「设置」页面配置即可，无需手动填写。
+> 💡 所有 API Key（LLM / 腾讯云 TTS / 阿里云 ASR）都在启动后的「设置」页面配置，无需手动编辑 `.env`。
 
 #### 第 3 步：一键启动
 
@@ -164,6 +182,10 @@ CORS_ORIGINS=http://你的服务器IP:8391
 
 部署完成后，访问 `http://你的服务器IP:8391` 即可。
 
+> 🔧 后端镜像已内置 `ffmpeg`，ASR 音视频转码开箱即用。
+> 🌐 `Dockerfile.backend` 使用腾讯云内网 `mirrors.tencentyun.com` 加速 apt，国内服务器构建速度约 30 秒。
+> 🔒 `deploy.sh` 已配置 `ServerAliveInterval=30`，避免长时构建期间 SSH 被防火墙断开。
+
 #### 部署常用命令
 
 ```bash
@@ -177,16 +199,47 @@ CORS_ORIGINS=http://你的服务器IP:8391
 
 ---
 
-## ⚙️ 配置 AI 模型
+## ⚙️ 服务配置
 
-启动后打开网页，进入 **「设置」** 页面：
+打开网页进入 **「设置」** 页面，按需配置：
+
+### 1. LLM 模型（必填）
 
 1. 选择模型提供商（千问 / DeepSeek / OpenAI / Claude / Gemini / 豆包 等）
 2. 填入 API Key
 3. 选择模型名称
-4. 保存即可
+4. 保存
 
-> 推荐使用 **DeepSeek** 或 **通义千问**，性价比高且中文效果好。
+> 推荐使用 **通义千问 Qwen-Turbo** 或 **DeepSeek**，性价比高且中文效果好。
+> 千问新用户有 100 万 tokens / 180 天免费额度。
+
+### 2. 腾讯云 TTS（可选，精听功能需要）
+
+> 仅在使用"精听练习"的朗读按钮时需要。
+
+1. 前往 [腾讯云 CAM 控制台](https://console.cloud.tencent.com/cam/capi) 创建子账号 SecretId / SecretKey
+2. 建议为此密钥单独绑定 `QcloudTTSFullAccess` 策略限制最小权限
+3. 前往 [语音合成控制台](https://console.cloud.tencent.com/tts/resourcebundle) 免费领取"精品音色资源包"或"大模型音色资源包"（100 万字符/月，每月刷新）
+4. 在设置页填入 SecretId / SecretKey，地域默认 `ap-guangzhou`
+
+### 3. 阿里云 ASR（可选，音视频上传需要）
+
+> 上传音频/视频作业附件时，后端会自动调用 ASR 转写文本。
+
+- 复用 **千问的 DashScope API Key** 即可，无需额外申请
+- 新用户 36,000 秒免费额度
+
+---
+
+## 💰 免费额度能用多久？
+
+| 服务 | 免费额度 | 典型日耗 | 大约能用 |
+|------|----------|----------|----------|
+| 千问 Qwen-Turbo LLM | 100 万 tokens / 180 天 | ~130k/天（重度） | **7-10 天** |
+| 腾讯云 TTS | **100 万字符 / 月**（每月重置） | ~4k/天 | **≈ 永远够用** |
+| 阿里云 Paraformer ASR | 36,000 秒 | 几分钟 | **够录 200+ 条口语** |
+
+> 📌 **瓶颈只有 LLM tokens**。精听生成结果按 `(句, 障碍词)` 精确缓存、TTS 按 SHA256 全局缓存、demo 会话多用户共享同一份结果，整体已对免费额度做了最大化优化。
 
 ---
 
@@ -194,79 +247,97 @@ CORS_ORIGINS=http://你的服务器IP:8391
 
 ```
 IELTS-Copilot/
-├── backend/                        # FastAPI 后端
+├── backend/                          # FastAPI 后端
 │   ├── app/
-│   │   ├── main.py                 # FastAPI 入口
-│   │   ├── database.py             # 数据库初始化
-│   │   ├── models/                 # 数据模型（12 个文件）
-│   │   │   ├── agent.py            # AI 助手配置
-│   │   │   ├── conversation.py     # 对话记录
-│   │   │   ├── message.py          # 消息
-│   │   │   ├── file.py             # 上传文件
-│   │   │   ├── note.py             # 学习笔记
-│   │   │   ├── setting.py          # 系统设置
-│   │   │   ├── homework.py         # 作业 + 文件 + 反馈
-│   │   │   ├── vocabulary.py       # 单词本 + 好词佳句
-│   │   │   ├── context_material.py # 上下文材料缓存
-│   │   │   └── daily_report_cache.py # 日报缓存
-│   │   ├── routers/                # API 路由（11 个文件）
-│   │   │   ├── agents.py           # Agent 管理
-│   │   │   ├── conversations.py    # 对话管理
-│   │   │   ├── messages.py         # 消息收发 (SSE)
-│   │   │   ├── files.py            # 文件上传
-│   │   │   ├── notes.py            # 笔记管理
-│   │   │   ├── settings.py         # 设置管理
-│   │   │   ├── homeworks.py        # 作业管理（含评分解析 + 复盘笔记）
-│   │   │   ├── vocabulary.py       # 单词本 + 佳句 + AI翻译
-│   │   │   ├── reports.py          # 学习报告
-│   │   │   └── study_plan.py       # 学习计划
-│   │   ├── schemas/                # Pydantic 请求/响应模型
-│   │   ├── services/               # 业务逻辑（7 个文件）
-│   │   │   ├── llm_service.py      # LLM 调用封装
-│   │   │   ├── file_service.py     # 文件处理
-│   │   │   ├── router_service.py   # 主 Agent 路由调度
-│   │   │   ├── report_service.py   # 学习报告生成
-│   │   │   ├── study_plan_service.py # 学习计划解析
-│   │   │   └── review_note_service.py # 复盘笔记生成（多模态 Vision）
-│   │   ├── prompts/                # AI Prompt 模板（9 个文件）
-│   │   │   ├── copilot_router.py   # 主路由智能调度
-│   │   │   ├── writing_coach.py    # 写作辅导教练
-│   │   │   ├── writing_assistant.py # 写作笔记整理
+│   │   ├── main.py                   # FastAPI 入口 + Agent 种子数据 + demo 懒加载
+│   │   ├── config.py                 # 配置常量
+│   │   ├── database.py               # 异步 SQLAlchemy 初始化
+│   │   ├── models/                   # 数据模型（11 个）
+│   │   │   ├── agent.py              # AI 助手配置
+│   │   │   ├── conversation.py       # 对话记录
+│   │   │   ├── message.py            # 消息
+│   │   │   ├── file.py               # 上传文件（含 ASR 结果）
+│   │   │   ├── note.py               # 学习笔记
+│   │   │   ├── setting.py            # 系统设置（TTS/ASR/LLM 配置均存此）
+│   │   │   ├── homework.py           # 作业 + 文件 + 反馈
+│   │   │   ├── vocabulary.py         # 单词本 + 好词佳句
+│   │   │   ├── context_material.py   # 上下文材料缓存
+│   │   │   ├── daily_report_cache.py # 日报缓存
+│   │   │   └── listening_practice.py # 🆕 精听会话 / 句子 / 生成结果
+│   │   ├── routers/                  # API 路由（11 个）
+│   │   │   ├── agents.py             # Agent 管理
+│   │   │   ├── conversations.py      # 对话管理
+│   │   │   ├── messages.py           # 消息收发（SSE 流式）
+│   │   │   ├── files.py              # 文件上传（自动 ASR）
+│   │   │   ├── notes.py              # 笔记管理
+│   │   │   ├── settings.py           # 设置管理
+│   │   │   ├── homeworks.py          # 作业管理（含评分解析 + 复盘笔记）
+│   │   │   ├── vocabulary.py         # 单词本 + 佳句 + AI 翻译
+│   │   │   ├── reports.py            # 学习报告
+│   │   │   ├── listening_practice.py # 🆕 精听会话 CRUD + AI 生成
+│   │   │   └── speech.py             # 🆕 TTS / ASR / 音色列表
+│   │   ├── schemas/                  # Pydantic 请求/响应模型
+│   │   ├── services/                 # 业务逻辑（8 个）
+│   │   │   ├── llm_service.py        # LLM 调用封装（LiteLLM）
+│   │   │   ├── file_service.py       # 文件处理（含 ASR 触发）
+│   │   │   ├── router_service.py     # 主 Agent 路由调度
+│   │   │   ├── report_service.py     # 学习报告生成
+│   │   │   ├── review_note_service.py# 复盘笔记（多模态 Vision）
+│   │   │   ├── speech_service.py     # 🆕 腾讯云 TTS + 阿里云 ASR + ffmpeg
+│   │   │   ├── listening_practice_service.py # 🆕 精听 AI 生成（按句合并调用）
+│   │   │   └── listening_demo_service.py     # 🆕 内置 demo 会话懒生成
+│   │   ├── prompts/                  # AI Prompt 模板（10 个）
+│   │   │   ├── copilot_router.py     # 主路由智能调度
+│   │   │   ├── writing_coach.py      # 写作辅导教练
+│   │   │   ├── writing_assistant.py  # 写作笔记整理
 │   │   │   ├── speaking_assistant.py # 口语优化
-│   │   │   ├── speaking_feedback.py # 口语反馈整理
-│   │   │   ├── reading_assistant.py # 阅读分析
-│   │   │   ├── listening_assistant.py # 听力分析
-│   │   │   ├── translate_prompt.py # AI 翻译/查词
-│   │   │   └── review_note.py      # 复盘笔记生成提示词
-│   │   └── utils/                  # 工具函数（4 个文件）
-│   │       ├── file_parser.py      # 文件文本提取
-│   │       ├── pdf_images.py       # PDF 图片提取
-│   │       └── score_parser.py     # AI 报告评分解析
-│   └── requirements.txt
-├── frontend/                       # Next.js 前端
-│   ├── app/                        # 页面（12 个文件）
-│   │   ├── page.tsx                # 首页（今日任务 + 日报 + 助手入口）
-│   │   ├── chat/[conversationId]/  # 对话页
-│   │   ├── homeworks/              # 作业库（列表/详情/批量上传/批量反馈）
-│   │   ├── vocabulary/             # 单词本 + 好词佳句
-│   │   ├── notes/                  # 笔记本
-│   │   ├── reports/                # 学习报告
-│   │   ├── study-plan/             # 学习计划
-│   │   └── settings/               # 设置
-│   ├── components/                 # 组件
-│   │   ├── ui/                     # shadcn/ui 基础组件
-│   │   ├── chat/                   # 对话组件
-│   │   ├── homework/               # 作业组件（含 ScoreRadar 雷达图）
-│   │   ├── vocabulary/             # 单词/佳句组件
-│   │   ├── notes/                  # 笔记组件
-│   │   └── reports/                # 报告组件
-│   ├── stores/                     # Zustand 状态管理
-│   ├── lib/                        # API 封装、工具函数
-│   └── types/                      # TypeScript 类型定义
-├── nginx/                          # Nginx 配置
-├── docker-compose.yml              # Docker 编排（Nginx + 前端 + 后端）
-├── start.sh                        # 本地一键启动
-└── deploy.sh                       # 服务器部署脚本
+│   │   │   ├── speaking_feedback.py  # 口语反馈整理
+│   │   │   ├── reading_assistant.py  # 阅读分析
+│   │   │   ├── listening_assistant.py# 听力分析
+│   │   │   ├── translate_prompt.py   # AI 翻译/查词
+│   │   │   ├── review_note.py        # 复盘笔记生成提示词
+│   │   │   └── listening_practice_prompt.py  # 🆕 精听梯度例句生成
+│   │   └── utils/                    # 工具函数
+│   │       ├── file_parser.py        # 文件文本提取
+│   │       ├── pdf_images.py         # PDF 图片提取
+│   │       ├── score_parser.py       # AI 报告评分解析
+│   │       └── llm_config.py         # LLM 配置读取
+│   └── requirements.txt              # 含 tencentcloud-sdk-python-tts / dashscope
+├── frontend/                         # Next.js 前端
+│   ├── app/                          # 页面
+│   │   ├── page.tsx                  # 首页（今日任务 + 日报 + 助手入口）
+│   │   ├── chat/[conversationId]/    # 对话页
+│   │   ├── homeworks/                # 作业库（列表/详情/批量上传/批量反馈）
+│   │   ├── vocabulary/               # 单词本 + 好词佳句
+│   │   ├── notes/                    # 笔记本
+│   │   ├── reports/                  # 学习报告
+│   │   ├── listening-practice/       # 🆕 精听练习（列表 / 新建 / 详情）
+│   │   └── settings/                 # 设置（LLM + TTS + ASR）
+│   ├── components/                   # 组件
+│   │   ├── ui/                       # shadcn/ui 基础组件
+│   │   ├── chat/                     # 对话组件
+│   │   ├── homework/                 # 作业组件（含 ScoreRadar 雷达图）
+│   │   ├── vocabulary/               # 单词 / 佳句 / TranslatePopover 选词工具条
+│   │   ├── notes/                    # 笔记组件
+│   │   ├── reports/                  # 报告组件
+│   │   └── listening/                # 🆕 精听组件
+│   │       ├── PlayButton.tsx        # TTS 播放（全局单例 + Blob 缓存）
+│   │       ├── SentenceEditor.tsx    # 句子内障碍词标注（支持多词短语）
+│   │       ├── BlockerWordToken.tsx  # 障碍词高亮 token
+│   │       ├── GenerateResultCard.tsx# AI 生成的梯度例句卡片
+│   │       ├── SessionCard.tsx       # 会话列表卡片（含琥珀色 demo 徽标）
+│   │       └── DemoPreview.tsx       # demo 预览（保留备用）
+│   ├── stores/                       # Zustand 状态管理
+│   ├── lib/
+│   │   ├── api.ts                    # API 封装
+│   │   └── voice-store.ts            # 🆕 TTS 音色/语速偏好（persist + migrate）
+│   └── types/                        # TypeScript 类型定义
+├── nginx/                            # Nginx 配置
+├── docker-compose.yml                # Docker 编排（Nginx + 前端 + 后端）
+├── Dockerfile.backend                # 含 ffmpeg，apt 源指向腾讯云内网
+├── Dockerfile.frontend               # Next.js standalone 构建
+├── start.sh                          # 本地一键启动
+└── deploy.sh                         # 服务器部署脚本（含 SSH 保活）
 ```
 
 ---
@@ -276,46 +347,48 @@ IELTS-Copilot/
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │                    Frontend (Next.js 14)                      │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐       │
-│  │ 首页     │ │ 对话     │ │ 单词本   │ │ 作业库    │       │
-│  │ Dashboard│ │ Chat     │ │ Vocab    │ │ Homework  │       │
-│  ├──────────┤ ├──────────┤ ├──────────┤ ├──────────┤       │
-│  │ 学习计划 │ │ 笔记     │ │ 学习报告 │ │ 设置     │       │
-│  │ Plan     │ │ Notes    │ │ Reports  │ │ Settings │       │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘       │
-│                      │ HTTP / SSE                            │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐        │
+│  │ 首页     │ │ 对话     │ │ 单词本   │ │ 作业库   │        │
+│  │ Dashboard│ │ Chat SSE │ │ Vocab    │ │ Homework │        │
+│  ├──────────┤ ├──────────┤ ├──────────┤ ├──────────┤        │
+│  │ 精听练习 │ │ 笔记     │ │ 学习报告 │ │ 设置     │        │
+│  │ 🆕 Listen│ │ Notes    │ │ Reports  │ │ Settings │        │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘        │
+│                      │ HTTP / SSE / Audio                    │
 └──────────────────────┼───────────────────────────────────────┘
                        │
 ┌──────────────────────┼───────────────────────────────────────┐
 │                  Backend (FastAPI)                            │
-│                       │                                      │
-│  ┌─────────── IELTS Copilot 主路由 ──────────────┐          │
-│  │  意图识别 → 自动分发到 6 个子 Agent            │          │
-│  │  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ │          │
-│  │  │写作辅导│ │写作整理│ │口语优化│ │口语反馈│ │          │
-│  │  ├────────┤ ├────────┤ ├────────┤ ├────────┤ │          │
-│  │  │阅读分析│ │听力分析│ │        │ │        │ │          │
-│  │  └────────┘ └────────┘ └────────┘ └────────┘ │          │
-│  └────────────────────────────────────────────────┘          │
-│                                                              │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐       │
-│  │ 上下文   │ │ 学习报告 │ │ LLM      │ │          │       │
-│  │ 材料管理 │ │ 生成     │ │ 适配层   │ │          │       │
-│  ├──────────┤ ├──────────┤ ├──────────┤ ├──────────┤       │
-│  │ 评分解析 │ │ 复盘笔记 │ │          │ │ 多模态   │       │
-│  │ 雷达图   │ │ Vision   │ │          │ │ Vision   │       │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘       │
-│                                                              │
+│                       │                                       │
+│  ┌─────────── IELTS Copilot 主路由 ──────────────┐           │
+│  │  意图识别 → 自动分发到 6 个子 Agent            │           │
+│  │  写作辅导 / 写作整理 / 口语优化 / 口语反馈 /   │           │
+│  │  阅读分析 / 听力分析                           │           │
+│  └────────────────────────────────────────────────┘           │
+│                                                               │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐        │
+│  │ 上下文   │ │ 学习报告 │ │ 精听生成 │ │ 复盘笔记 │        │
+│  │ 材料管理 │ │ 生成     │ │ 🆕       │ │ Vision   │        │
+│  ├──────────┤ ├──────────┤ ├──────────┤ ├──────────┤        │
+│  │ 评分解析 │ │ LLM 适配 │ │ TTS 缓存 │ │ ASR 转写 │        │
+│  │ 雷达图   │ │ LiteLLM  │ │ 🆕 磁盘  │ │ 🆕 ffmpeg│        │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘        │
+│                                                               │
 └──────────────────────┬───────────────────────────────────────┘
                        │
 ┌──────────────────────┼───────────────────────────────────────┐
-│                  Storage Layer                                │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
-│  │ SQLite       │  │ Local File   │  │ LLM APIs     │       │
-│  │ (12 个数据模型)│  │ Storage      │  │ (千问/DS/    │       │
-│  │              │  │ (上传文件)    │  │  Claude/GPT) │       │
-│  └──────────────┘  └──────────────┘  └──────────────┘       │
-└──────────────────────────────────────────────────────────────┘
+│                  Storage & External APIs                      │
+│  ┌────────────┐  ┌────────────┐  ┌────────────┐              │
+│  │ SQLite     │  │ Local Disk │  │ LLM APIs   │              │
+│  │ 11 models  │  │ 上传文件 + │  │ 千问/DS/   │              │
+│  │            │  │ TTS 缓存   │  │ Claude/GPT │              │
+│  └────────────┘  └────────────┘  └────────────┘              │
+│                                                               │
+│  ┌────────────────────┐    ┌────────────────────┐            │
+│  │ 🆕 腾讯云 TTS     │    │ 🆕 阿里云 Paraformer│            │
+│  │ TextToVoice v2019  │    │ realtime-v2 ASR    │            │
+│  └────────────────────┘    └────────────────────┘            │
+└───────────────────────────────────────────────────────────────┘
 ```
 
 ---
