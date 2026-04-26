@@ -36,6 +36,11 @@ from app.services.listening_practice_service import (
     VOCAB_SOURCE_PREFIX,
     _normalize_word,
 )
+from app.services.listening_demo_service import (
+    DEMO_SESSION_ID,
+    ensure_demo_generated,
+    is_demo_session,
+)
 
 
 router = APIRouter(prefix="/api/listening-practice", tags=["listening-practice"])
@@ -95,6 +100,15 @@ async def _count_blockers_for_session(db: AsyncSession, session_id: str) -> int:
     return total
 
 
+def _reject_if_demo(session_id: str, action: str = "修改") -> None:
+    """对 demo 会话的写操作统一拒绝。"""
+    if is_demo_session(session_id):
+        raise HTTPException(
+            status_code=400,
+            detail=f"这是内置示例会话，不可{action}。请点击右上「新建练习」创建你自己的会话。",
+        )
+
+
 # ==================== Session CRUD ====================
 
 @router.get("/sessions", response_model=list[SessionSummaryOut])
@@ -104,8 +118,18 @@ async def list_sessions(db: AsyncSession = Depends(get_db)):
     )
     sessions = list(q.scalars().all())
 
-    results: list[SessionSummaryOut] = []
+    # 保证 demo 置顶
+    demo_sess: ListeningPracticeSession | None = None
+    rest: list[ListeningPracticeSession] = []
     for s in sessions:
+        if s.id == DEMO_SESSION_ID:
+            demo_sess = s
+        else:
+            rest.append(s)
+    ordered = ([demo_sess] if demo_sess else []) + rest
+
+    results: list[SessionSummaryOut] = []
+    for s in ordered:
         # 句子数
         cnt_q = await db.execute(
             select(func.count(ListeningPracticeSentence.id)).where(
@@ -122,6 +146,7 @@ async def list_sessions(db: AsyncSession = Depends(get_db)):
             blocker_count=blocker_count,
             created_at=s.created_at,
             updated_at=s.updated_at,
+            is_demo=is_demo_session(s.id),
         ))
     return results
 
@@ -155,6 +180,14 @@ async def create_session(data: SessionCreate, db: AsyncSession = Depends(get_db)
 
 @router.get("/sessions/{session_id}", response_model=SessionDetailOut)
 async def get_session(session_id: str, db: AsyncSession = Depends(get_db)):
+    # 示例会话：首次访问时懒加载 AI 生成结果（幂等、防并发）
+    if is_demo_session(session_id):
+        try:
+            await ensure_demo_generated(db)
+        except Exception as e:
+            # 失败静默：详情依然可返回，只是生成区块为空
+            import logging
+            logging.getLogger(__name__).warning("Demo 懒生成失败：%s", e)
     return await _load_session_detail(db, session_id)
 
 
@@ -180,11 +213,13 @@ async def _load_session_detail(db: AsyncSession, session_id: str) -> SessionDeta
         created_at=session.created_at,
         updated_at=session.updated_at,
         sentences=[_serialize_sentence(s) for s in sentences],
+        is_demo=is_demo_session(session.id),
     )
 
 
 @router.put("/sessions/{session_id}", response_model=SessionDetailOut)
 async def update_session(session_id: str, data: SessionUpdate, db: AsyncSession = Depends(get_db)):
+    _reject_if_demo(session_id, action="重命名或修改备注")
     q = await db.execute(
         select(ListeningPracticeSession).where(ListeningPracticeSession.id == session_id)
     )
@@ -204,6 +239,7 @@ async def update_session(session_id: str, data: SessionUpdate, db: AsyncSession 
 
 @router.delete("/sessions/{session_id}")
 async def delete_session(session_id: str, db: AsyncSession = Depends(get_db)):
+    _reject_if_demo(session_id, action="删除")
     q = await db.execute(
         select(ListeningPracticeSession).where(ListeningPracticeSession.id == session_id)
     )
@@ -235,6 +271,7 @@ async def delete_session(session_id: str, db: AsyncSession = Depends(get_db)):
 async def add_sentences(
     session_id: str, data: SentenceBatchAdd, db: AsyncSession = Depends(get_db)
 ):
+    _reject_if_demo(session_id, action="追加答案句")
     q = await db.execute(
         select(ListeningPracticeSession).where(ListeningPracticeSession.id == session_id)
     )
@@ -273,6 +310,8 @@ async def delete_sentence(sentence_id: str, db: AsyncSession = Depends(get_db)):
     if not sentence:
         raise HTTPException(status_code=404, detail="Sentence not found")
 
+    _reject_if_demo(sentence.session_id, action="删除句子")
+
     session_id = sentence.session_id
     # 同步清理障碍词对应的单词本条目
     old_blockers = _parse_blockers(sentence.blocker_words)
@@ -301,6 +340,8 @@ async def update_sentence_blockers(
     sentence = q.scalar_one_or_none()
     if not sentence:
         raise HTTPException(status_code=404, detail="Sentence not found")
+
+    _reject_if_demo(sentence.session_id, action="修改障碍词")
 
     old_blockers_raw = _parse_blockers(sentence.blocker_words)
     old_blockers = [b.model_dump() for b in old_blockers_raw]
@@ -377,6 +418,13 @@ async def generate_practice(
     sentence = q.scalar_one_or_none()
     if not sentence:
         raise HTTPException(status_code=404, detail="Sentence not found")
+
+    # 示例会话的生成结果是全局共享缓存，不允许强制刷新（避免一人点击影响所有人）
+    if is_demo_session(sentence.session_id) and data.force_refresh:
+        raise HTTPException(
+            status_code=400,
+            detail="示例会话的生成结果为全局共享，不支持重新生成。请通过「新建练习」创建你自己的会话。",
+        )
 
     # 默认使用已保存的障碍词
     if data.words:

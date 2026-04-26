@@ -181,6 +181,13 @@ async def seed_data():
 async def lifespan(app: FastAPI):
     await init_db()
     await seed_data()
+    # 确保听力精听示例会话存在（新用户首次打开即可看到）
+    try:
+        from app.services.listening_demo_service import ensure_demo_session_exists
+        await ensure_demo_session_exists()
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("Demo session init skipped: %s", e)
     yield
 
 

@@ -58,6 +58,7 @@ class SessionSummaryOut(BaseModel):
     blocker_count: int
     created_at: datetime
     updated_at: datetime
+    is_demo: bool = False  # 内置示例会话标记（只读、置顶、样式差异化）
 
 
 class SentenceOut(BaseModel):
@@ -78,6 +79,7 @@ class SessionDetailOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     sentences: list[SentenceOut]
+    is_demo: bool = False
 
 
 # ========== 句子操作 ==========
