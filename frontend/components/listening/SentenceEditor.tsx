@@ -39,34 +39,68 @@ function tokenize(text: string): Token[] {
 export function SentenceEditor({ text, blockers, onToggle, disabled, tooltipMap }: Props) {
   const tokens = useMemo(() => tokenize(text), [text]);
 
-  // 将 blocker 以 (start,end) 做精确匹配（以原文字符位置索引）
-  const blockerKeys = useMemo(() => {
-    const set = new Set<string>();
-    for (const b of blockers) {
-      set.add(`${b.start}-${b.end}`);
+  /**
+   * 把 blocker 按字符区间索引：一个 blocker 区间可能覆盖多个 word-token（例如 "a lot of"）。
+   * 这里返回 (tokenIndex → matchedBlocker)，让所有落在区间内的 word token 都高亮，
+   * 且点击其中任何一个都视为对整个短语的取消/确认。
+   */
+  const blockerByTokenIdx = useMemo(() => {
+    const map = new Map<number, ListeningBlockerWord>();
+    for (let i = 0; i < tokens.length; i++) {
+      const t = tokens[i];
+      if (!t.isWord) continue;
+      const matched = blockers.find((b) => t.start >= b.start && t.end <= b.end);
+      if (matched) map.set(i, matched);
     }
-    return set;
-  }, [blockers]);
+    return map;
+  }, [tokens, blockers]);
 
   return (
     <div className="leading-loose text-base font-serif tracking-wide text-foreground">
       {tokens.map((t, i) => {
         if (!t.isWord) {
+          // 非单词字符（空格/标点）：如果它前后两个 word token 都属于同一个 blocker，
+          // 它也跟着高亮，这样多词短语 "a lot of" 视觉上是一整块。
+          const prev = blockerByTokenIdx.get(i - 1);
+          const next = blockerByTokenIdx.get(i + 1);
+          const insideBlocker = prev && next && prev === next;
+          if (insideBlocker) {
+            return (
+              <span
+                key={i}
+                className="bg-sky-100/70 dark:bg-sky-900/30"
+              >
+                {t.text}
+              </span>
+            );
+          }
           return <span key={i}>{t.text}</span>;
         }
-        const key = `${t.start}-${t.end}`;
-        const isBlocker = blockerKeys.has(key);
-        const normalized = t.text.toLowerCase();
+        const matched = blockerByTokenIdx.get(i);
+        const isBlocker = !!matched;
+        const tipKey = matched
+          ? matched.word.toLowerCase()
+          : t.text.toLowerCase();
         return (
           <BlockerWordToken
             key={i}
             text={t.text}
             isBlocker={isBlocker}
             disabled={disabled}
-            tooltip={tooltipMap?.[normalized]}
-            onClick={() =>
-              onToggle({ word: t.text, start: t.start, end: t.end })
-            }
+            tooltip={tooltipMap?.[tipKey]}
+            onClick={() => {
+              if (matched) {
+                // 点击多词短语任一组成单词 → 视为对整个短语取消标记
+                onToggle({
+                  word: matched.word,
+                  start: matched.start,
+                  end: matched.end,
+                });
+              } else {
+                // 单词新增标记
+                onToggle({ word: t.text, start: t.start, end: t.end });
+              }
+            }}
           />
         );
       })}

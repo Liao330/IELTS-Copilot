@@ -47,30 +47,53 @@ DEMO_NOTE = (
 )
 
 
-# 每项：(原文, [(障碍词字面量, start, end)])
-DEMO_SENTENCES: list[tuple[str, list[tuple[str, int, int]]]] = [
+# 每项：(原文, [障碍词字面量列表])
+# 位置由 _find_word_offsets 自动从原文中按出现顺序定位，避免手数字符出错
+DEMO_SENTENCES: list[tuple[str, list[str]]] = [
     (
         "The hotel room was really comfortable and a lot of guests gave positive feedback.",
-        [
-            ("comfortable", 27, 38),  # 弱读：-or- schwa 化
-            ("a lot of", 43, 51),     # 连读：a+lot+of 整块吞
-        ],
+        ["comfortable", "a lot of"],
     ),
     (
         "What time does the next train to Oxford actually leave from platform nine?",
-        [
-            ("What time", 0, 9),      # 连读/吞音：/t/ 被下一个 /t/ 吞
-            ("actually", 39, 47),     # 弱读+吞音：/tʃəli/ 快速带过
-        ],
+        ["What time", "actually"],
     ),
     (
         "I'd rather wait until Thursday because the weather forecast looks much better then.",
-        [
-            ("rather", 4, 10),        # 不熟词/相近发音：rather vs. other
-            ("Thursday", 22, 30),     # 相近发音：/θ/ 清齿擦音易听成 /s/
-        ],
+        ["rather", "Thursday"],
     ),
 ]
+
+
+def _find_word_offsets(text: str, words: list[str]) -> list[tuple[str, int, int]]:
+    """根据原文按出现顺序定位每个词的字符 start/end，多个相同词支持依次匹配。
+
+    返回 [(word, start, end), ...]
+    """
+    out: list[tuple[str, int, int]] = []
+    cursor = 0
+    used: list[tuple[int, int]] = []  # 已占用的区间，避免覆盖
+    for w in words:
+        # 默认从上次结束位置往后找；找不到则从头找空闲位置
+        idx = text.find(w, cursor)
+        if idx < 0:
+            idx = text.find(w)
+        if idx < 0:
+            continue
+        # 避开已用区间：往后找
+        end = idx + len(w)
+        while any(not (end <= s or idx >= e) for s, e in used):
+            search_from = end
+            idx = text.find(w, search_from)
+            if idx < 0:
+                break
+            end = idx + len(w)
+        if idx < 0:
+            continue
+        out.append((w, idx, end))
+        used.append((idx, end))
+        cursor = end
+    return out
 
 
 # ========== 防并发 ==========
@@ -116,7 +139,8 @@ async def ensure_demo_session_exists() -> None:
             db.add(session)
             await db.flush()
 
-        for idx, (text, blockers) in enumerate(DEMO_SENTENCES):
+        for idx, (text, words) in enumerate(DEMO_SENTENCES):
+            offsets = _find_word_offsets(text, words)
             blockers_json = json.dumps(
                 [
                     {
@@ -125,7 +149,7 @@ async def ensure_demo_session_exists() -> None:
                         "end": e,
                         "vocab_word_id": None,
                     }
-                    for (w, s, e) in blockers
+                    for (w, s, e) in offsets
                 ],
                 ensure_ascii=False,
             )
