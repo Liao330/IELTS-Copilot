@@ -54,6 +54,12 @@ export default function ListeningPracticeDetailPage() {
   const [addSentences, setAddSentences] = useState("");
   const [adding, setAdding] = useState(false);
 
+  // 编辑会话标题/备注
+  const [showEditSessionDialog, setShowEditSessionDialog] = useState(false);
+  const [editSessionTitle, setEditSessionTitle] = useState("");
+  const [editSessionNote, setEditSessionNote] = useState("");
+  const [savingSession, setSavingSession] = useState(false);
+
   // 删除句子
   const [deletingSentence, setDeletingSentence] = useState<ListeningSentence | null>(null);
 
@@ -249,6 +255,82 @@ export default function ListeningPracticeDetailPage() {
     }
   };
 
+  const openEditSessionDialog = () => {
+    if (!session) return;
+    setEditSessionTitle(session.title);
+    setEditSessionNote(session.note || "");
+    setShowEditSessionDialog(true);
+  };
+
+  const handleSaveSession = async () => {
+    if (!session) return;
+    const title = editSessionTitle.trim();
+    if (!title) {
+      toast({ variant: "destructive", description: "标题不能为空" });
+      return;
+    }
+    setSavingSession(true);
+    try {
+      const updated = await api.updateListeningSession(session.id, {
+        title,
+        note: editSessionNote.trim(),
+      });
+      // updateListeningSession 返回 SessionDetailOut，替换全部
+      setSession(updated);
+      toast({ description: "已更新会话信息" });
+      setShowEditSessionDialog(false);
+    } catch (err) {
+      console.error(err);
+      toast({ variant: "destructive", description: "保存失败" });
+    } finally {
+      setSavingSession(false);
+    }
+  };
+
+  // 编辑句子原文
+  const handleUpdateSentenceText = async (
+    sentence: ListeningSentence,
+    nextText: string,
+  ): Promise<boolean> => {
+    if (isDemo) {
+      toast({ description: "示例会话不可编辑原文" });
+      return false;
+    }
+    const trimmed = nextText.trim();
+    if (!trimmed) {
+      toast({ variant: "destructive", description: "原句不能为空" });
+      return false;
+    }
+    if (trimmed === sentence.original_text) return true;
+    try {
+      const updated = await api.updateListeningSentenceText(sentence.id, trimmed);
+      setSession((prev) =>
+        prev
+          ? {
+              ...prev,
+              sentences: prev.sentences.map((s) =>
+                s.id === sentence.id ? updated : s,
+              ),
+            }
+          : prev,
+      );
+      if (updated.blocker_words.length < sentence.blocker_words.length) {
+        const lost =
+          sentence.blocker_words.length - updated.blocker_words.length;
+        toast({
+          description: `原文已更新，${lost} 个障碍词在新原文中找不到已被剔除；AI 例句缓存已清空`,
+        });
+      } else {
+        toast({ description: "原文已更新，AI 例句缓存已清空" });
+      }
+      return true;
+    } catch (err) {
+      console.error(err);
+      toast({ variant: "destructive", description: "保存失败" });
+      return false;
+    }
+  };
+
   const handleDeleteSentence = async () => {
     if (!deletingSentence) return;
     try {
@@ -311,6 +393,16 @@ export default function ListeningPracticeDetailPage() {
               <Headphones className="h-5 w-5 text-sky-500 shrink-0" />
             )}
             <h1 className="text-lg font-semibold truncate">{session.title}</h1>
+            {!isDemo && (
+              <button
+                type="button"
+                onClick={openEditSessionDialog}
+                className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground shrink-0"
+                title="编辑标题和备注"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
             <Button
@@ -385,6 +477,14 @@ export default function ListeningPracticeDetailPage() {
               <PlayButton text="" gearOnly size="sm" />
             </div>
           </div>
+          {!isDemo && session.note && (
+            <div className="mb-2 flex items-start gap-1.5 text-xs rounded-md bg-white/70 dark:bg-white/5 border px-2 py-1.5">
+              <MessageSquare className="h-3.5 w-3.5 mt-0.5 text-sky-500 shrink-0" />
+              <span className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                {session.note}
+              </span>
+            </div>
+          )}
           <p className="text-xs text-muted-foreground leading-relaxed">
             点击答案句中的任意单词来标记/取消「障碍词」。标记后点击「生成精听练习」由 AI
             根据难点类型产出 3-5 句梯度练习。每句旁的 ▶️ 可用拟人语音播放（雅思英音默认，可切美/澳音）。
@@ -407,6 +507,7 @@ export default function ListeningPracticeDetailPage() {
                 onToggleBlocker={(token) => toggleBlocker(sentence, token)}
                 onGenerate={(force) => handleGenerate(sentence, force)}
                 onUpdateNote={(next) => handleUpdateNote(sentence, next)}
+                onUpdateText={(next) => handleUpdateSentenceText(sentence, next)}
                 onDelete={() => setDeletingSentence(sentence)}
                 isDemo={isDemo}
               />
@@ -434,6 +535,55 @@ export default function ListeningPracticeDetailPage() {
             </Button>
             <Button onClick={handleAddSentences} disabled={adding || !addSentences.trim()}>
               {adding ? "添加中..." : "添加"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 编辑会话（标题 + 备注） */}
+      <Dialog open={showEditSessionDialog} onOpenChange={setShowEditSessionDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>编辑会话</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">
+                标题 <span className="text-rose-500">*</span>
+              </label>
+              <input
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                value={editSessionTitle}
+                onChange={(e) => setEditSessionTitle(e.target.value)}
+                placeholder="例如：C18 Test 2 Section 3 错题精听"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">
+                备注（可选）
+              </label>
+              <Textarea
+                value={editSessionNote}
+                onChange={(e) => setEditSessionNote(e.target.value)}
+                placeholder="例如：今天下午的套题，Section 3 错了 4 题"
+                rows={3}
+                className="text-sm"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowEditSessionDialog(false)}
+              disabled={savingSession}
+            >
+              取消
+            </Button>
+            <Button
+              onClick={handleSaveSession}
+              disabled={savingSession || !editSessionTitle.trim()}
+            >
+              {savingSession ? "保存中..." : "保存"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -478,6 +628,7 @@ interface SentenceBlockProps {
   onToggleBlocker: (token: { word: string; start: number; end: number }) => void;
   onGenerate: (forceRefresh: boolean) => void;
   onUpdateNote: (next: string) => void;
+  onUpdateText: (next: string) => Promise<boolean>;
   onDelete: () => void;
   isDemo?: boolean;
 }
@@ -490,10 +641,29 @@ function SentenceBlock({
   onToggleBlocker,
   onGenerate,
   onUpdateNote,
+  onUpdateText,
   onDelete,
   isDemo = false,
 }: SentenceBlockProps) {
   const [showGenerated, setShowGenerated] = useState(true);
+  // 编辑原文弹窗
+  const [editingText, setEditingText] = useState(false);
+  const [draftText, setDraftText] = useState(sentence.original_text);
+  const [savingText, setSavingText] = useState(false);
+
+  const openEditText = () => {
+    setDraftText(sentence.original_text);
+    setEditingText(true);
+  };
+  const submitEditText = async () => {
+    setSavingText(true);
+    try {
+      const ok = await onUpdateText(draftText);
+      if (ok) setEditingText(false);
+    } finally {
+      setSavingText(false);
+    }
+  };
 
   const tooltipMap = useMemo(() => {
     const m: Record<string, string> = {};
@@ -530,14 +700,24 @@ function SentenceBlock({
             )}
             <PlayButton text={sentence.original_text} size="sm" />
             {!isDemo && (
-              <button
-                type="button"
-                onClick={onDelete}
-                className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
-                title="删除该句"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={openEditText}
+                  className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-amber-600 transition-colors cursor-pointer"
+                  title="编辑原文"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={onDelete}
+                  className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+                  title="删除该句"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -624,6 +804,46 @@ function SentenceBlock({
           {showGenerated ? "折叠练习" : `展开 ${sentence.generated_blocks.length} 组练习`}
         </button>
       )}
+
+      {/* 编辑原文 Dialog */}
+      <Dialog open={editingText} onOpenChange={(open) => !savingText && setEditingText(open)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>编辑答案原文</DialogTitle>
+          </DialogHeader>
+          <Textarea
+            value={draftText}
+            onChange={(e) => setDraftText(e.target.value)}
+            rows={4}
+            className="text-sm"
+            placeholder="答案原句（英文）"
+            disabled={savingText}
+          />
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p>💡 保存后：</p>
+            <ul className="list-disc pl-4 space-y-0.5">
+              <li>原有障碍词会按「词形」自动在新原文中重新定位</li>
+              <li>定位不到的障碍词会被剔除（含对应单词本条目）</li>
+              <li>AI 生成的梯度例句缓存将清空，需重新生成</li>
+            </ul>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditingText(false)}
+              disabled={savingText}
+            >
+              取消
+            </Button>
+            <Button
+              onClick={submitEditText}
+              disabled={savingText || !draftText.trim() || draftText.trim() === sentence.original_text}
+            >
+              {savingText ? "保存中..." : "保存"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

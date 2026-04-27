@@ -15,6 +15,9 @@ import {
   X,
   Tag,
   RefreshCw,
+  Pencil,
+  Check,
+  Plus,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { ListeningCleanupItem } from "@/types";
@@ -342,7 +345,7 @@ function ReviewStage({
           <Sparkles className="h-4 w-4 text-amber-500" />
           AI 整理结果
           <span className="text-xs font-normal text-muted-foreground">
-            共 {items.length} 句 · 可编辑
+            共 {items.length} 句 · 悬浮显示 ✏️ 可编辑
           </span>
         </div>
         <Button
@@ -376,7 +379,46 @@ function ReviewStage({
 }
 
 
-// ============ 子组件：单条整理结果行（可编辑） ============
+// ============ 子组件：单条整理结果行（只读 / 编辑双态） ============
+
+/**
+ * 简单的本地障碍词位置定位：按出现顺序在 text 中 find 每个词的原样/小写位置。
+ * 不覆盖复杂短语/重复词 —— 前端编辑时够用；完整逻辑仍以后端 cleanup 为准。
+ */
+function relocateBlockers(text: string, words: string[]): { word: string; start: number; end: number }[] {
+  const out: { word: string; start: number; end: number }[] = [];
+  const used: [number, number][] = [];
+  const tryFind = (w: string): number => {
+    // 先原样
+    let idx = text.indexOf(w);
+    while (idx >= 0) {
+      const end = idx + w.length;
+      const overlap = used.some(([s, e]) => !(end <= s || idx >= e));
+      if (!overlap) return idx;
+      idx = text.indexOf(w, end);
+    }
+    // 小写
+    const low = text.toLowerCase();
+    idx = low.indexOf(w.toLowerCase());
+    while (idx >= 0) {
+      const end = idx + w.length;
+      const overlap = used.some(([s, e]) => !(end <= s || idx >= e));
+      if (!overlap) return idx;
+      idx = low.indexOf(w.toLowerCase(), end);
+    }
+    return -1;
+  };
+  for (const w of words) {
+    const trimmed = w.trim();
+    if (!trimmed) continue;
+    const idx = tryFind(trimmed);
+    if (idx < 0) continue;
+    out.push({ word: text.slice(idx, idx + trimmed.length), start: idx, end: idx + trimmed.length });
+    used.push([idx, idx + trimmed.length]);
+  }
+  out.sort((a, b) => a.start - b.start);
+  return out;
+}
 
 function CleanupItemRow({
   item,
@@ -389,28 +431,199 @@ function CleanupItemRow({
   onChange: (patch: Partial<EditableItem>) => void;
   onRemove: () => void;
 }) {
-  const targetWords = item.target_words;
+  const [editing, setEditing] = useState(false);
+  // 本地 draft：编辑时不直接改父级，确认后一次提交
+  const [draftText, setDraftText] = useState(item.text);
+  const [draftNote, setDraftNote] = useState(item.note || "");
+  const [draftWords, setDraftWords] = useState<string[]>(item.target_words);
+  const [newWord, setNewWord] = useState("");
 
+  const enterEdit = () => {
+    setDraftText(item.text);
+    setDraftNote(item.note || "");
+    setDraftWords(item.target_words);
+    setNewWord("");
+    setEditing(true);
+  };
+
+  const cancelEdit = () => {
+    setEditing(false);
+  };
+
+  const commitEdit = () => {
+    // 对最终的目标词做本地 find 预定位（保证后续详情页直接可用）
+    const prefilled = relocateBlockers(draftText, draftWords);
+    // 同步把在 text 里找不到的词从 target_words 剔除，避免展示"预标 0 处"
+    const validWords = prefilled.map((p) => p.word);
+    onChange({
+      text: draftText,
+      note: draftNote.trim() || null,
+      target_words: validWords,
+      prefilled_blockers: prefilled,
+    });
+    setEditing(false);
+  };
+
+  const addWord = () => {
+    const w = newWord.trim();
+    if (!w) return;
+    if (draftWords.some((x) => x.toLowerCase() === w.toLowerCase())) {
+      setNewWord("");
+      return;
+    }
+    setDraftWords((prev) => [...prev, w]);
+    setNewWord("");
+  };
+
+  const removeWord = (w: string) => {
+    setDraftWords((prev) => prev.filter((x) => x !== w));
+  };
+
+  // ============ 编辑态 ============
+  if (editing) {
+    const previewPrefilled = relocateBlockers(draftText, draftWords);
+    const invalidWords = draftWords.filter(
+      (w) => !previewPrefilled.some((p) => p.word.toLowerCase() === w.toLowerCase()),
+    );
+
+    return (
+      <div className="rounded-md border-2 border-amber-300 dark:border-amber-700 bg-background p-3 space-y-2.5 shadow-sm">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-mono text-muted-foreground">#{index + 1} 编辑中</span>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={cancelEdit}
+              className="h-7 px-2 text-xs gap-1"
+            >
+              <X className="h-3 w-3" />
+              取消
+            </Button>
+            <Button
+              size="sm"
+              onClick={commitEdit}
+              className="h-7 px-2 text-xs gap-1 bg-emerald-500 hover:bg-emerald-600 text-white"
+            >
+              <Check className="h-3 w-3" />
+              保存
+            </Button>
+          </div>
+        </div>
+
+        <div>
+          <label className="text-[11px] text-muted-foreground block mb-1">答案原句（英文）</label>
+          <Textarea
+            value={draftText}
+            onChange={(e) => setDraftText(e.target.value)}
+            rows={3}
+            className="text-sm resize-none font-medium"
+            placeholder="答案原句（英文）"
+          />
+        </div>
+
+        <div>
+          <label className="text-[11px] text-muted-foreground block mb-1">
+            上下文备注（AI 生成例句时参考）
+          </label>
+          <Input
+            value={draftNote}
+            onChange={(e) => setDraftNote(e.target.value)}
+            placeholder="例如：听成了 camb / 拼写错误"
+            className="text-xs h-8"
+          />
+        </div>
+
+        <div>
+          <label className="text-[11px] text-muted-foreground block mb-1">
+            目标词（障碍词，将作为精听默认标记）
+          </label>
+          <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
+            {draftWords.length === 0 && (
+              <span className="text-[11px] text-muted-foreground italic">
+                暂无；可在下方输入框追加
+              </span>
+            )}
+            {draftWords.map((w) => {
+              const valid = previewPrefilled.some(
+                (p) => p.word.toLowerCase() === w.toLowerCase(),
+              );
+              return (
+                <span
+                  key={w}
+                  className={cn(
+                    "inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded",
+                    valid
+                      ? "bg-sky-100 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300"
+                      : "bg-rose-100 text-rose-700 line-through dark:bg-rose-950/50 dark:text-rose-300",
+                  )}
+                  title={valid ? "已在原句中定位" : "该词在原句中找不到，保存后会被剔除"}
+                >
+                  {w}
+                  <button
+                    type="button"
+                    onClick={() => removeWord(w)}
+                    className="hover:bg-black/10 dark:hover:bg-white/10 rounded p-0.5"
+                  >
+                    <X className="h-2.5 w-2.5" />
+                  </button>
+                </span>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Input
+              value={newWord}
+              onChange={(e) => setNewWord(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addWord();
+                }
+              }}
+              placeholder="追加目标词（回车或点 +）"
+              className="text-xs h-7 flex-1"
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={addWord}
+              disabled={!newWord.trim()}
+              className="h-7 px-2"
+            >
+              <Plus className="h-3 w-3" />
+            </Button>
+          </div>
+          {invalidWords.length > 0 && (
+            <p className="text-[10px] text-rose-500 mt-1">
+              红色划线词不在原句里，保存时会被剔除：{invalidWords.join("、")}
+            </p>
+          )}
+          <p className="text-[10px] text-muted-foreground mt-1">
+            保存后会根据最终答案句自动重新定位 {previewPrefilled.length} 处标记
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ============ 只读态 ============
+  const targetWords = item.target_words;
   return (
-    <div className="rounded-md border bg-background/80 backdrop-blur p-3 space-y-2 group">
+    <div className="rounded-md border bg-background/80 backdrop-blur p-3 space-y-1.5 group">
       <div className="flex items-start gap-2">
         <span className="text-xs font-mono text-muted-foreground mt-1 shrink-0">
           #{index + 1}
         </span>
-        <div className="flex-1 space-y-2 min-w-0">
-          <Textarea
-            value={item.text}
-            onChange={(e) => onChange({ text: e.target.value })}
-            rows={2}
-            className="text-sm resize-none font-medium"
-            placeholder="答案原句（英文）"
-          />
-          <Input
-            value={item.note || ""}
-            onChange={(e) => onChange({ note: e.target.value || null })}
-            placeholder="上下文备注（例如：听成了 camb / 拼写错误）"
-            className="text-xs h-8"
-          />
+        <div className="flex-1 min-w-0 space-y-1.5">
+          <p className="text-sm font-medium leading-relaxed break-words">{item.text}</p>
+          {item.note && (
+            <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed flex items-start gap-1">
+              <span className="text-amber-500">💭</span>
+              <span>{item.note}</span>
+            </p>
+          )}
           {targetWords.length > 0 && (
             <div className="flex items-center gap-1.5 flex-wrap">
               <Tag className="h-3 w-3 text-sky-500 shrink-0" />
@@ -431,14 +644,24 @@ function CleanupItemRow({
             </div>
           )}
         </div>
-        <button
-          type="button"
-          onClick={onRemove}
-          className="p-1 rounded hover:bg-rose-100 dark:hover:bg-rose-950/40 text-muted-foreground hover:text-rose-600 shrink-0 opacity-50 group-hover:opacity-100 transition-opacity"
-          title="移除此句"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
+        <div className="flex items-center gap-0.5 shrink-0">
+          <button
+            type="button"
+            onClick={enterEdit}
+            className="p-1 rounded hover:bg-amber-100 dark:hover:bg-amber-950/40 text-muted-foreground hover:text-amber-600 opacity-60 group-hover:opacity-100 transition-opacity"
+            title="编辑此句"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={onRemove}
+            className="p-1 rounded hover:bg-rose-100 dark:hover:bg-rose-950/40 text-muted-foreground hover:text-rose-600 opacity-60 group-hover:opacity-100 transition-opacity"
+            title="移除此句"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
     </div>
   );

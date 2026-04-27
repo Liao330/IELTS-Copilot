@@ -32,6 +32,7 @@ from app.schemas.listening_practice import (
     CleanupRequest,
     CleanupResponse,
     SentenceNoteUpdate,
+    SentenceTextUpdate,
 )
 from app.services.listening_practice_service import (
     sync_blockers_to_vocabulary,
@@ -44,7 +45,10 @@ from app.services.listening_demo_service import (
     ensure_demo_generated,
     is_demo_session,
 )
-from app.services.listening_cleanup_service import cleanup_listening_note
+from app.services.listening_cleanup_service import (
+    cleanup_listening_note,
+    _locate_words_in_text,
+)
 
 
 router = APIRouter(prefix="/api/listening-practice", tags=["listening-practice"])
@@ -520,4 +524,87 @@ async def update_sentence_note(
         .options(selectinload(ListeningPracticeSentence.generated_blocks))
     )
     refreshed = q2.scalar_one()
+    return _serialize_sentence(refreshed)
+
+
+@router.put("/sentences/{sentence_id}/text", response_model=SentenceOut)
+async def update_sentence_text(
+    sentence_id: str, data: SentenceTextUpdate, db: AsyncSession = Depends(get_db)
+):
+    """修改答案原句。旧障碍词会按"词形"在新原句中重新定位，
+    - 能定位的保留（更新 start/end）
+    - 定位不到的剔除（同时清掉对应的 AI 生成缓存和单词本条目）
+    - 无论是否重定位成功，整句的 AI 生成梯度例句缓存都会清空（例句基于旧原句，新原句下不再适用）
+    """
+    q = await db.execute(
+        select(ListeningPracticeSentence)
+        .where(ListeningPracticeSentence.id == sentence_id)
+        .options(selectinload(ListeningPracticeSentence.generated_blocks))
+    )
+    sentence = q.scalar_one_or_none()
+    if not sentence:
+        raise HTTPException(status_code=404, detail="Sentence not found")
+
+    _reject_if_demo(sentence.session_id, action="编辑原文")
+
+    new_text = data.original_text.strip()
+    if not new_text:
+        raise HTTPException(status_code=400, detail="答案原句不能为空")
+
+    if new_text == sentence.original_text:
+        return _serialize_sentence(sentence)
+
+    # 重新定位旧障碍词
+    old_blockers = _parse_blockers(sentence.blocker_words)
+    old_words = [b.word for b in old_blockers]
+    relocated = _locate_words_in_text(new_text, old_words) if old_words else []
+    relocated_norms = {_normalize_word(b["word"]) for b in relocated}
+
+    # 同步单词本：定位不到的词从本会话来源的 vocab 里删
+    old_dump = [b.model_dump() for b in old_blockers]
+    enriched = await sync_blockers_to_vocabulary(
+        db,
+        session_id=sentence.session_id,
+        old_blockers=old_dump,
+        new_blockers=[
+            {"word": r["word"], "start": r["start"], "end": r["end"]}
+            for r in relocated
+        ],
+    )
+
+    # 清空该句所有 AI 生成例句缓存（原文变了，旧例句不再贴合新语境）
+    gq_all = await db.execute(
+        select(ListeningPracticeGenerated).where(
+            ListeningPracticeGenerated.sentence_id == sentence_id
+        )
+    )
+    for g in gq_all.scalars().all():
+        await db.delete(g)
+
+    sentence.original_text = new_text
+    sentence.blocker_words = (
+        json.dumps(enriched, ensure_ascii=False) if enriched else None
+    )
+    sentence.updated_at = datetime.utcnow()
+
+    # 更新 session updated_at
+    sq = await db.execute(
+        select(ListeningPracticeSession).where(
+            ListeningPracticeSession.id == sentence.session_id
+        )
+    )
+    sess = sq.scalar_one_or_none()
+    if sess:
+        sess.updated_at = datetime.utcnow()
+
+    await db.commit()
+
+    q2 = await db.execute(
+        select(ListeningPracticeSentence)
+        .where(ListeningPracticeSentence.id == sentence_id)
+        .options(selectinload(ListeningPracticeSentence.generated_blocks))
+    )
+    refreshed = q2.scalar_one()
+    # relocated_norms 仅用于推断哪些 vocab 被剔除（由 sync_blockers_to_vocabulary 统一处理）
+    _ = relocated_norms
     return _serialize_sentence(refreshed)

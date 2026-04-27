@@ -143,3 +143,7 @@ class CleanupResponse(BaseModel):
 
 class SentenceNoteUpdate(BaseModel):
     note: str | None = None
+
+
+class SentenceTextUpdate(BaseModel):
+    original_text: str = Field(..., min_length=1)
