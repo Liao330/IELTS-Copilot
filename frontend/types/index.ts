@@ -490,3 +490,42 @@ export interface SpeechProviders {
     api_key?: string;
   };
 }
+
+
+// ========== Dictation 听写 ==========
+
+export interface DictationMonthCheckResult {
+  correct: boolean;
+  expected: string;
+  mastery_level: number;
+  next_review_at: string | null;
+  interval_days: number;
+}
+
+export interface DictationNumberQuestion {
+  kind:
+    | "phone" | "postcode" | "flight_no" | "card_no" | "room_no"
+    | "price" | "year"
+    | "time" | "date" | "percent" | "fraction" | "measurement"
+    | string;
+  text: string;      // 展示用的正确答案
+  read_text: string; // 送 TTS 的朗读文本
+  hint: string;
+}
+
+export interface DictationNumberCheckResult {
+  correct: boolean;
+  expected: string;
+}
+
+export interface DictationDateQuestion {
+  kind: string;
+  text: string;
+  read_text: string;
+  hint: string;
+}
+
+export interface DictationDateCheckResult {
+  correct: boolean;
+  expected: string;
+}

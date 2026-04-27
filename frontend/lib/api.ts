@@ -245,6 +245,11 @@ export const api = {
       `/api/listening-practice/sentences/${sentenceId}/note`,
       { method: "PUT", body: JSON.stringify({ note }) },
     ),
+  updateListeningSentenceText: (sentenceId: string, original_text: string) =>
+    request<import("@/types").ListeningSentence>(
+      `/api/listening-practice/sentences/${sentenceId}/text`,
+      { method: "PUT", body: JSON.stringify({ original_text }) },
+    ),
 
   // Speech (TTS / ASR)
   getVoices: () => request<import("@/types").VoiceListResponse>("/api/speech/voices"),
@@ -265,6 +270,38 @@ export const api = {
     request<{ id: string; text_content: string }>(
       `/api/files/${fileId}/transcribe`,
       { method: "POST" },
+    ),
+
+  // Dictation 听写模块
+  listDueMonths: (limit = 50) =>
+    request<import("@/types").VocabularyWord[]>(`/api/dictation/months/due?limit=${limit}`),
+  checkMonth: (wordId: string, answer: string) =>
+    request<import("@/types").DictationMonthCheckResult>(
+      `/api/dictation/months/${wordId}/check`,
+      { method: "POST", body: JSON.stringify({ answer }) },
+    ),
+  randomDateQuestion: () =>
+    request<import("@/types").DictationDateQuestion>(`/api/dictation/dates/random`),
+  checkDate: (expected: string, answer: string) =>
+    request<import("@/types").DictationDateCheckResult>(
+      `/api/dictation/dates/check`,
+      { method: "POST", body: JSON.stringify({ expected, answer }) },
+    ),
+  randomNumberQuestion: (kind?: string) =>
+    request<import("@/types").DictationNumberQuestion>(
+      `/api/dictation/numbers/random${kind ? `?kind=${encodeURIComponent(kind)}` : ""}`,
+    ),
+  checkNumber: (expected: string, answer: string, kind?: string) =>
+    request<import("@/types").DictationNumberCheckResult>(
+      `/api/dictation/numbers/check`,
+      { method: "POST", body: JSON.stringify({ expected, answer, kind }) },
+    ),
+  listDueListeningWords: (limit = 50) =>
+    request<import("@/types").VocabularyWord[]>(`/api/dictation/listening-words/due?limit=${limit}`),
+  checkListeningWord: (wordId: string, answer: string) =>
+    request<import("@/types").DictationMonthCheckResult>(
+      `/api/dictation/listening-words/${wordId}/check`,
+      { method: "POST", body: JSON.stringify({ answer }) },
     ),
 
 };

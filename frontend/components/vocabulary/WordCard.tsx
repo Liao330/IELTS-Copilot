@@ -9,7 +9,7 @@ const CATEGORY_MAP: Record<string, { label: string; color: string }> = {
   writing: { label: "写作", color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
   speaking: { label: "口语", color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" },
   reading: { label: "阅读", color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
-  listening: { label: "听力", color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" },
+  listening: { label: "听力单词", color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" },
   general: { label: "通用", color: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200" },
 };
 

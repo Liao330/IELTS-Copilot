@@ -28,6 +28,7 @@ import {
   Brain,
   Trophy,
   Clock,
+  Headphones,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -36,7 +37,7 @@ const CATEGORIES = [
   { value: "writing", label: "写作" },
   { value: "speaking", label: "口语" },
   { value: "reading", label: "阅读" },
-  { value: "listening", label: "听力" },
+  { value: "listening", label: "听力单词" },
   { value: "general", label: "通用" },
 ] as const;
 
@@ -263,6 +264,15 @@ export default function VocabularyPage() {
           >
             <GraduationCap className="h-4 w-4" />
             复习模式
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-950/40"
+            onClick={() => router.push("/vocabulary/dictation")}
+          >
+            <Headphones className="h-4 w-4" />
+            听写模式
           </Button>
 
           <div className="flex-1" />

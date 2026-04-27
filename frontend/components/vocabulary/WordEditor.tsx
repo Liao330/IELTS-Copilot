@@ -38,7 +38,7 @@ const CATEGORIES = [
   { value: "writing", label: "写作" },
   { value: "speaking", label: "口语" },
   { value: "reading", label: "阅读" },
-  { value: "listening", label: "听力" },
+  { value: "listening", label: "听力单词" },
 ];
 
 export function WordEditor({ open, onOpenChange, word, initialWord, initialData, onSaved }: WordEditorProps) {

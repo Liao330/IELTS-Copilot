@@ -18,7 +18,7 @@ from app.prompts.speaking_feedback import SPEAKING_FEEDBACK_PROMPT, SPEAKING_FEE
 from app.prompts.reading_assistant import READING_ASSISTANT_PROMPT, READING_ASSISTANT_WELCOME
 from app.prompts.listening_assistant import LISTENING_ASSISTANT_PROMPT, LISTENING_ASSISTANT_WELCOME
 from app.prompts.copilot_router import COPILOT_ROUTER_PROMPT, COPILOT_WELCOME
-from app.routers import agents, conversations, messages, files, notes, settings, homeworks, vocabulary, reports, listening_practice, speech
+from app.routers import agents, conversations, messages, files, notes, settings, homeworks, vocabulary, reports, listening_practice, speech, dictation
 
 
 async def seed_data():
@@ -188,6 +188,13 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         import logging
         logging.getLogger(__name__).warning("Demo session init skipped: %s", e)
+    # 确保听写模块 12 个月份词条存在
+    try:
+        from app.services.dictation_service import ensure_dictation_months_seeded
+        await ensure_dictation_months_seeded()
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("Dictation months seed skipped: %s", e)
     yield
 
 
@@ -220,6 +227,7 @@ app.include_router(vocabulary.router)
 app.include_router(reports.router)
 app.include_router(listening_practice.router)
 app.include_router(speech.router)
+app.include_router(dictation.router)
 
 
 @app.get("/api/health")
