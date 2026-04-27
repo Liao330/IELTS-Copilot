@@ -29,11 +29,14 @@ import {
   MessageSquare,
   Pencil,
   Check,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { SentenceEditor } from "@/components/listening/SentenceEditor";
 import { GenerateResultCard } from "@/components/listening/GenerateResultCard";
 import { PlayButton } from "@/components/listening/PlayButton";
+import { useBlindModeStore } from "@/lib/blind-mode-store";
 
 export default function ListeningPracticeDetailPage() {
   const params = useParams<{ sessionId: string }>();
@@ -472,7 +475,9 @@ export default function ListeningPracticeDetailPage() {
               </span>
             </div>
             {/* 语速 + 音色控制（全局偏好） */}
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <BlindDefaultToggle />
+              <span className="text-muted-foreground/40">·</span>
               <span>🎧 朗读设置</span>
               <PlayButton text="" gearOnly size="sm" />
             </div>
@@ -646,6 +651,13 @@ function SentenceBlock({
   isDemo = false,
 }: SentenceBlockProps) {
   const [showGenerated, setShowGenerated] = useState(true);
+  // 盲听信号（按钮点击时变动，触发所有 ExampleRow 统一 blind/reveal）
+  const [blindSignal, setBlindSignal] = useState<"blind" | "reveal" | undefined>(undefined);
+  const [blindPulse, setBlindPulse] = useState(0);
+  const emitBlind = (kind: "blind" | "reveal") => {
+    setBlindSignal(kind);
+    setBlindPulse((n) => n + 1);
+  };
   // 编辑原文弹窗
   const [editingText, setEditingText] = useState(false);
   const [draftText, setDraftText] = useState(sentence.original_text);
@@ -789,8 +801,37 @@ function SentenceBlock({
       {/* 生成结果区 */}
       {hasGenerated && showGenerated && (
         <div className="border-t bg-muted/20 p-4 space-y-3">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">
+              🎧 <span className="font-medium">盲听训练</span>：默认隐藏英文和翻译，先用耳朵听
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => emitBlind("blind")}
+                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 cursor-pointer"
+                title="把所有例句重新遮起来"
+              >
+                <EyeOff className="h-3 w-3" />
+                全部遮盖
+              </button>
+              <button
+                type="button"
+                onClick={() => emitBlind("reveal")}
+                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-sky-700 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/40 cursor-pointer"
+                title="揭晓所有例句"
+              >
+                <Eye className="h-3 w-3" />
+                全部揭晓
+              </button>
+            </div>
+          </div>
           {sentence.generated_blocks.map((block) => (
-            <GenerateResultCard key={block.id} block={block} />
+            <GenerateResultCard
+              key={`${block.id}-${blindPulse}`}
+              block={block}
+              blindSignal={blindSignal}
+            />
           ))}
         </div>
       )}
@@ -951,6 +992,29 @@ function SentenceNoteEditor({ value, onCommit, readOnly = false }: SentenceNoteE
         {hasNote ? value : "添加上下文备注（AI 生成例句时会参考）"}
       </span>
       <Pencil className="h-3 w-3 mt-0.5 opacity-0 group-hover:opacity-60 shrink-0" />
+    </button>
+  );
+}
+
+
+// ==================== 盲听默认偏好开关 ====================
+
+function BlindDefaultToggle() {
+  const blindByDefault = useBlindModeStore((s) => s.blindByDefault);
+  const setBlindByDefault = useBlindModeStore((s) => s.setBlindByDefault);
+  return (
+    <button
+      type="button"
+      onClick={() => setBlindByDefault(!blindByDefault)}
+      className={`inline-flex items-center gap-1 rounded-md px-2 py-1 transition-colors cursor-pointer ${
+        blindByDefault
+          ? "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"
+          : "hover:bg-accent text-muted-foreground"
+      }`}
+      title={blindByDefault ? "默认盲听已开启（推荐）" : "默认盲听已关闭"}
+    >
+      {blindByDefault ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+      <span>默认{blindByDefault ? "盲听" : "显示"}</span>
     </button>
   );
 }

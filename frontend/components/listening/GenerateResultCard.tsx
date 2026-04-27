@@ -1,18 +1,32 @@
 "use client";
 
-import { useState } from "react";
-import { Sparkles, BookmarkPlus, ChevronDown, ChevronUp, Check } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import {
+  Sparkles,
+  BookmarkPlus,
+  ChevronDown,
+  ChevronUp,
+  Check,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import type { ListeningGeneratedBlock, ListeningGeneratedExample } from "@/types";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { PlayButton } from "./PlayButton";
+import { useBlindModeStore } from "@/lib/blind-mode-store";
 
 interface Props {
   block: ListeningGeneratedBlock;
   defaultOpen?: boolean;
   /** 只读模式：隐藏"加入佳句"等交互按钮，用于 Demo 预览 */
   readOnly?: boolean;
+  /** 父级"本句盲听"信号：变动时同步到所有 ExampleRow。undefined 表示不控制 */
+  blindSignal?: "blind" | "reveal" | undefined;
+  /** 本 block 是否展开，由父组件控制；不传则内部自控 */
+  externalOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const DIFFICULTY_COLORS: Record<string, string> = {
@@ -39,8 +53,21 @@ const LEVEL_STYLES: Record<number, { label: string; bg: string }> = {
   },
 };
 
-export function GenerateResultCard({ block, defaultOpen = true, readOnly = false }: Props) {
-  const [open, setOpen] = useState(defaultOpen);
+export function GenerateResultCard({
+  block,
+  defaultOpen = true,
+  readOnly = false,
+  blindSignal,
+  externalOpen,
+  onOpenChange,
+}: Props) {
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const open = externalOpen ?? internalOpen;
+  const setOpen = (v: boolean) => {
+    if (onOpenChange) onOpenChange(v);
+    else setInternalOpen(v);
+  };
+
   const color = DIFFICULTY_COLORS[block.difficulty_type] ?? DIFFICULTY_COLORS["其他"];
 
   return (
@@ -88,6 +115,7 @@ export function GenerateResultCard({ block, defaultOpen = true, readOnly = false
                   example={ex}
                   word={block.blocker_word}
                   readOnly={readOnly}
+                  blindSignal={blindSignal}
                 />
               ))}
           </div>
@@ -101,20 +129,39 @@ function ExampleRow({
   example,
   word,
   readOnly = false,
+  blindSignal,
 }: {
   example: ListeningGeneratedExample;
   word: string;
   readOnly?: boolean;
+  blindSignal?: "blind" | "reveal";
 }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const blindByDefault = useBlindModeStore((s) => s.blindByDefault);
+
+  // readOnly (demo 预览) 强制揭晓，便于展示效果
+  // 非 readOnly 时根据全局偏好决定初值
+  const initialRevealed = readOnly ? true : !blindByDefault;
+  const [revealed, setRevealed] = useState(initialRevealed);
+  const [hintRevealed, setHintRevealed] = useState(initialRevealed);
+
+  // 响应父级"全部揭晓/全部遮盖"信号（demo 下忽略）
+  useEffect(() => {
+    if (readOnly) return;
+    if (blindSignal === "blind") {
+      setRevealed(false);
+      setHintRevealed(false);
+    } else if (blindSignal === "reveal") {
+      setRevealed(true);
+      setHintRevealed(true);
+    }
+  }, [blindSignal, readOnly]);
+
   const { toast } = useToast();
   const style = LEVEL_STYLES[example.difficulty_level] ?? LEVEL_STYLES[1];
 
-  // 用浅色高亮包裹句中的目标词
-  const highlighted = renderHighlighted(example.text, word);
-
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (saving || saved) return;
     setSaving(true);
     try {
@@ -132,7 +179,10 @@ function ExampleRow({
     } finally {
       setSaving(false);
     }
-  };
+  }, [saving, saved, example, toast]);
+
+  // 高亮的句子（只在 revealed 时渲染）
+  const highlighted = revealed ? renderHighlighted(example.text, word) : null;
 
   return (
     <div className={cn("rounded-lg border px-3 py-2.5", style.bg)}>
@@ -142,6 +192,27 @@ function ExampleRow({
         </span>
         <div className="flex items-center gap-1">
           {!readOnly && <PlayButton text={example.text} size="sm" />}
+          {/* 显示 / 隐藏切换（demo 预览不显示） */}
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={() => {
+                const next = !revealed;
+                setRevealed(next);
+                if (next) setHintRevealed(true);
+              }}
+              className={cn(
+                "inline-flex items-center gap-1 text-xs rounded-md px-2 py-0.5 transition-colors cursor-pointer",
+                revealed
+                  ? "text-muted-foreground hover:text-foreground hover:bg-accent"
+                  : "text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40",
+              )}
+              title={revealed ? "隐藏句子（盲听）" : "揭晓句子"}
+            >
+              {revealed ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+              {revealed ? "隐藏" : "揭晓"}
+            </button>
+          )}
           {!readOnly && (
             <button
               type="button"
@@ -160,15 +231,53 @@ function ExampleRow({
           )}
         </div>
       </div>
-      <p className="text-sm font-medium leading-relaxed">{highlighted}</p>
-      <p className="text-xs text-muted-foreground mt-1">{example.translation}</p>
-      {example.hint && (
-        <p className="text-xs mt-2 pl-2 border-l-2 border-sky-400/50 text-sky-700 dark:text-sky-400 leading-relaxed">
-          🎧 {example.hint}
+
+      {/* 句子：盲听时用 ██ 占位，保留节奏感 */}
+      {revealed ? (
+        <p className="text-sm font-medium leading-relaxed">{highlighted}</p>
+      ) : (
+        <p
+          className="text-sm font-medium leading-relaxed text-muted-foreground/60 select-none"
+          aria-label="盲听中，点击右上'揭晓'显示原文"
+        >
+          {renderMasked(example.text)}
         </p>
+      )}
+
+      {/* 翻译：盲听时隐藏 */}
+      {revealed ? (
+        <p className="text-xs text-muted-foreground mt-1">{example.translation}</p>
+      ) : (
+        <p className="text-xs text-muted-foreground/50 mt-1 italic">
+          （翻译已隐藏 · 先用耳朵听）
+        </p>
+      )}
+
+      {/* hint：盲听时给一个"需要提示"按钮 */}
+      {example.hint && (
+        hintRevealed ? (
+          <p className="text-xs mt-2 pl-2 border-l-2 border-sky-400/50 text-sky-700 dark:text-sky-400 leading-relaxed">
+            🎧 {example.hint}
+          </p>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setHintRevealed(true)}
+            className="text-xs mt-2 text-sky-600 dark:text-sky-400 hover:underline cursor-pointer"
+          >
+            💭 需要发音提示？
+          </button>
+        )
       )}
     </div>
   );
+}
+
+// ============ 渲染工具 ============
+
+// 把每个词替换为同长度的 ██，保留标点与空格，给用户一些节奏线索
+function renderMasked(text: string): string {
+  return text.replace(/[A-Za-z']+/g, (w) => "█".repeat(Math.min(w.length, 12)));
 }
 
 // 简易高亮（大小写不敏感）
