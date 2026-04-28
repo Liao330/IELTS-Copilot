@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Sparkles,
   BookmarkPlus,
@@ -11,6 +11,8 @@ import {
   EyeOff,
   PenLine,
   Lightbulb,
+  RotateCcw,
+  Plus,
 } from "lucide-react";
 import type { ListeningGeneratedBlock, ListeningGeneratedExample } from "@/types";
 import { api } from "@/lib/api";
@@ -26,6 +28,10 @@ interface Props {
   blindSignal?: "blind" | "reveal" | undefined;
   externalOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** 当用户在练习句中点击非障碍词时触发（新增障碍词） */
+  onNewBlockerWord?: (word: string) => void;
+  /** 当听写产出潜在障碍词且用户点"加入列表"时触发 */
+  onAddMissedWord?: (word: string) => void;
 }
 
 const DIFFICULTY_COLORS: Record<string, string> = {
@@ -50,6 +56,8 @@ export function GenerateResultCard({
   blindSignal,
   externalOpen,
   onOpenChange,
+  onNewBlockerWord,
+  onAddMissedWord,
 }: Props) {
   const [internalOpen, setInternalOpen] = useState(defaultOpen);
   const open = externalOpen ?? internalOpen;
@@ -57,7 +65,6 @@ export function GenerateResultCard({
     if (onOpenChange) onOpenChange(v);
     else setInternalOpen(v);
   };
-
   const color = DIFFICULTY_COLORS[block.difficulty_type] ?? DIFFICULTY_COLORS["其他"];
 
   return (
@@ -85,12 +92,26 @@ export function GenerateResultCard({
           <div className="rounded-lg bg-muted/50 px-3 py-2 text-sm leading-relaxed">
             💡 {block.explanation}
           </div>
+          {/* 点击单词新增障碍词提醒 */}
+          {!readOnly && onNewBlockerWord && (
+            <p className="text-[11px] text-muted-foreground/70 italic">
+              💡 揭晓后点击句中单词可新增障碍词（已有障碍词不可重复点击）
+            </p>
+          )}
           <div className="space-y-2">
             {block.examples
               .slice()
               .sort((a, b) => a.difficulty_level - b.difficulty_level)
               .map((ex, i) => (
-                <ExampleRow key={i} example={ex} word={block.blocker_word} readOnly={readOnly} blindSignal={blindSignal} />
+                <ExampleRow
+                  key={i}
+                  example={ex}
+                  word={block.blocker_word}
+                  readOnly={readOnly}
+                  blindSignal={blindSignal}
+                  onNewBlockerWord={onNewBlockerWord}
+                  onAddMissedWord={onAddMissedWord}
+                />
               ))}
           </div>
         </div>
@@ -100,56 +121,29 @@ export function GenerateResultCard({
 }
 
 
-// ==================== 逐词 diff ====================
+// ==================== Tokenizer ====================
 
-interface DiffToken {
-  type: "correct" | "wrong" | "missing" | "extra";
-  expected?: string; // 原文里的词
-  actual?: string;   // 用户打的词
+interface TextToken {
+  type: "word" | "sep";
+  text: string;
+  /** word token 的序号（0-based），sep 为 -1 */
+  wordIndex: number;
 }
 
-function diffWords(expected: string, actual: string): DiffToken[] {
-  const expWords = expected.replace(/[^\w'\-]/g, " ").split(/\s+/).filter(Boolean);
-  const actWords = actual.replace(/[^\w'\-]/g, " ").split(/\s+/).filter(Boolean);
-
-  // 简单的贪心对齐（不做 LCS，够用）
-  const result: DiffToken[] = [];
-  let ei = 0;
-  let ai = 0;
-
-  while (ei < expWords.length && ai < actWords.length) {
-    if (expWords[ei].toLowerCase() === actWords[ai].toLowerCase()) {
-      result.push({ type: "correct", expected: expWords[ei], actual: actWords[ai] });
-      ei++;
-      ai++;
+function tokenize(text: string): TextToken[] {
+  const tokens: TextToken[] = [];
+  // 按"单词字符"和"非单词字符"交替分割
+  const re = /([A-Za-z']+)|([^A-Za-z']+)/g;
+  let m: RegExpExecArray | null;
+  let wordIdx = 0;
+  while ((m = re.exec(text)) !== null) {
+    if (m[1]) {
+      tokens.push({ type: "word", text: m[1], wordIndex: wordIdx++ });
     } else {
-      // 看用户的下一个词是否匹配当前 expected（用户多打了）
-      if (ai + 1 < actWords.length && actWords[ai + 1].toLowerCase() === expWords[ei].toLowerCase()) {
-        result.push({ type: "extra", actual: actWords[ai] });
-        ai++;
-      }
-      // 看 expected 的下一个词是否匹配当前 actual（用户漏了）
-      else if (ei + 1 < expWords.length && expWords[ei + 1].toLowerCase() === actWords[ai].toLowerCase()) {
-        result.push({ type: "missing", expected: expWords[ei] });
-        ei++;
-      } else {
-        result.push({ type: "wrong", expected: expWords[ei], actual: actWords[ai] });
-        ei++;
-        ai++;
-      }
+      tokens.push({ type: "sep", text: m[2], wordIndex: -1 });
     }
   }
-  // 剩余的 expected
-  while (ei < expWords.length) {
-    result.push({ type: "missing", expected: expWords[ei] });
-    ei++;
-  }
-  // 剩余的 actual
-  while (ai < actWords.length) {
-    result.push({ type: "extra", actual: actWords[ai] });
-    ai++;
-  }
-  return result;
+  return tokens;
 }
 
 
@@ -160,11 +154,15 @@ function ExampleRow({
   word,
   readOnly = false,
   blindSignal,
+  onNewBlockerWord,
+  onAddMissedWord,
 }: {
   example: ListeningGeneratedExample;
   word: string;
   readOnly?: boolean;
   blindSignal?: "blind" | "reveal";
+  onNewBlockerWord?: (word: string) => void;
+  onAddMissedWord?: (word: string) => void;
 }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -174,10 +172,19 @@ function ExampleRow({
   const [revealed, setRevealed] = useState(initialRevealed);
   const [hintRevealed, setHintRevealed] = useState(initialRevealed);
 
-  // 听写输入
-  const [showDictation, setShowDictation] = useState(false);
-  const [dictInput, setDictInput] = useState("");
-  const [dictResult, setDictResult] = useState<DiffToken[] | null>(null);
+  // 听写模式
+  const [dictMode, setDictMode] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  // 播放次数追踪
+  const [playCount, setPlayCount] = useState(0);
+
+  const tokens = useMemo(() => tokenize(example.text), [example.text]);
+  const wordCount = useMemo(() => tokens.filter(t => t.type === "word").length, [tokens]);
+
+  // 每个 word token 的用户输入
+  const [answers, setAnswers] = useState<string[]>(() => Array(wordCount).fill(""));
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // 响应父级信号
   useEffect(() => {
@@ -185,14 +192,15 @@ function ExampleRow({
     if (blindSignal === "blind") {
       setRevealed(false);
       setHintRevealed(false);
-      // 遮盖时也清掉听写结果，回到"干净"状态
-      setDictResult(null);
-      setDictInput("");
+      setDictMode(false);
+      setSubmitted(false);
+      setAnswers(Array(wordCount).fill(""));
+      setPlayCount(0);
     } else if (blindSignal === "reveal") {
       setRevealed(true);
       setHintRevealed(true);
     }
-  }, [blindSignal, readOnly]);
+  }, [blindSignal, readOnly, wordCount]);
 
   const { toast } = useToast();
   const style = LEVEL_STYLES[example.difficulty_level] ?? LEVEL_STYLES[1];
@@ -201,61 +209,237 @@ function ExampleRow({
     if (saving || saved) return;
     setSaving(true);
     try {
-      await api.createSentence({
-        content: example.text,
-        translation: example.translation,
-        note: example.hint,
-        category: "listening",
-      });
+      await api.createSentence({ content: example.text, translation: example.translation, note: example.hint, category: "listening" });
       setSaved(true);
       toast({ description: "已加入好词佳句 📌" });
     } catch (err) {
       console.error(err);
-      toast({ variant: "destructive", description: "保存失败，请重试" });
+      toast({ variant: "destructive", description: "保存失败" });
     } finally {
       setSaving(false);
     }
   }, [saving, saved, example, toast]);
 
-  const highlighted = revealed ? renderHighlighted(example.text, word) : null;
-
-  const handleDictationSubmit = () => {
-    if (!dictInput.trim()) return;
-    const result = diffWords(example.text, dictInput);
-    setDictResult(result);
-  };
-
-  // 听写 diff 中漏掉 / 错了的词（推荐为潜在障碍词）
-  const missedWords = useMemo(() => {
-    if (!dictResult) return [];
-    const missed = new Set<string>();
-    for (const t of dictResult) {
-      if ((t.type === "wrong" || t.type === "missing") && t.expected) {
-        const w = t.expected.toLowerCase().replace(/[^a-z'-]/g, "");
-        // 过滤掉太短的虚词
-        if (w.length >= 3) missed.add(w);
-      }
-    }
-    return Array.from(missed);
-  }, [dictResult]);
-
   const handleToggleRevealed = () => {
     const next = !revealed;
     setRevealed(next);
-    // 隐藏时同步关闭 hint
     if (!next) {
       setHintRevealed(false);
     }
   };
 
+  const handleStartDictation = () => {
+    setDictMode(true);
+    setSubmitted(false);
+    setAnswers(Array(wordCount).fill(""));
+    setPlayCount(0);
+    // 聚焦第一个输入框
+    setTimeout(() => inputRefs.current[0]?.focus(), 50);
+  };
+
+  const handleSubmitDictation = () => {
+    setSubmitted(true);
+  };
+
+  const handleRetry = () => {
+    setSubmitted(false);
+    setAnswers(Array(wordCount).fill(""));
+    setPlayCount(0);
+    setTimeout(() => inputRefs.current[0]?.focus(), 50);
+  };
+
+  const handleInputChange = (wordIdx: number, value: string) => {
+    // 如果用户输了空格，视为"跳到下一个"
+    if (value.endsWith(" ")) {
+      const trimmed = value.trimEnd();
+      setAnswers(prev => { const next = [...prev]; next[wordIdx] = trimmed; return next; });
+      // 聚焦下一个
+      const nextRef = inputRefs.current[wordIdx + 1];
+      if (nextRef) nextRef.focus();
+      return;
+    }
+    setAnswers(prev => { const next = [...prev]; next[wordIdx] = value; return next; });
+  };
+
+  const handleKeyDown = (wordIdx: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const nextRef = inputRefs.current[wordIdx + (e.shiftKey ? -1 : 1)];
+      if (nextRef) nextRef.focus();
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSubmitDictation();
+    }
+    // Backspace 在空输入时跳到前一个
+    if (e.key === "Backspace" && !answers[wordIdx] && wordIdx > 0) {
+      e.preventDefault();
+      inputRefs.current[wordIdx - 1]?.focus();
+    }
+  };
+
+  // 统计
+  const stats = useMemo(() => {
+    if (!submitted) return null;
+    let correct = 0;
+    const missed: string[] = [];
+    const wordTokens = tokens.filter(t => t.type === "word");
+    wordTokens.forEach((t, i) => {
+      const expected = t.text.toLowerCase();
+      const actual = (answers[i] || "").trim().toLowerCase();
+      if (expected === actual) {
+        correct++;
+      } else if (expected.length >= 3) {
+        missed.push(t.text);
+      }
+    });
+    return { correct, total: wordTokens.length, pct: Math.round((correct / wordTokens.length) * 100), missed };
+  }, [submitted, tokens, answers]);
+
+  // blocker word 是否匹配某个 token（用于 revealed 态可点击判断）
+  const isBlockerToken = useCallback((tokenText: string) => {
+    const lower = tokenText.toLowerCase();
+    // word prop 可能是多词短语如 "a lot of"，这里只做单词级别匹配
+    const blockerWords = word.toLowerCase().split(/\s+/);
+    return blockerWords.includes(lower);
+  }, [word]);
+
+  // ==================== render ====================
+
+  const renderSentenceArea = () => {
+    // 已揭晓：可点击单词新增障碍词
+    if (revealed) {
+      if (!readOnly && onNewBlockerWord) {
+        return (
+          <p className="text-sm font-medium leading-relaxed">
+            {tokens.map((t, i) => {
+              if (t.type === "sep") return <span key={i}>{t.text}</span>;
+              const isBW = isBlockerToken(t.text);
+              if (isBW) {
+                // 原始障碍词：高亮但不可点击
+                return (
+                  <mark key={i} className="bg-sky-200/80 dark:bg-sky-700/50 rounded px-0.5 text-foreground cursor-default">
+                    {t.text}
+                  </mark>
+                );
+              }
+              // 非障碍词：可点击新增
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => onNewBlockerWord(t.text)}
+                  className="inline rounded px-0.5 transition-colors hover:bg-rose-100 dark:hover:bg-rose-900/40 hover:text-rose-700 dark:hover:text-rose-300 cursor-pointer"
+                  title={`点击将「${t.text}」加入延伸障碍词`}
+                >
+                  {t.text}
+                </button>
+              );
+            })}
+          </p>
+        );
+      }
+      // readOnly 或无回调：静态高亮
+      return <p className="text-sm font-medium leading-relaxed">{renderHighlighted(example.text, word)}</p>;
+    }
+
+    // 盲听遮罩（始终显示）
+    const maskedLine = (
+      <p className="text-sm font-medium leading-relaxed text-muted-foreground/60 select-none">
+        {renderMasked(example.text)}
+      </p>
+    );
+
+    // 盲听 + 听写模式：遮罩在上，输入/结果在下
+    if (dictMode) {
+      let refIdx = 0;
+      const inputLine = (
+        <div className="flex flex-wrap items-baseline gap-y-1 text-sm font-mono leading-relaxed">
+          {tokens.map((t, i) => {
+            if (t.type === "sep") {
+              return <span key={i} className="whitespace-pre-wrap">{t.text}</span>;
+            }
+            const wi = t.wordIndex;
+            const myRefIdx = refIdx++;
+            const userAnswer = answers[wi] || "";
+            const expected = t.text;
+            const slotLen = Math.min(expected.length, 12);
+
+            if (submitted) {
+              const isCorrect = userAnswer.trim().toLowerCase() === expected.toLowerCase();
+              return (
+                <span
+                  key={i}
+                  className={cn(
+                    "inline-block",
+                    isCorrect
+                      ? "text-emerald-700 dark:text-emerald-400"
+                      : "text-rose-700 dark:text-rose-400",
+                  )}
+                  title={isCorrect ? "正确" : `你写的：${userAnswer || "（空）"} → 正确：${expected}`}
+                >
+                  {isCorrect ? expected : (
+                    <>
+                      {userAnswer && <span className="line-through opacity-60 mr-0.5">{userAnswer}</span>}
+                      <span className="font-bold underline decoration-dashed">{expected}</span>
+                    </>
+                  )}
+                </span>
+              );
+            }
+
+            // 未提交：等长下划线输入坑位（宽度与遮罩块一致）
+            return (
+              <input
+                key={i}
+                ref={(el) => { inputRefs.current[myRefIdx] = el; }}
+                type="text"
+                value={userAnswer}
+                onChange={(e) => handleInputChange(wi, e.target.value)}
+                onKeyDown={(e) => handleKeyDown(wi, e)}
+                style={{ width: `${Math.max(slotLen, 2)}ch` }}
+                className={cn(
+                  "inline-block bg-transparent text-center text-sm",
+                  "border-b-2 border-muted-foreground/30 focus:border-amber-500 dark:focus:border-amber-400",
+                  "outline-none transition-colors py-0 mx-px",
+                )}
+                placeholder={"_".repeat(slotLen)}
+                autoComplete="off"
+                autoCapitalize="off"
+                spellCheck={false}
+              />
+            );
+          })}
+        </div>
+      );
+
+      return (
+        <>
+          {maskedLine}
+          {inputLine}
+        </>
+      );
+    }
+
+    // 盲听 + 非听写：只有遮罩
+    return maskedLine;
+  };
+
   return (
     <div className={cn("rounded-lg border px-3 py-2.5", style.bg)}>
+      {/* header */}
       <div className="flex items-center justify-between gap-2 mb-1.5">
         <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
           Level {example.difficulty_level} · {style.label}
         </span>
         <div className="flex items-center gap-1">
-          {!readOnly && <PlayButton text={example.text} size="sm" />}
+          {!readOnly && (
+            <PlayButton
+              text={example.text}
+              size="sm"
+              onPlay={() => setPlayCount((n) => n + 1)}
+            />
+          )}
           {!readOnly && (
             <button
               type="button"
@@ -291,25 +475,81 @@ function ExampleRow({
         </div>
       </div>
 
-      {/* 句子 */}
-      {revealed ? (
-        <p className="text-sm font-medium leading-relaxed">{highlighted}</p>
-      ) : (
-        <p className="text-sm font-medium leading-relaxed text-muted-foreground/60 select-none">
-          {renderMasked(example.text)}
-        </p>
+      {/* 句子区 */}
+      {renderSentenceArea()}
+
+      {/* 听写操作栏（盲听 + 非只读） */}
+      {!readOnly && !revealed && (
+        <div className="mt-1.5 flex items-center gap-2">
+          {!dictMode ? (
+            <button
+              type="button"
+              onClick={handleStartDictation}
+              className="text-xs text-amber-700 dark:text-amber-400 hover:underline cursor-pointer inline-flex items-center gap-1"
+            >
+              <PenLine className="h-3 w-3" />
+              听写填空
+            </button>
+          ) : submitted ? (
+            <div className="flex items-center gap-2 flex-wrap">
+              {stats && (
+                <span className="text-[11px] text-muted-foreground">
+                  {playCount > 0 && (
+                    <span className="mr-1">🎧 已听 {playCount} 次 ·</span>
+                  )}
+                  正确 {stats.correct}/{stats.total} 词 ({stats.pct}%)
+                  {stats.missed.length > 0 && (
+                    <span className="ml-1">
+                      · 潜在障碍词：
+                      {stats.missed.map((w) => (
+                        <span key={w} className="inline-flex items-center">
+                          <span className="font-mono text-rose-600 dark:text-rose-400 ml-1">{w}</span>
+                          {onAddMissedWord && (
+                            <button
+                              type="button"
+                              onClick={() => onAddMissedWord(w)}
+                              className="ml-0.5 text-sky-500 hover:text-sky-700 dark:hover:text-sky-300 cursor-pointer"
+                              title={`将「${w}」加入延伸障碍词列表`}
+                            >
+                              <Plus className="h-3 w-3" />
+                            </button>
+                          )}
+                        </span>
+                      ))}
+                    </span>
+                  )}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={handleRetry}
+                className="text-xs text-sky-600 dark:text-sky-400 hover:underline cursor-pointer inline-flex items-center gap-1"
+              >
+                <RotateCcw className="h-3 w-3" />
+                再试
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handleSubmitDictation}
+              className="text-xs px-2.5 py-1 rounded bg-amber-500 text-white hover:bg-amber-600 cursor-pointer inline-flex items-center gap-1"
+            >
+              <Check className="h-3 w-3" />
+              对比
+            </button>
+          )}
+        </div>
       )}
 
       {/* 翻译 */}
       {revealed ? (
         <p className="text-xs text-muted-foreground mt-1">{example.translation}</p>
       ) : (
-        <p className="text-xs text-muted-foreground/50 mt-1 italic">
-          （翻译已隐藏 · 先用耳朵听）
-        </p>
+        <p className="text-xs text-muted-foreground/50 mt-1 italic">（翻译已隐藏 · 先用耳朵听）</p>
       )}
 
-      {/* hint：独立切换 */}
+      {/* hint 独立控制 */}
       {example.hint && (
         hintRevealed ? (
           <div className="flex items-start gap-1 mt-2">
@@ -335,101 +575,6 @@ function ExampleRow({
             需要发音提示？
           </button>
         )
-      )}
-
-      {/* 听写区域（盲听 + 非只读时可用） */}
-      {!readOnly && !revealed && (
-        <div className="mt-2">
-          {!showDictation ? (
-            <button
-              type="button"
-              onClick={() => setShowDictation(true)}
-              className="text-xs text-amber-700 dark:text-amber-400 hover:underline cursor-pointer inline-flex items-center gap-1"
-            >
-              <PenLine className="h-3 w-3" />
-              听写复述
-            </button>
-          ) : (
-            <div className="space-y-2 rounded-md bg-background/80 border p-2">
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="text"
-                  value={dictInput}
-                  onChange={(e) => { setDictInput(e.target.value); setDictResult(null); }}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleDictationSubmit(); }}
-                  placeholder="打出你听到的内容…（回车提交）"
-                  className="flex-1 text-xs bg-transparent border-b border-muted-foreground/20 focus:border-sky-400 outline-none py-1 px-1"
-                  disabled={!!dictResult}
-                  autoFocus
-                />
-                {!dictResult ? (
-                  <button
-                    type="button"
-                    onClick={handleDictationSubmit}
-                    disabled={!dictInput.trim()}
-                    className="text-xs px-2 py-1 rounded bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50 cursor-pointer"
-                  >
-                    对比
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => { setDictInput(""); setDictResult(null); }}
-                    className="text-xs px-2 py-1 rounded bg-sky-500 text-white hover:bg-sky-600 cursor-pointer"
-                  >
-                    再试
-                  </button>
-                )}
-              </div>
-
-              {/* diff 结果 */}
-              {dictResult && (
-                <div className="space-y-1.5">
-                  <div className="flex flex-wrap gap-1 text-xs leading-relaxed">
-                    {dictResult.map((t, i) => {
-                      if (t.type === "correct") {
-                        return <span key={i} className="text-emerald-700 dark:text-emerald-400">{t.expected}</span>;
-                      }
-                      if (t.type === "wrong") {
-                        return (
-                          <span key={i}>
-                            <span className="line-through text-rose-500/70">{t.actual}</span>
-                            <span className="text-rose-700 dark:text-rose-400 font-bold ml-0.5">{t.expected}</span>
-                          </span>
-                        );
-                      }
-                      if (t.type === "missing") {
-                        return <span key={i} className="text-rose-700 dark:text-rose-400 font-bold underline decoration-dashed">{t.expected}</span>;
-                      }
-                      // extra
-                      return <span key={i} className="line-through text-muted-foreground/50">{t.actual}</span>;
-                    })}
-                  </div>
-
-                  {/* 统计 */}
-                  {(() => {
-                    const total = dictResult.filter(t => t.type !== "extra").length;
-                    const correct = dictResult.filter(t => t.type === "correct").length;
-                    const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
-                    return (
-                      <div className="text-[11px] text-muted-foreground">
-                        正确 {correct}/{total} 词 ({pct}%)
-                        {missedWords.length > 0 && (
-                          <span className="ml-2">
-                            · 潜在障碍词：
-                            {missedWords.map((w) => (
-                              <span key={w} className="font-mono text-rose-600 dark:text-rose-400 ml-1">{w}</span>
-                            ))}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
       )}
     </div>
   );

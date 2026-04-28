@@ -25,6 +25,8 @@ interface Props {
   showGear?: boolean;
   /** 只显示齿轮菜单（用于顶部全局语速/音色设置） */
   gearOnly?: boolean;
+  /** 每次成功开始播放时的回调（用于追踪播放次数） */
+  onPlay?: () => void;
 }
 
 /**
@@ -38,7 +40,7 @@ interface Props {
 // 全局当前在播的 audio 元素 — 确保全局只有一段音频在播
 let currentlyPlaying: HTMLAudioElement | null = null;
 
-export function PlayButton({ text, size = "sm", className, showGear = false, gearOnly = false }: Props) {
+export function PlayButton({ text, size = "sm", className, showGear = false, gearOnly = false, onPlay }: Props) {
   const { toast } = useToast();
   const { voice, rate } = useVoiceStore();
 
@@ -95,6 +97,7 @@ export function PlayButton({ text, size = "sm", className, showGear = false, gea
       currentlyPlaying = audioRef.current;
       await audioRef.current.play();
       setPlaying(true);
+      onPlay?.();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "播放失败";
       setError(msg);
@@ -102,7 +105,7 @@ export function PlayButton({ text, size = "sm", className, showGear = false, gea
     } finally {
       setLoading(false);
     }
-  }, [text, voice, rate, playing, toast]);
+  }, [text, voice, rate, playing, toast, onPlay]);
 
   const iconSize = size === "md" ? "h-4 w-4" : "h-3.5 w-3.5";
   const btnSize =

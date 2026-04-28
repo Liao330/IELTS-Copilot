@@ -31,6 +31,10 @@ import {
   Check,
   Eye,
   EyeOff,
+  Zap,
+  X,
+  ArrowRight,
+  List,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { SentenceEditor } from "@/components/listening/SentenceEditor";
@@ -52,6 +56,15 @@ export default function ListeningPracticeDetailPage() {
   const [generatingMap, setGeneratingMap] = useState<Record<string, boolean>>({});
   const [savingMap, setSavingMap] = useState<Record<string, boolean>>({});
 
+  // 一键生成全部
+  const [batchGenerating, setBatchGenerating] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({ done: 0, total: 0 });
+
+  // 延伸障碍词列表
+  const [discoveredWords, setDiscoveredWords] = useState<string[]>([]);
+  const [showDiscoveredPanel, setShowDiscoveredPanel] = useState(false);
+  const [creatingExtSession, setCreatingExtSession] = useState(false);
+
   // 追加答案句
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [addSentences, setAddSentences] = useState("");
@@ -65,6 +78,23 @@ export default function ListeningPracticeDetailPage() {
 
   // 删除句子
   const [deletingSentence, setDeletingSentence] = useState<ListeningSentence | null>(null);
+
+  const addDiscoveredWord = useCallback((word: string) => {
+    const lower = word.toLowerCase();
+    setDiscoveredWords((prev) => {
+      if (prev.some((w) => w.toLowerCase() === lower)) {
+        toast({ description: `「${word}」已在延伸障碍词列表中` });
+        return prev;
+      }
+      toast({ description: `「${word}」已加入延伸障碍词列表` });
+      return [...prev, word];
+    });
+    setShowDiscoveredPanel(true);
+  }, [toast]);
+
+  const removeDiscoveredWord = useCallback((word: string) => {
+    setDiscoveredWords((prev) => prev.filter((w) => w !== word));
+  }, []);
 
   const fetchSession = useCallback(async () => {
     try {
@@ -237,6 +267,66 @@ export default function ListeningPracticeDetailPage() {
     }
   };
 
+  // 一键生成全部
+  const handleBatchGenerate = async () => {
+    if (!session) return;
+    const needGen = session.sentences.filter(
+      (s) =>
+        s.blocker_words.length > 0 &&
+        (s.generated_blocks.length === 0 ||
+          s.blocker_words.some(
+            (b) => !s.generated_blocks.some((g) => g.blocker_word === b.word.toLowerCase()),
+          )),
+    );
+    if (needGen.length === 0) {
+      toast({ description: "所有句子都已生成练习 ✓" });
+      return;
+    }
+    setBatchGenerating(true);
+    setBatchProgress({ done: 0, total: needGen.length });
+    for (let i = 0; i < needGen.length; i++) {
+      const s = needGen[i];
+      try {
+        const res = await api.generateListeningPractice(s.id, { force_refresh: false });
+        setSession((prev) =>
+          prev
+            ? {
+                ...prev,
+                sentences: prev.sentences.map((ps) =>
+                  ps.id === s.id ? { ...ps, generated_blocks: res.blocks } : ps,
+                ),
+              }
+            : prev,
+        );
+      } catch (err) {
+        console.error(err);
+      }
+      setBatchProgress({ done: i + 1, total: needGen.length });
+    }
+    setBatchGenerating(false);
+    toast({ description: `一键生成完成 🎉 共 ${needGen.length} 句` });
+  };
+
+  // 创建延伸障碍词 session
+  const handleCreateExtendSession = async () => {
+    if (!session || discoveredWords.length === 0) return;
+    setCreatingExtSession(true);
+    try {
+      const newSession = await api.createListeningSession({
+        title: `从「${session.title}」延伸的障碍词`,
+        note: `包含在精听练习中发现的 ${discoveredWords.length} 个新障碍词：${discoveredWords.join("、")}`,
+        sentences: [],
+      });
+      toast({ description: "已创建延伸练习，即将跳转" });
+      router.push(`/listening-practice/${newSession.id}`);
+    } catch (err) {
+      console.error(err);
+      toast({ variant: "destructive", description: "创建失败" });
+    } finally {
+      setCreatingExtSession(false);
+    }
+  };
+
   const handleAddSentences = async () => {
     const list = addSentences
       .split("\n")
@@ -360,6 +450,19 @@ export default function ListeningPracticeDetailPage() {
     [session],
   );
 
+  // 需要生成的句子数
+  const needGenCount = useMemo(() => {
+    if (!session) return 0;
+    return session.sentences.filter(
+      (s) =>
+        s.blocker_words.length > 0 &&
+        (s.generated_blocks.length === 0 ||
+          s.blocker_words.some(
+            (b) => !s.generated_blocks.some((g) => g.blocker_word === b.word.toLowerCase()),
+          )),
+    ).length;
+  }, [session]);
+
   const isDemo = !!session?.is_demo;
 
   if (loading) {
@@ -408,6 +511,21 @@ export default function ListeningPracticeDetailPage() {
             )}
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
+            {/* 延伸障碍词列表按钮 */}
+            {!isDemo && discoveredWords.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDiscoveredPanel(!showDiscoveredPanel)}
+                className="gap-1.5 relative"
+              >
+                <List className="h-4 w-4" />
+                <span className="hidden sm:inline">延伸词</span>
+                <span className="absolute -top-1.5 -right-1.5 inline-flex items-center justify-center h-4 min-w-[16px] rounded-full bg-rose-500 text-white text-[10px] font-bold px-1">
+                  {discoveredWords.length}
+                </span>
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -440,86 +558,148 @@ export default function ListeningPracticeDetailPage() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6 max-w-3xl">
-        {/* 示例会话说明 banner */}
-        {isDemo && (
-          <div className="mb-4 rounded-lg border-2 border-amber-300/80 dark:border-amber-700/60 bg-gradient-to-br from-amber-50 to-orange-50/70 dark:from-amber-950/40 dark:to-orange-950/30 p-4">
-            <div className="flex items-start gap-3">
-              <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 text-white shrink-0">
-                <Sparkles className="h-4 w-4" />
+      <div className="container mx-auto px-4 py-6 flex gap-6">
+        {/* 主内容区 */}
+        <main className="flex-1 max-w-3xl mx-auto min-w-0">
+          {/* 示例会话说明 banner */}
+          {isDemo && (
+            <div className="mb-4 rounded-lg border-2 border-amber-300/80 dark:border-amber-700/60 bg-gradient-to-br from-amber-50 to-orange-50/70 dark:from-amber-950/40 dark:to-orange-950/30 p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 text-white shrink-0">
+                  <Sparkles className="h-4 w-4" />
+                </div>
+                <div className="flex-1 text-sm leading-relaxed">
+                  <p className="font-semibold mb-1">这是 AI 示例会话 · 仅供预览效果</p>
+                  <p className="text-xs text-muted-foreground">
+                    答案句和障碍词已预先标好，下方每组「精听练习」都是 AI 根据难点类型真实生成的梯度例句。
+                    体验完成后，请点击右上「新建练习」创建属于你的精听复盘。
+                    <br />
+                    <span className="text-amber-700 dark:text-amber-400">
+                      ⚠️ 本会话不支持修改障碍词、追加/删除句子、重新生成。
+                    </span>
+                  </p>
+                </div>
               </div>
-              <div className="flex-1 text-sm leading-relaxed">
-                <p className="font-semibold mb-1">这是 AI 示例会话 · 仅供预览效果</p>
-                <p className="text-xs text-muted-foreground">
-                  答案句和障碍词已预先标好，下方每组「精听练习」都是 AI 根据难点类型真实生成的梯度例句。
-                  体验完成后，请点击右上「新建练习」创建属于你的精听复盘。
-                  <br />
-                  <span className="text-amber-700 dark:text-amber-400">
-                    ⚠️ 本会话不支持修改障碍词、追加/删除句子、重新生成。
-                  </span>
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 统计 + 说明 */}
-        <div className="mb-5 rounded-lg border bg-gradient-to-br from-sky-50/60 to-cyan-50/40 dark:from-sky-950/20 dark:to-cyan-950/10 p-4">
-          <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
-            <div className="flex items-center gap-2 text-sm">
-              <span className="inline-flex items-center gap-1 rounded-full bg-white dark:bg-white/10 px-2.5 py-1 font-medium border">
-                📝 {session.sentences.length} 句
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-white dark:bg-white/10 px-2.5 py-1 font-medium border">
-                🎯 {totalBlockers} 障碍词
-              </span>
-            </div>
-            {/* 语速 + 音色控制（全局偏好） */}
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <BlindDefaultToggle />
-              <span className="text-muted-foreground/40">·</span>
-              <span>🎧 朗读设置</span>
-              <PlayButton text="" gearOnly size="sm" />
-            </div>
-          </div>
-          {!isDemo && session.note && (
-            <div className="mb-2 flex items-start gap-1.5 text-xs rounded-md bg-white/70 dark:bg-white/5 border px-2 py-1.5">
-              <MessageSquare className="h-3.5 w-3.5 mt-0.5 text-sky-500 shrink-0" />
-              <span className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                {session.note}
-              </span>
             </div>
           )}
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            点击答案句中的任意单词来标记/取消「障碍词」。标记后点击「生成精听练习」由 AI
-            根据难点类型产出 3-5 句梯度练习。每句旁的 ▶️ 可用拟人语音播放（雅思英音默认，可切美/澳音）。
-          </p>
-        </div>
 
-        {session.sentences.length === 0 ? (
-          <div className="text-center py-20 text-muted-foreground">
-            暂无答案句，点击右上「追加」按钮开始。
+          {/* 统计 + 说明 */}
+          <div className="mb-5 rounded-lg border bg-gradient-to-br from-sky-50/60 to-cyan-50/40 dark:from-sky-950/20 dark:to-cyan-950/10 p-4">
+            <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
+              <div className="flex items-center gap-2 text-sm">
+                <span className="inline-flex items-center gap-1 rounded-full bg-white dark:bg-white/10 px-2.5 py-1 font-medium border">
+                  📝 {session.sentences.length} 句
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-white dark:bg-white/10 px-2.5 py-1 font-medium border">
+                  🎯 {totalBlockers} 障碍词
+                </span>
+              </div>
+              {/* 语速 + 音色控制（全局偏好） */}
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <BlindDefaultToggle />
+                <span className="text-muted-foreground/40">·</span>
+                <span>🎧 朗读设置</span>
+                <PlayButton text="" gearOnly size="sm" />
+              </div>
+            </div>
+            {!isDemo && session.note && (
+              <div className="mb-2 flex items-start gap-1.5 text-xs rounded-md bg-white/70 dark:bg-white/5 border px-2 py-1.5">
+                <MessageSquare className="h-3.5 w-3.5 mt-0.5 text-sky-500 shrink-0" />
+                <span className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                  {session.note}
+                </span>
+              </div>
+            )}
+
+            {/* 一键生成按钮 */}
+            {!isDemo && totalBlockers > 0 && (
+              <div className="mb-2 flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleBatchGenerate}
+                  disabled={batchGenerating || needGenCount === 0}
+                  className="gap-1.5 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white"
+                >
+                  {batchGenerating ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      生成中 {batchProgress.done}/{batchProgress.total}...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="h-3.5 w-3.5" />
+                      {needGenCount > 0
+                        ? `一键生成全部（${needGenCount} 句待生成）`
+                        : "全部已生成 ✓"}
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              点击答案句中的任意单词来标记/取消「障碍词」。标记后点击「生成精听练习」由 AI
+              根据难点类型产出 3-5 句梯度练习。每句旁的 ▶️ 可用拟人语音播放（雅思英音默认，可切美/澳音）。
+            </p>
           </div>
-        ) : (
-          <div className="space-y-5">
-            {session.sentences.map((sentence, idx) => (
-              <SentenceBlock
-                key={sentence.id}
-                sentence={sentence}
-                index={idx}
-                saving={!!savingMap[sentence.id]}
-                generating={!!generatingMap[sentence.id]}
-                onToggleBlocker={(token) => toggleBlocker(sentence, token)}
-                onGenerate={(force) => handleGenerate(sentence, force)}
-                onUpdateNote={(next) => handleUpdateNote(sentence, next)}
-                onUpdateText={(next) => handleUpdateSentenceText(sentence, next)}
-                onDelete={() => setDeletingSentence(sentence)}
-                isDemo={isDemo}
+
+          {session.sentences.length === 0 ? (
+            <div className="text-center py-20 text-muted-foreground">
+              暂无答案句，点击右上「追加」按钮开始。
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {session.sentences.map((sentence, idx) => (
+                <SentenceBlock
+                  key={sentence.id}
+                  sentence={sentence}
+                  index={idx}
+                  saving={!!savingMap[sentence.id]}
+                  generating={!!generatingMap[sentence.id]}
+                  onToggleBlocker={(token) => toggleBlocker(sentence, token)}
+                  onGenerate={(force) => handleGenerate(sentence, force)}
+                  onUpdateNote={(next) => handleUpdateNote(sentence, next)}
+                  onUpdateText={(next) => handleUpdateSentenceText(sentence, next)}
+                  onDelete={() => setDeletingSentence(sentence)}
+                  isDemo={isDemo}
+                  onNewBlockerWord={addDiscoveredWord}
+                  onAddMissedWord={addDiscoveredWord}
+                />
+              ))}
+            </div>
+          )}
+        </main>
+
+        {/* 右侧延伸障碍词面板 (lg 以上屏幕 sticky) */}
+        {!isDemo && showDiscoveredPanel && discoveredWords.length > 0 && (
+          <aside className="hidden lg:block w-64 shrink-0">
+            <div className="sticky top-20">
+              <DiscoveredWordsPanel
+                words={discoveredWords}
+                sessionTitle={session.title}
+                onRemove={removeDiscoveredWord}
+                onCreate={handleCreateExtendSession}
+                creating={creatingExtSession}
+                onClose={() => setShowDiscoveredPanel(false)}
               />
-            ))}
-          </div>
+            </div>
+          </aside>
         )}
-      </main>
+      </div>
+
+      {/* 小屏幕：底部浮动延伸障碍词面板 */}
+      {!isDemo && showDiscoveredPanel && discoveredWords.length > 0 && (
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur shadow-lg max-h-[50vh] overflow-y-auto">
+          <DiscoveredWordsPanel
+            words={discoveredWords}
+            sessionTitle={session.title}
+            onRemove={removeDiscoveredWord}
+            onCreate={handleCreateExtendSession}
+            creating={creatingExtSession}
+            onClose={() => setShowDiscoveredPanel(false)}
+          />
+        </div>
+      )}
 
       {/* 追加答案句对话框 */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
@@ -623,6 +803,89 @@ export default function ListeningPracticeDetailPage() {
   );
 }
 
+
+// ==================== 延伸障碍词面板 ====================
+
+function DiscoveredWordsPanel({
+  words,
+  sessionTitle,
+  onRemove,
+  onCreate,
+  creating,
+  onClose,
+}: {
+  words: string[];
+  sessionTitle: string;
+  onRemove: (word: string) => void;
+  onCreate: () => void;
+  creating: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <div className="rounded-xl border bg-background p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold flex items-center gap-1.5">
+          <List className="h-4 w-4 text-rose-500" />
+          延伸障碍词
+          <span className="text-xs text-muted-foreground font-normal">({words.length})</span>
+        </h3>
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground cursor-pointer"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      <div className="flex flex-wrap gap-1.5">
+        {words.map((w) => (
+          <span
+            key={w}
+            className="inline-flex items-center gap-1 rounded-full bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs font-medium px-2 py-0.5"
+          >
+            {w}
+            <button
+              type="button"
+              onClick={() => onRemove(w)}
+              className="hover:text-rose-900 dark:hover:text-rose-100 cursor-pointer"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </span>
+        ))}
+      </div>
+
+      <p className="text-[11px] text-muted-foreground leading-relaxed">
+        这些词在精听练习中被发现为潜在障碍词。可创建新练习专门攻克它们。
+      </p>
+
+      <Button
+        size="sm"
+        onClick={onCreate}
+        disabled={creating}
+        className="w-full gap-1.5 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white"
+      >
+        {creating ? (
+          <>
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            创建中...
+          </>
+        ) : (
+          <>
+            <ArrowRight className="h-3.5 w-3.5" />
+            前往练习这些词
+          </>
+        )}
+      </Button>
+      <p className="text-[10px] text-muted-foreground text-center">
+        将创建「从「{sessionTitle}」延伸的障碍词」
+      </p>
+    </div>
+  );
+}
+
+
 // ==================== 单个答案句块 ====================
 
 interface SentenceBlockProps {
@@ -636,6 +899,8 @@ interface SentenceBlockProps {
   onUpdateText: (next: string) => Promise<boolean>;
   onDelete: () => void;
   isDemo?: boolean;
+  onNewBlockerWord?: (word: string) => void;
+  onAddMissedWord?: (word: string) => void;
 }
 
 function SentenceBlock({
@@ -649,6 +914,8 @@ function SentenceBlock({
   onUpdateText,
   onDelete,
   isDemo = false,
+  onNewBlockerWord,
+  onAddMissedWord,
 }: SentenceBlockProps) {
   const [showGenerated, setShowGenerated] = useState(true);
   // 盲听信号（按钮点击时变动，触发所有 ExampleRow 统一 blind/reveal）
@@ -733,6 +1000,13 @@ function SentenceBlock({
             )}
           </div>
         </div>
+
+        {/* 提醒：点击单词可新增障碍词 */}
+        {!isDemo && sentence.blocker_words.length === 0 && (
+          <p className="text-[11px] text-amber-600 dark:text-amber-400 mb-2 italic">
+            💡 点击下方单词可标记为障碍词
+          </p>
+        )}
 
         <SentenceEditor
           text={sentence.original_text}
@@ -831,6 +1105,8 @@ function SentenceBlock({
               key={`${block.id}-${blindPulse}`}
               block={block}
               blindSignal={blindSignal}
+              onNewBlockerWord={!isDemo ? onNewBlockerWord : undefined}
+              onAddMissedWord={!isDemo ? onAddMissedWord : undefined}
             />
           ))}
         </div>
