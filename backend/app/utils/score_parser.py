@@ -148,13 +148,17 @@ def parse_scores(text: str, category: str) -> Optional[dict]:
 
     Args:
         text: AI 报告的纯文本内容
-        category: 作业类别 ('speaking' / 'writing')
+        category: 作业类别 ('speaking' / 'writing' / 'listening' / 'reading')
 
     Returns:
         评分字典或 None（未找到有效评分时）
     """
     if not text:
         return None
+
+    # 听力 / 阅读走专门的解析路径
+    if category in ("listening", "reading"):
+        return _parse_listening_reading_scores(text, category)
 
     # 根据类别选择维度配置；如果不确定则两套都试
     if category == "speaking":
@@ -167,6 +171,10 @@ def parse_scores(text: str, category: str) -> Optional[dict]:
         # 尝试自动检测
         has_speaking = bool(re.search(r"Pronunciation|发音|Fluency\s+and\s+Coherence|流利度", text, re.IGNORECASE))
         has_writing = bool(re.search(r"Task\s+Achievement|任务完成情况|Task\s+Response", text, re.IGNORECASE))
+        # 尝试听力/阅读
+        has_lr = bool(re.search(r"总\s*\d+\s*/\s*40|Section|Part\s*\d|P[1234]\s*\d+\s*/\s*\d+", text))
+        if has_lr and not has_speaking and not has_writing:
+            return _parse_listening_reading_scores(text, "listening")  # 默认当听力试
         if has_speaking and not has_writing:
             dim_configs = SPEAKING_DIMENSIONS
             cat_key = "speaking"
@@ -205,4 +213,104 @@ def parse_scores(text: str, category: str) -> Optional[dict]:
         "dimensions": dimensions,
         "overall": overall,
         "category": cat_key,
+    }
+
+
+# ── Listening / Reading 得分 → Band Score 转换表 ──────────────────
+# 官方标准：https://www.ielts.org/-/media/pdfs/listening-and-reading-band-scores.pdf
+LISTENING_BAND_TABLE: list[tuple[int, float]] = [
+    (39, 9.0), (37, 8.5), (35, 8.0), (33, 7.5), (30, 7.0),
+    (27, 6.5), (23, 6.0), (20, 5.5), (16, 5.0), (13, 4.5),
+    (10, 4.0), (6, 3.5), (4, 3.0), (3, 2.5), (2, 2.0),
+    (1, 1.0),
+]
+
+READING_BAND_TABLE: list[tuple[int, float]] = [
+    (39, 9.0), (37, 8.5), (35, 8.0), (33, 7.5), (30, 7.0),
+    (27, 6.5), (23, 6.0), (19, 5.5), (15, 5.0), (13, 4.5),
+    (10, 4.0), (6, 3.5), (4, 3.0), (3, 2.5), (2, 2.0),
+    (1, 1.0),
+]
+
+
+def _raw_to_band(raw: int, table: list[tuple[int, float]]) -> float:
+    """原始分转 Band Score。"""
+    for threshold, band in table:
+        if raw >= threshold:
+            return band
+    return 0.0
+
+
+def _parse_listening_reading_scores(text: str, category: str) -> Optional[dict]:
+    """从听力/阅读复盘笔记中提取分数。
+
+    识别的格式（大小写/空格宽容）：
+      - 总分：`总 17/40`、`总分 26/40`、`总 26/40 分数6`
+      - 各 Part：`P1 5/10`、`P2 8/13`、`Part 1: 5/10`、`Section 1 5/10`
+      - 显式 Band：`分数6`、`分数 7.5`、`Band 7`
+    """
+    # 提取 Part 分数
+    parts: list[dict] = []
+    # 匹配 "P1 5/10" / "Part 1 5/10" / "Section 1 5/10" / "P1: 5/10"
+    part_re = re.compile(
+        r"(?:P(?:art|assage)?\s*|Section\s*)(\d)\s*[：:\s]\s*(\d+)\s*/\s*(\d+)",
+        re.IGNORECASE,
+    )
+    for m in part_re.finditer(text):
+        part_num = int(m.group(1))
+        correct = int(m.group(2))
+        total = int(m.group(3))
+        parts.append({
+            "part": part_num,
+            "correct": correct,
+            "total": total,
+            "label": f"Part {part_num}" if category == "reading" else f"Section {part_num}",
+        })
+
+    # 去重（同一 part 可能出现多次，取第一次）
+    seen_parts: set[int] = set()
+    deduped: list[dict] = []
+    for p in parts:
+        if p["part"] not in seen_parts:
+            seen_parts.add(p["part"])
+            deduped.append(p)
+    parts = deduped
+
+    # 提取总分 "总 17/40" / "总分 26/40"
+    total_raw: Optional[int] = None
+    total_max: Optional[int] = None
+    total_re = re.compile(r"总\s*(?:分)?\s*(\d+)\s*/\s*(\d+)")
+    tm = total_re.search(text)
+    if tm:
+        total_raw = int(tm.group(1))
+        total_max = int(tm.group(2))
+
+    # 如果没有"总 X/Y"，尝试从 Parts 求和
+    if total_raw is None and parts:
+        total_raw = sum(p["correct"] for p in parts)
+        total_max = sum(p["total"] for p in parts)
+
+    if total_raw is None:
+        return None
+
+    # 提取显式 Band Score
+    band: Optional[float] = None
+    band_re = re.compile(r"(?:分数|Band|band\s*score)\s*[:：]?\s*(\d+(?:\.\d+)?)")
+    bm = band_re.search(text)
+    if bm:
+        band = float(bm.group(1))
+
+    # 推算 Band Score
+    if band is None and total_max and total_max >= 40:
+        table = LISTENING_BAND_TABLE if category == "listening" else READING_BAND_TABLE
+        band = _raw_to_band(total_raw, table)
+
+    cat_key = category if category in ("listening", "reading") else "listening"
+
+    return {
+        "category": cat_key,
+        "overall": band,
+        "raw_score": total_raw,
+        "raw_total": total_max or 40,
+        "parts": parts,
     }

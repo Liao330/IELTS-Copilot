@@ -27,6 +27,8 @@ async def init_db():
         await _migrate_add_columns(conn)
     # Backfill scores for existing AI report feedbacks that haven't been parsed yet
     await _backfill_feedback_scores()
+    # Backfill scores for listening/reading homeworks from PDF attachments
+    await _backfill_listening_reading_scores()
 
 
 async def _migrate_add_columns(conn):
@@ -104,3 +106,59 @@ async def _backfill_feedback_scores():
         if updated:
             await db.commit()
             print(f"[backfill] Parsed scores for {updated}/{len(feedbacks)} existing AI report feedbacks.")
+
+
+async def _backfill_listening_reading_scores():
+    """一次性回填：从听力/阅读作业附件 PDF 中提取分数，自动创建 auto_scores feedback。"""
+    import json
+    import uuid
+    from sqlalchemy import select, and_
+    from app.models.homework import Homework, HomeworkFile, HomeworkFeedback
+    from app.models.file import File
+    from app.utils.score_parser import parse_scores
+
+    async with async_session() as db:
+        # 找所有听力/阅读作业
+        stmt = select(Homework).where(Homework.category.in_(["listening", "reading"]))
+        result = await db.execute(stmt)
+        homeworks = result.scalars().all()
+        if not homeworks:
+            return
+
+        updated = 0
+        for hw in homeworks:
+            # 检查是否已有 auto_scores
+            fb_q = await db.execute(
+                select(HomeworkFeedback).where(
+                    and_(
+                        HomeworkFeedback.homework_id == hw.id,
+                        HomeworkFeedback.feedback_type == "auto_scores",
+                    )
+                )
+            )
+            if fb_q.scalar_one_or_none():
+                continue
+
+            # 查附件
+            hf_q = await db.execute(
+                select(HomeworkFile).where(HomeworkFile.homework_id == hw.id)
+            )
+            for hf in hf_q.scalars().all():
+                f = await db.get(File, hf.file_id)
+                if not f or not f.text_content:
+                    continue
+                scores = parse_scores(f.text_content, hw.category)
+                if scores:
+                    db.add(HomeworkFeedback(
+                        id=str(uuid.uuid4()),
+                        homework_id=hw.id,
+                        feedback_type="auto_scores",
+                        content=f"从附件 {f.filename} 中自动提取的分数",
+                        scores=json.dumps(scores, ensure_ascii=False),
+                    ))
+                    updated += 1
+                    break  # 一个作业只需一条
+
+        if updated:
+            await db.commit()
+            print(f"[backfill] Auto-extracted scores for {updated} listening/reading homeworks.")

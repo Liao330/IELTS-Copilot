@@ -378,10 +378,21 @@ export default function HomeworkDetailPage() {
 
         {/* AI 评分可视化（从反馈中提取，作为独立区块展示） */}
         {(() => {
+          // 写作/口语：ai_report 类型 → 雷达图
           const aiScores = homework.feedbacks.find(
             (fb) => fb.feedback_type === "ai_report" && fb.scores
           )?.scores;
-          return aiScores ? <ScoreRadar scores={aiScores} /> : null;
+          // 听力/阅读：auto_scores 类型 → 分数卡片
+          const autoScores = homework.feedbacks.find(
+            (fb) => fb.feedback_type === "auto_scores" && fb.scores
+          )?.scores;
+
+          return (
+            <>
+              {aiScores && <ScoreRadar scores={aiScores} />}
+              {autoScores && <ListeningReadingScoreCard scores={autoScores as unknown as LRScores} />}
+            </>
+          );
         })()}
 
         {/* 反馈区域 */}
@@ -1023,5 +1034,100 @@ function EditFeedbackDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+
+// ==================== 听力/阅读分数卡片 ====================
+
+interface LRPart {
+  part: number;
+  correct: number;
+  total: number;
+  label: string;
+}
+
+interface LRScores {
+  category: string;
+  overall: number | null;
+  raw_score: number;
+  raw_total: number;
+  parts: LRPart[];
+}
+
+function getScoreColor(score: number): string {
+  if (score >= 7) return "text-green-600 dark:text-green-400";
+  if (score >= 6) return "text-yellow-600 dark:text-yellow-400";
+  return "text-red-600 dark:text-red-400";
+}
+
+function getBarWidth(correct: number, total: number): string {
+  if (total <= 0) return "0%";
+  return `${Math.round((correct / total) * 100)}%`;
+}
+
+function getBarColor(correct: number, total: number): string {
+  const pct = total > 0 ? correct / total : 0;
+  if (pct >= 0.8) return "bg-green-500";
+  if (pct >= 0.6) return "bg-yellow-500";
+  return "bg-red-500";
+}
+
+function ListeningReadingScoreCard({ scores }: { scores: LRScores }) {
+  const isListening = scores.category === "listening";
+  const icon = isListening ? "🎧" : "📖";
+  const label = isListening ? "听力" : "阅读";
+
+  return (
+    <div className="rounded-xl border bg-gradient-to-br from-sky-50/60 to-cyan-50/40 dark:from-sky-950/20 dark:to-cyan-950/10 p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold flex items-center gap-2">
+          {icon} {label}成绩
+          <span className="text-xs font-normal text-muted-foreground">
+            从 PDF 自动提取
+          </span>
+        </h3>
+        {scores.overall != null && (
+          <div className="text-right">
+            <div className={`text-2xl font-bold ${getScoreColor(scores.overall)}`}>
+              Band {scores.overall}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {scores.raw_score} / {scores.raw_total}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {scores.parts.length > 0 && (
+        <div className="space-y-2">
+          {scores.parts.map((p) => (
+            <div key={p.part} className="flex items-center gap-3">
+              <span className="text-xs font-medium w-20 shrink-0">
+                {p.label}
+              </span>
+              <div className="flex-1 h-5 bg-muted/50 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${getBarColor(p.correct, p.total)}`}
+                  style={{ width: getBarWidth(p.correct, p.total) }}
+                />
+              </div>
+              <span className="text-xs font-mono w-14 text-right shrink-0">
+                {p.correct}/{p.total}
+              </span>
+              <span className="text-[10px] text-muted-foreground w-10 text-right shrink-0">
+                {p.total > 0 ? `${Math.round((p.correct / p.total) * 100)}%` : ""}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {scores.overall == null && (
+        <div className="text-xs text-muted-foreground">
+          未能推算 Band Score（需要完整的 40 题才能换算）
+        </div>
+      )}
+    </div>
   );
 }

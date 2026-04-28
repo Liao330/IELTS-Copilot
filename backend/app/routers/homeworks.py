@@ -18,8 +18,48 @@ from app.schemas.homework import (
     HomeworkOut, HomeworkCreate, HomeworkUpdate,
     HomeworkFeedbackOut, FeedbackCreate, FeedbackUpdate, HomeworkDateGroup, FileInfo,
 )
+from app.utils.score_parser import parse_scores
+
 
 router = APIRouter(prefix="/api/homeworks", tags=["homeworks"])
+
+
+async def _try_parse_scores_from_files(db: AsyncSession, hw: Homework) -> None:
+    """尝试从听力/阅读作业的附件 PDF 中提取分数。
+
+    如果成功且作业还没有自动提取过分数（feedback_type='auto_scores'），
+    则自动创建一条 HomeworkFeedback 存储 scores JSON。
+    """
+    if hw.category not in ("listening", "reading"):
+        return
+
+    # 检查是否已经有 auto_scores 类型的 feedback
+    existing_q = await db.execute(
+        select(HomeworkFeedback).where(
+            HomeworkFeedback.homework_id == hw.id,
+            HomeworkFeedback.feedback_type == "auto_scores",
+        )
+    )
+    if existing_q.scalar_one_or_none():
+        return  # 已经解析过
+
+    # 遍历作业附件，找 PDF 并尝试解析
+    for hf in (hw.homework_files or []):
+        f = await db.get(File, hf.file_id)
+        if not f or not f.text_content:
+            continue
+        scores = parse_scores(f.text_content, hw.category)
+        if scores:
+            fb = HomeworkFeedback(
+                id=str(uuid.uuid4()),
+                homework_id=hw.id,
+                feedback_type="auto_scores",
+                content=f"从附件 {f.filename} 中自动提取的分数",
+                scores=json.dumps(scores, ensure_ascii=False),
+            )
+            db.add(fb)
+            await db.flush()
+            return  # 一个作业只需要一条 auto_scores
 
 
 async def _file_has_references(db: AsyncSession, file_id: str, exclude_homework_file: bool = False) -> bool:
@@ -232,6 +272,15 @@ async def create_homework(data: HomeworkCreate, db: AsyncSession = Depends(get_d
     stmt = select(Homework).options(*_load_options()).where(Homework.id == hw.id)
     result = await db.execute(stmt)
     hw = result.scalar_one()
+
+    # 自动尝试从附件解析听力/阅读分数
+    await _try_parse_scores_from_files(db, hw)
+    await db.commit()
+
+    # 重新加载以含最新 feedback
+    stmt = select(Homework).options(*_load_options()).where(Homework.id == hw.id)
+    result = await db.execute(stmt)
+    hw = result.scalar_one()
     return await _resolve_homework_out(hw, db)
 
 
@@ -291,6 +340,13 @@ async def add_homework_file(homework_id: str, file_id: str = Query(...), db: Asy
         raise HTTPException(status_code=404, detail="文件不存在")
 
     db.add(HomeworkFile(id=str(uuid.uuid4()), homework_id=homework_id, file_id=file_id))
+    await db.commit()
+
+    # 自动尝试从附件解析听力/阅读分数
+    stmt = select(Homework).options(*_load_options()).where(Homework.id == homework_id)
+    result = await db.execute(stmt)
+    hw = result.scalar_one()
+    await _try_parse_scores_from_files(db, hw)
     await db.commit()
 
     stmt = select(Homework).options(*_load_options()).where(Homework.id == homework_id)
