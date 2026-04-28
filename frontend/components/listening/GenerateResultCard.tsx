@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Sparkles,
   BookmarkPlus,
@@ -9,6 +9,8 @@ import {
   Check,
   Eye,
   EyeOff,
+  PenLine,
+  Lightbulb,
 } from "lucide-react";
 import type { ListeningGeneratedBlock, ListeningGeneratedExample } from "@/types";
 import { api } from "@/lib/api";
@@ -20,11 +22,8 @@ import { useBlindModeStore } from "@/lib/blind-mode-store";
 interface Props {
   block: ListeningGeneratedBlock;
   defaultOpen?: boolean;
-  /** 只读模式：隐藏"加入佳句"等交互按钮，用于 Demo 预览 */
   readOnly?: boolean;
-  /** 父级"本句盲听"信号：变动时同步到所有 ExampleRow。undefined 表示不控制 */
   blindSignal?: "blind" | "reveal" | undefined;
-  /** 本 block 是否展开，由父组件控制；不传则内部自控 */
   externalOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
@@ -39,18 +38,9 @@ const DIFFICULTY_COLORS: Record<string, string> = {
 };
 
 const LEVEL_STYLES: Record<number, { label: string; bg: string }> = {
-  1: {
-    label: "Easy",
-    bg: "border-emerald-200 bg-emerald-50/40 dark:border-emerald-900/50 dark:bg-emerald-950/10",
-  },
-  2: {
-    label: "Medium",
-    bg: "border-amber-200 bg-amber-50/40 dark:border-amber-900/50 dark:bg-amber-950/10",
-  },
-  3: {
-    label: "Hard",
-    bg: "border-rose-200 bg-rose-50/40 dark:border-rose-900/50 dark:bg-rose-950/10",
-  },
+  1: { label: "Easy", bg: "border-emerald-200 bg-emerald-50/40 dark:border-emerald-900/50 dark:bg-emerald-950/10" },
+  2: { label: "Medium", bg: "border-amber-200 bg-amber-50/40 dark:border-amber-900/50 dark:bg-amber-950/10" },
+  3: { label: "Hard", bg: "border-rose-200 bg-rose-50/40 dark:border-rose-900/50 dark:bg-rose-950/10" },
 };
 
 export function GenerateResultCard({
@@ -82,21 +72,12 @@ export function GenerateResultCard({
         </div>
         <div className="flex-1 text-left flex items-center gap-2 min-w-0 flex-wrap">
           <span className="font-bold text-lg">{block.blocker_word}</span>
-          <span
-            className={cn(
-              "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium",
-              color,
-            )}
-          >
+          <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium", color)}>
             {block.difficulty_type}
           </span>
           <span className="text-xs text-muted-foreground truncate">· {block.examples.length} 句练习</span>
         </div>
-        {open ? (
-          <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
-        ) : (
-          <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-        )}
+        {open ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
       </button>
 
       {open && (
@@ -104,19 +85,12 @@ export function GenerateResultCard({
           <div className="rounded-lg bg-muted/50 px-3 py-2 text-sm leading-relaxed">
             💡 {block.explanation}
           </div>
-
           <div className="space-y-2">
             {block.examples
               .slice()
               .sort((a, b) => a.difficulty_level - b.difficulty_level)
               .map((ex, i) => (
-                <ExampleRow
-                  key={i}
-                  example={ex}
-                  word={block.blocker_word}
-                  readOnly={readOnly}
-                  blindSignal={blindSignal}
-                />
+                <ExampleRow key={i} example={ex} word={block.blocker_word} readOnly={readOnly} blindSignal={blindSignal} />
               ))}
           </div>
         </div>
@@ -124,6 +98,62 @@ export function GenerateResultCard({
     </div>
   );
 }
+
+
+// ==================== 逐词 diff ====================
+
+interface DiffToken {
+  type: "correct" | "wrong" | "missing" | "extra";
+  expected?: string; // 原文里的词
+  actual?: string;   // 用户打的词
+}
+
+function diffWords(expected: string, actual: string): DiffToken[] {
+  const expWords = expected.replace(/[^\w'\-]/g, " ").split(/\s+/).filter(Boolean);
+  const actWords = actual.replace(/[^\w'\-]/g, " ").split(/\s+/).filter(Boolean);
+
+  // 简单的贪心对齐（不做 LCS，够用）
+  const result: DiffToken[] = [];
+  let ei = 0;
+  let ai = 0;
+
+  while (ei < expWords.length && ai < actWords.length) {
+    if (expWords[ei].toLowerCase() === actWords[ai].toLowerCase()) {
+      result.push({ type: "correct", expected: expWords[ei], actual: actWords[ai] });
+      ei++;
+      ai++;
+    } else {
+      // 看用户的下一个词是否匹配当前 expected（用户多打了）
+      if (ai + 1 < actWords.length && actWords[ai + 1].toLowerCase() === expWords[ei].toLowerCase()) {
+        result.push({ type: "extra", actual: actWords[ai] });
+        ai++;
+      }
+      // 看 expected 的下一个词是否匹配当前 actual（用户漏了）
+      else if (ei + 1 < expWords.length && expWords[ei + 1].toLowerCase() === actWords[ai].toLowerCase()) {
+        result.push({ type: "missing", expected: expWords[ei] });
+        ei++;
+      } else {
+        result.push({ type: "wrong", expected: expWords[ei], actual: actWords[ai] });
+        ei++;
+        ai++;
+      }
+    }
+  }
+  // 剩余的 expected
+  while (ei < expWords.length) {
+    result.push({ type: "missing", expected: expWords[ei] });
+    ei++;
+  }
+  // 剩余的 actual
+  while (ai < actWords.length) {
+    result.push({ type: "extra", actual: actWords[ai] });
+    ai++;
+  }
+  return result;
+}
+
+
+// ==================== ExampleRow ====================
 
 function ExampleRow({
   example,
@@ -140,18 +170,24 @@ function ExampleRow({
   const [saved, setSaved] = useState(false);
   const blindByDefault = useBlindModeStore((s) => s.blindByDefault);
 
-  // readOnly (demo 预览) 强制揭晓，便于展示效果
-  // 非 readOnly 时根据全局偏好决定初值
   const initialRevealed = readOnly ? true : !blindByDefault;
   const [revealed, setRevealed] = useState(initialRevealed);
   const [hintRevealed, setHintRevealed] = useState(initialRevealed);
 
-  // 响应父级"全部揭晓/全部遮盖"信号（demo 下忽略）
+  // 听写输入
+  const [showDictation, setShowDictation] = useState(false);
+  const [dictInput, setDictInput] = useState("");
+  const [dictResult, setDictResult] = useState<DiffToken[] | null>(null);
+
+  // 响应父级信号
   useEffect(() => {
     if (readOnly) return;
     if (blindSignal === "blind") {
       setRevealed(false);
       setHintRevealed(false);
+      // 遮盖时也清掉听写结果，回到"干净"状态
+      setDictResult(null);
+      setDictInput("");
     } else if (blindSignal === "reveal") {
       setRevealed(true);
       setHintRevealed(true);
@@ -181,8 +217,36 @@ function ExampleRow({
     }
   }, [saving, saved, example, toast]);
 
-  // 高亮的句子（只在 revealed 时渲染）
   const highlighted = revealed ? renderHighlighted(example.text, word) : null;
+
+  const handleDictationSubmit = () => {
+    if (!dictInput.trim()) return;
+    const result = diffWords(example.text, dictInput);
+    setDictResult(result);
+  };
+
+  // 听写 diff 中漏掉 / 错了的词（推荐为潜在障碍词）
+  const missedWords = useMemo(() => {
+    if (!dictResult) return [];
+    const missed = new Set<string>();
+    for (const t of dictResult) {
+      if ((t.type === "wrong" || t.type === "missing") && t.expected) {
+        const w = t.expected.toLowerCase().replace(/[^a-z'-]/g, "");
+        // 过滤掉太短的虚词
+        if (w.length >= 3) missed.add(w);
+      }
+    }
+    return Array.from(missed);
+  }, [dictResult]);
+
+  const handleToggleRevealed = () => {
+    const next = !revealed;
+    setRevealed(next);
+    // 隐藏时同步关闭 hint
+    if (!next) {
+      setHintRevealed(false);
+    }
+  };
 
   return (
     <div className={cn("rounded-lg border px-3 py-2.5", style.bg)}>
@@ -192,15 +256,10 @@ function ExampleRow({
         </span>
         <div className="flex items-center gap-1">
           {!readOnly && <PlayButton text={example.text} size="sm" />}
-          {/* 显示 / 隐藏切换（demo 预览不显示） */}
           {!readOnly && (
             <button
               type="button"
-              onClick={() => {
-                const next = !revealed;
-                setRevealed(next);
-                if (next) setHintRevealed(true);
-              }}
+              onClick={handleToggleRevealed}
               className={cn(
                 "inline-flex items-center gap-1 text-xs rounded-md px-2 py-0.5 transition-colors cursor-pointer",
                 revealed
@@ -232,19 +291,16 @@ function ExampleRow({
         </div>
       </div>
 
-      {/* 句子：盲听时用 ██ 占位，保留节奏感 */}
+      {/* 句子 */}
       {revealed ? (
         <p className="text-sm font-medium leading-relaxed">{highlighted}</p>
       ) : (
-        <p
-          className="text-sm font-medium leading-relaxed text-muted-foreground/60 select-none"
-          aria-label="盲听中，点击右上'揭晓'显示原文"
-        >
+        <p className="text-sm font-medium leading-relaxed text-muted-foreground/60 select-none">
           {renderMasked(example.text)}
         </p>
       )}
 
-      {/* 翻译：盲听时隐藏 */}
+      {/* 翻译 */}
       {revealed ? (
         <p className="text-xs text-muted-foreground mt-1">{example.translation}</p>
       ) : (
@@ -253,34 +309,139 @@ function ExampleRow({
         </p>
       )}
 
-      {/* hint：盲听时给一个"需要提示"按钮 */}
+      {/* hint：独立切换 */}
       {example.hint && (
         hintRevealed ? (
-          <p className="text-xs mt-2 pl-2 border-l-2 border-sky-400/50 text-sky-700 dark:text-sky-400 leading-relaxed">
-            🎧 {example.hint}
-          </p>
+          <div className="flex items-start gap-1 mt-2">
+            <p className="text-xs flex-1 pl-2 border-l-2 border-sky-400/50 text-sky-700 dark:text-sky-400 leading-relaxed">
+              🎧 {example.hint}
+            </p>
+            <button
+              type="button"
+              onClick={() => setHintRevealed(false)}
+              className="text-[10px] text-muted-foreground hover:text-foreground shrink-0 px-1 cursor-pointer"
+              title="隐藏提示"
+            >
+              <EyeOff className="h-3 w-3" />
+            </button>
+          </div>
         ) : (
           <button
             type="button"
             onClick={() => setHintRevealed(true)}
-            className="text-xs mt-2 text-sky-600 dark:text-sky-400 hover:underline cursor-pointer"
+            className="text-xs mt-2 text-sky-600 dark:text-sky-400 hover:underline cursor-pointer inline-flex items-center gap-1"
           >
-            💭 需要发音提示？
+            <Lightbulb className="h-3 w-3" />
+            需要发音提示？
           </button>
         )
+      )}
+
+      {/* 听写区域（盲听 + 非只读时可用） */}
+      {!readOnly && !revealed && (
+        <div className="mt-2">
+          {!showDictation ? (
+            <button
+              type="button"
+              onClick={() => setShowDictation(true)}
+              className="text-xs text-amber-700 dark:text-amber-400 hover:underline cursor-pointer inline-flex items-center gap-1"
+            >
+              <PenLine className="h-3 w-3" />
+              听写复述
+            </button>
+          ) : (
+            <div className="space-y-2 rounded-md bg-background/80 border p-2">
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="text"
+                  value={dictInput}
+                  onChange={(e) => { setDictInput(e.target.value); setDictResult(null); }}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleDictationSubmit(); }}
+                  placeholder="打出你听到的内容…（回车提交）"
+                  className="flex-1 text-xs bg-transparent border-b border-muted-foreground/20 focus:border-sky-400 outline-none py-1 px-1"
+                  disabled={!!dictResult}
+                  autoFocus
+                />
+                {!dictResult ? (
+                  <button
+                    type="button"
+                    onClick={handleDictationSubmit}
+                    disabled={!dictInput.trim()}
+                    className="text-xs px-2 py-1 rounded bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50 cursor-pointer"
+                  >
+                    对比
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => { setDictInput(""); setDictResult(null); }}
+                    className="text-xs px-2 py-1 rounded bg-sky-500 text-white hover:bg-sky-600 cursor-pointer"
+                  >
+                    再试
+                  </button>
+                )}
+              </div>
+
+              {/* diff 结果 */}
+              {dictResult && (
+                <div className="space-y-1.5">
+                  <div className="flex flex-wrap gap-1 text-xs leading-relaxed">
+                    {dictResult.map((t, i) => {
+                      if (t.type === "correct") {
+                        return <span key={i} className="text-emerald-700 dark:text-emerald-400">{t.expected}</span>;
+                      }
+                      if (t.type === "wrong") {
+                        return (
+                          <span key={i}>
+                            <span className="line-through text-rose-500/70">{t.actual}</span>
+                            <span className="text-rose-700 dark:text-rose-400 font-bold ml-0.5">{t.expected}</span>
+                          </span>
+                        );
+                      }
+                      if (t.type === "missing") {
+                        return <span key={i} className="text-rose-700 dark:text-rose-400 font-bold underline decoration-dashed">{t.expected}</span>;
+                      }
+                      // extra
+                      return <span key={i} className="line-through text-muted-foreground/50">{t.actual}</span>;
+                    })}
+                  </div>
+
+                  {/* 统计 */}
+                  {(() => {
+                    const total = dictResult.filter(t => t.type !== "extra").length;
+                    const correct = dictResult.filter(t => t.type === "correct").length;
+                    const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
+                    return (
+                      <div className="text-[11px] text-muted-foreground">
+                        正确 {correct}/{total} 词 ({pct}%)
+                        {missedWords.length > 0 && (
+                          <span className="ml-2">
+                            · 潜在障碍词：
+                            {missedWords.map((w) => (
+                              <span key={w} className="font-mono text-rose-600 dark:text-rose-400 ml-1">{w}</span>
+                            ))}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
 }
 
+
 // ============ 渲染工具 ============
 
-// 把每个词替换为同长度的 ██，保留标点与空格，给用户一些节奏线索
 function renderMasked(text: string): string {
   return text.replace(/[A-Za-z']+/g, (w) => "█".repeat(Math.min(w.length, 12)));
 }
 
-// 简易高亮（大小写不敏感）
 function renderHighlighted(text: string, word: string): React.ReactNode {
   if (!word) return text;
   const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -289,12 +450,7 @@ function renderHighlighted(text: string, word: string): React.ReactNode {
   const lowerWord = word.toLowerCase();
   return parts.map((p, i) =>
     p.toLowerCase() === lowerWord ? (
-      <mark
-        key={i}
-        className="bg-sky-200/80 dark:bg-sky-700/50 rounded px-0.5 text-foreground"
-      >
-        {p}
-      </mark>
+      <mark key={i} className="bg-sky-200/80 dark:bg-sky-700/50 rounded px-0.5 text-foreground">{p}</mark>
     ) : (
       <span key={i}>{p}</span>
     ),
