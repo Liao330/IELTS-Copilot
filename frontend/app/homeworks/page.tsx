@@ -433,9 +433,18 @@ export default function HomeworksPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {groupedByDate[dateStr].map((hw) => {
                     const CatIcon = CATEGORY_ICONS[hw.category] || FileText;
+                    // 写作/口语分数来自 ai_report，听力/阅读来自 auto_scores
                     const aiScore = hw.feedbacks.find(
                       (fb) => fb.feedback_type === "ai_report" && fb.scores
                     )?.scores;
+                    const autoScore = hw.feedbacks.find(
+                      (fb) => fb.feedback_type === "auto_scores" && fb.scores
+                    )?.scores as { overall?: number; raw_score?: number; raw_total?: number } | undefined;
+                    const displayScore = aiScore?.overall ?? autoScore?.overall;
+                    const displayRaw = autoScore ? `${autoScore.raw_score}/${autoScore.raw_total}` : null;
+                    const visibleFbCount = hw.feedbacks.filter(
+                      (fb) => fb.feedback_type !== "auto_scores"
+                    ).length;
                     return (
                       <div
                         key={hw.id}
@@ -443,14 +452,19 @@ export default function HomeworksPage() {
                         onClick={() => router.push(`/homeworks/${hw.id}`)}
                       >
                         <div className="absolute top-2 right-2 flex items-center gap-0.5">
-                          {aiScore && (
+                          {displayScore != null && (
                             <span className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-bold mr-1 ${
-                              aiScore.overall >= 7 ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" :
-                              aiScore.overall >= 6 ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300" :
+                              displayScore >= 7 ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" :
+                              displayScore >= 6 ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300" :
                               "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
                             }`}>
                               <Star className="h-3 w-3" />
-                              {aiScore.overall % 1 === 0 ? aiScore.overall.toFixed(0) : aiScore.overall.toFixed(1)}
+                              {displayScore % 1 === 0 ? displayScore.toFixed(0) : displayScore.toFixed(1)}
+                              {displayRaw && (
+                                <span className="text-[10px] font-normal ml-0.5 opacity-75">
+                                  ({displayRaw})
+                                </span>
+                              )}
                             </span>
                           )}
                           <button
@@ -485,9 +499,9 @@ export default function HomeworksPage() {
                                   📎 {hw.file_name}
                                 </span>
                               )}
-                              {hw.feedbacks.length > 0 && (
+                              {visibleFbCount > 0 && (
                                 <span className="text-xs text-muted-foreground">
-                                  💬 {hw.feedbacks.length}条反馈
+                                  💬 {visibleFbCount}条反馈
                                 </span>
                               )}
                             </div>

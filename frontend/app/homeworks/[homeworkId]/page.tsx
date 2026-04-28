@@ -397,16 +397,23 @@ export default function HomeworkDetailPage() {
 
         {/* 反馈区域 */}
         <div>
+          {(() => {
+            // auto_scores 是内部数据，不在反馈列表中展示
+            const visibleFeedbacks = homework.feedbacks.filter(
+              (fb) => fb.feedback_type !== "auto_scores"
+            );
+            return (
+              <>
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold flex items-center gap-2">
               💬 点评与反馈
-              {homework.feedbacks.length > 0 && (
-                <span className="text-xs text-muted-foreground font-normal">({homework.feedbacks.length}条)</span>
+              {visibleFeedbacks.length > 0 && (
+                <span className="text-xs text-muted-foreground font-normal">({visibleFeedbacks.length}条)</span>
               )}
             </h2>
             <div className="flex items-center gap-2">
               {/* 显示复盘笔记按钮条件：有非review_note反馈 OR 阅读/听力有作业文件 */}
-              {(homework.feedbacks.filter(fb => fb.feedback_type !== "review_note").length > 0 ||
+              {(visibleFeedbacks.filter(fb => fb.feedback_type !== "review_note").length > 0 ||
                 (["reading", "listening"].includes(homework.category) && hwFiles.length > 0)
               ) && (
                 <Button
@@ -421,7 +428,7 @@ export default function HomeworkDetailPage() {
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                       生成中...
                     </>
-                  ) : homework.feedbacks.some(fb => fb.feedback_type === "review_note") ? (
+                  ) : visibleFeedbacks.some(fb => fb.feedback_type === "review_note") ? (
                     <>
                       <RefreshCw className="h-3.5 w-3.5" />
                       重新生成复盘
@@ -441,13 +448,13 @@ export default function HomeworkDetailPage() {
             </div>
           </div>
 
-          {homework.feedbacks.length === 0 ? (
+          {visibleFeedbacks.length === 0 ? (
             <div className="text-center py-8 rounded-lg border border-dashed text-muted-foreground text-sm">
               还没有点评反馈，点击「添加反馈」上传
             </div>
           ) : (
             <div className="space-y-3">
-              {homework.feedbacks.map((fb) => {
+              {visibleFeedbacks.map((fb) => {
                 const info = FEEDBACK_TYPE_INFO[fb.feedback_type] || FEEDBACK_TYPE_INFO.teacher_text;
                 const FbIcon = info.icon;
 
@@ -497,6 +504,9 @@ export default function HomeworkDetailPage() {
               })}
             </div>
           )}
+              </>
+            );
+          })()}
         </div>
       </main>
 
