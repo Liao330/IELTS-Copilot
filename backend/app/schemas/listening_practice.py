@@ -147,3 +147,32 @@ class SentenceNoteUpdate(BaseModel):
 
 class SentenceTextUpdate(BaseModel):
     original_text: str = Field(..., min_length=1)
+
+
+# ========== 听写记录 ==========
+
+class DictationAttemptCreate(BaseModel):
+    """保存一次听写提交记录"""
+    generated_block_id: str
+    example_index: int = Field(..., ge=0)
+    play_count: int = Field(..., ge=0)
+    correct_count: int = Field(..., ge=0)
+    total_count: int = Field(..., ge=1)
+    accuracy_pct: int = Field(..., ge=0, le=100)
+    missed_words: list[str] = []
+
+
+class DictationAttemptOut(BaseModel):
+    id: str
+    generated_block_id: str
+    example_index: int
+    play_count: int
+    correct_count: int
+    total_count: int
+    accuracy_pct: int
+    missed_words: list[str]
+    created_at: datetime
+
+
+class DictationAttemptsResponse(BaseModel):
+    attempts: list[DictationAttemptOut]

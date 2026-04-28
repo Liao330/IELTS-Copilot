@@ -80,3 +80,29 @@ class ListeningPracticeGenerated(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     sentence = relationship("ListeningPracticeSentence", back_populates="generated_blocks")
+    dictation_attempts = relationship(
+        "ListeningDictationAttempt",
+        back_populates="generated_block",
+        cascade="all, delete-orphan",
+    )
+
+
+class ListeningDictationAttempt(Base):
+    """听写尝试记录 — 每次用户提交听写对比时保存一条"""
+    __tablename__ = "listening_dictation_attempts"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    generated_block_id: Mapped[str] = mapped_column(
+        String, ForeignKey("listening_practice_generated.id", ondelete="CASCADE"), nullable=False
+    )
+    example_index: Mapped[int] = mapped_column(Integer, nullable=False)  # 该 block 中第几个例句 (0-based)
+    play_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    correct_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    total_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    accuracy_pct: Mapped[int] = mapped_column(Integer, nullable=False)
+    # JSON: ["word1", "word2"]
+    missed_words: Mapped[Optional[str]] = mapped_column(Text)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    generated_block = relationship("ListeningPracticeGenerated", back_populates="dictation_attempts")

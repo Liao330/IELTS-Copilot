@@ -454,6 +454,30 @@ export interface ListeningCleanupResponse {
   sentences: ListeningCleanupItem[];
 }
 
+// ========== 听写记录 ==========
+
+export interface DictationAttempt {
+  id: string;
+  generated_block_id: string;
+  example_index: number;
+  play_count: number;
+  correct_count: number;
+  total_count: number;
+  accuracy_pct: number;
+  missed_words: string[];
+  created_at: string;
+}
+
+export interface DictationAttemptCreate {
+  generated_block_id: string;
+  example_index: number;
+  play_count: number;
+  correct_count: number;
+  total_count: number;
+  accuracy_pct: number;
+  missed_words: string[];
+}
+
 
 // ========== Speech (TTS / ASR) ==========
 

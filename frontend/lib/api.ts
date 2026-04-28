@@ -251,6 +251,18 @@ export const api = {
       { method: "PUT", body: JSON.stringify({ original_text }) },
     ),
 
+  // 听写记录
+  saveDictationAttempt: (data: import("@/types").DictationAttemptCreate) =>
+    request<import("@/types").DictationAttempt>("/api/listening-practice/dictation-attempts", {
+      method: "POST", body: JSON.stringify(data),
+    }),
+  getDictationAttempts: (blockId: string, exampleIndex?: number) => {
+    const params = exampleIndex !== undefined ? `?example_index=${exampleIndex}` : "";
+    return request<{ attempts: import("@/types").DictationAttempt[] }>(
+      `/api/listening-practice/generated/${blockId}/attempts${params}`,
+    );
+  },
+
   // Speech (TTS / ASR)
   getVoices: () => request<import("@/types").VoiceListResponse>("/api/speech/voices"),
   /** 一次 TTS 请求，返回音频 Blob（mp3）；前端可用 URL.createObjectURL 播放 */

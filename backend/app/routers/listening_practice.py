@@ -14,6 +14,7 @@ from app.models.listening_practice import (
     ListeningPracticeSession,
     ListeningPracticeSentence,
     ListeningPracticeGenerated,
+    ListeningDictationAttempt,
 )
 from app.models.vocabulary import VocabularyWord
 from app.schemas.listening_practice import (
@@ -33,6 +34,9 @@ from app.schemas.listening_practice import (
     CleanupResponse,
     SentenceNoteUpdate,
     SentenceTextUpdate,
+    DictationAttemptCreate,
+    DictationAttemptOut,
+    DictationAttemptsResponse,
 )
 from app.services.listening_practice_service import (
     sync_blockers_to_vocabulary,
@@ -608,3 +612,76 @@ async def update_sentence_text(
     # relocated_norms 仅用于推断哪些 vocab 被剔除（由 sync_blockers_to_vocabulary 统一处理）
     _ = relocated_norms
     return _serialize_sentence(refreshed)
+
+
+# ==================== 听写记录 ====================
+
+@router.post("/dictation-attempts", response_model=DictationAttemptOut)
+async def save_dictation_attempt(
+    body: DictationAttemptCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    """保存一次听写提交记录"""
+    # 验证 generated_block 存在
+    q = await db.execute(
+        select(ListeningPracticeGenerated).where(
+            ListeningPracticeGenerated.id == body.generated_block_id
+        )
+    )
+    block = q.scalar_one_or_none()
+    if not block:
+        raise HTTPException(status_code=404, detail="Generated block not found")
+
+    attempt = ListeningDictationAttempt(
+        id=str(uuid.uuid4()),
+        generated_block_id=body.generated_block_id,
+        example_index=body.example_index,
+        play_count=body.play_count,
+        correct_count=body.correct_count,
+        total_count=body.total_count,
+        accuracy_pct=body.accuracy_pct,
+        missed_words=json.dumps(body.missed_words) if body.missed_words else None,
+    )
+    db.add(attempt)
+    await db.commit()
+    await db.refresh(attempt)
+    return _serialize_attempt(attempt)
+
+
+@router.get("/generated/{block_id}/attempts", response_model=DictationAttemptsResponse)
+async def get_dictation_attempts(
+    block_id: str,
+    example_index: int | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """获取某 block（可选按 example_index 过滤）的听写历史"""
+    stmt = (
+        select(ListeningDictationAttempt)
+        .where(ListeningDictationAttempt.generated_block_id == block_id)
+    )
+    if example_index is not None:
+        stmt = stmt.where(ListeningDictationAttempt.example_index == example_index)
+    stmt = stmt.order_by(desc(ListeningDictationAttempt.created_at))
+    result = await db.execute(stmt)
+    attempts = result.scalars().all()
+    return DictationAttemptsResponse(attempts=[_serialize_attempt(a) for a in attempts])
+
+
+def _serialize_attempt(a: ListeningDictationAttempt) -> DictationAttemptOut:
+    missed = []
+    if a.missed_words:
+        try:
+            missed = json.loads(a.missed_words)
+        except Exception:
+            pass
+    return DictationAttemptOut(
+        id=a.id,
+        generated_block_id=a.generated_block_id,
+        example_index=a.example_index,
+        play_count=a.play_count,
+        correct_count=a.correct_count,
+        total_count=a.total_count,
+        accuracy_pct=a.accuracy_pct,
+        missed_words=missed,
+        created_at=a.created_at,
+    )

@@ -43,10 +43,10 @@ const DIFFICULTY_COLORS: Record<string, string> = {
   其他: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-900/60 dark:text-slate-300 dark:border-slate-800",
 };
 
-const LEVEL_STYLES: Record<number, { label: string; bg: string }> = {
+const LEVEL_STYLES: Record<number, { label: string; bg: string; tag?: string }> = {
   1: { label: "Easy", bg: "border-emerald-200 bg-emerald-50/40 dark:border-emerald-900/50 dark:bg-emerald-950/10" },
   2: { label: "Medium", bg: "border-amber-200 bg-amber-50/40 dark:border-amber-900/50 dark:bg-amber-950/10" },
-  3: { label: "Hard", bg: "border-rose-200 bg-rose-50/40 dark:border-rose-900/50 dark:bg-rose-950/10" },
+  3: { label: "Hard", bg: "border-rose-200 bg-rose-50/40 dark:border-rose-900/50 dark:bg-rose-950/10", tag: "可选挑战" },
 };
 
 export function GenerateResultCard({
@@ -106,6 +106,8 @@ export function GenerateResultCard({
                 <ExampleRow
                   key={i}
                   example={ex}
+                  exampleIndex={i}
+                  blockId={block.id}
                   word={block.blocker_word}
                   readOnly={readOnly}
                   blindSignal={blindSignal}
@@ -151,6 +153,8 @@ function tokenize(text: string): TextToken[] {
 
 function ExampleRow({
   example,
+  exampleIndex,
+  blockId,
   word,
   readOnly = false,
   blindSignal,
@@ -158,6 +162,8 @@ function ExampleRow({
   onAddMissedWord,
 }: {
   example: ListeningGeneratedExample;
+  exampleIndex: number;
+  blockId: string;
   word: string;
   readOnly?: boolean;
   blindSignal?: "blind" | "reveal";
@@ -178,6 +184,9 @@ function ExampleRow({
 
   // 播放次数追踪
   const [playCount, setPlayCount] = useState(0);
+
+  // 历史听写次数
+  const [attemptCount, setAttemptCount] = useState(0);
 
   const tokens = useMemo(() => tokenize(example.text), [example.text]);
   const wordCount = useMemo(() => tokens.filter(t => t.type === "word").length, [tokens]);
@@ -239,6 +248,33 @@ function ExampleRow({
 
   const handleSubmitDictation = () => {
     setSubmitted(true);
+    setAttemptCount((n) => n + 1);
+    // 异步保存听写记录（fire-and-forget）
+    if (!readOnly && blockId) {
+      const wordTokens = tokens.filter(t => t.type === "word");
+      let correct = 0;
+      const missed: string[] = [];
+      wordTokens.forEach((t, i) => {
+        const expected = t.text.toLowerCase();
+        const actual = (answers[i] || "").trim().toLowerCase();
+        if (expected === actual) {
+          correct++;
+        } else if (expected.length >= 3) {
+          missed.push(t.text);
+        }
+      });
+      const total = wordTokens.length;
+      const pct = Math.round((correct / total) * 100);
+      api.saveDictationAttempt({
+        generated_block_id: blockId,
+        example_index: exampleIndex,
+        play_count: playCount,
+        correct_count: correct,
+        total_count: total,
+        accuracy_pct: pct,
+        missed_words: missed,
+      }).catch(() => {});
+    }
   };
 
   const handleRetry = () => {
@@ -262,6 +298,8 @@ function ExampleRow({
   };
 
   const handleKeyDown = (wordIdx: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    // 中文输入法正在组合时，不拦截任何键
+    if (e.nativeEvent.isComposing) return;
     if (e.key === "Tab") {
       e.preventDefault();
       const nextRef = inputRefs.current[wordIdx + (e.shiftKey ? -1 : 1)];
@@ -431,6 +469,11 @@ function ExampleRow({
       <div className="flex items-center justify-between gap-2 mb-1.5">
         <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
           Level {example.difficulty_level} · {style.label}
+          {style.tag && (
+            <span className="ml-1 normal-case text-rose-400 dark:text-rose-500 font-normal">
+              ({style.tag})
+            </span>
+          )}
         </span>
         <div className="flex items-center gap-1">
           {!readOnly && (
@@ -494,6 +537,9 @@ function ExampleRow({
             <div className="flex items-center gap-2 flex-wrap">
               {stats && (
                 <span className="text-[11px] text-muted-foreground">
+                  {attemptCount > 1 && (
+                    <span className="mr-1 text-sky-600 dark:text-sky-400 font-medium">第 {attemptCount} 次练习 ·</span>
+                  )}
                   {playCount > 0 && (
                     <span className="mr-1">🎧 已听 {playCount} 次 ·</span>
                   )}

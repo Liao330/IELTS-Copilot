@@ -35,8 +35,12 @@ import {
   X,
   ArrowRight,
   List,
+  BarChart3,
+  ChevronUp,
+  FileDown,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import { SentenceEditor } from "@/components/listening/SentenceEditor";
 import { GenerateResultCard } from "@/components/listening/GenerateResultCard";
 import { PlayButton } from "@/components/listening/PlayButton";
@@ -668,6 +672,11 @@ export default function ListeningPracticeDetailPage() {
               ))}
             </div>
           )}
+
+          {/* 页面底部：练习总结按钮 */}
+          {!isDemo && session.sentences.some((s) => s.generated_blocks.length > 0) && (
+            <PracticeSummarySection sessionId={sessionId} />
+          )}
         </main>
 
         {/* 右侧延伸障碍词面板 (lg 以上屏幕 sticky) */}
@@ -799,6 +808,159 @@ export default function ListeningPracticeDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+
+// ==================== 练习总结 ====================
+
+function PracticeSummarySection({ sessionId }: { sessionId: string }) {
+  const [loading, setLoading] = useState(false);
+  const [summary, setSummary] = useState<{
+    totalAttempts: number;
+    avgAccuracy: number;
+    topMissed: { word: string; count: number }[];
+  } | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const { toast } = useToast();
+
+  const loadSummary = async () => {
+    if (summary) {
+      setExpanded(!expanded);
+      return;
+    }
+    setLoading(true);
+    try {
+      // 获取该 session 所有 generated blocks 的听写记录
+      const sessionData = await api.getListeningSession(sessionId);
+      const allBlockIds = sessionData.sentences.flatMap((s) =>
+        s.generated_blocks.map((b) => b.id)
+      );
+
+      let totalAttempts = 0;
+      let totalAcc = 0;
+      const missedMap: Record<string, number> = {};
+
+      for (const blockId of allBlockIds) {
+        const res = await api.getDictationAttempts(blockId);
+        for (const a of res.attempts) {
+          totalAttempts++;
+          totalAcc += a.accuracy_pct;
+          for (const w of a.missed_words) {
+            const lower = w.toLowerCase();
+            missedMap[lower] = (missedMap[lower] || 0) + 1;
+          }
+        }
+      }
+
+      const avgAccuracy = totalAttempts > 0 ? Math.round(totalAcc / totalAttempts) : 0;
+      const topMissed = Object.entries(missedMap)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([word, count]) => ({ word, count }));
+
+      setSummary({ totalAttempts, avgAccuracy, topMissed });
+      setExpanded(true);
+    } catch (err) {
+      console.error(err);
+      toast({ variant: "destructive", description: "加载练习记录失败" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="mt-8 rounded-xl border bg-gradient-to-br from-violet-50/60 to-purple-50/40 dark:from-violet-950/20 dark:to-purple-950/10 p-4">
+      <button
+        type="button"
+        onClick={loadSummary}
+        disabled={loading}
+        className="w-full flex items-center justify-center gap-2 text-sm font-medium text-violet-700 dark:text-violet-300 hover:text-violet-900 dark:hover:text-violet-100 cursor-pointer"
+      >
+        {loading ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            加载练习记录中...
+          </>
+        ) : expanded ? (
+          <>
+            <ChevronUp className="h-4 w-4" />
+            收起练习总结
+          </>
+        ) : (
+          <>
+            <BarChart3 className="h-4 w-4" />
+            查看本次练习总结
+          </>
+        )}
+      </button>
+
+      {expanded && summary && (
+        <div className="mt-4 space-y-3">
+          {summary.totalAttempts === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-4">
+              暂无听写记录，完成听写对比后这里会自动记录你的练习数据。
+            </p>
+          ) : (
+            <>
+              <div className="flex items-center gap-4 justify-center">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-violet-700 dark:text-violet-300">
+                    {summary.totalAttempts}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">总听写次数</div>
+                </div>
+                <div className="h-8 border-l" />
+                <div className="text-center">
+                  <div className={cn(
+                    "text-2xl font-bold",
+                    summary.avgAccuracy >= 80
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : summary.avgAccuracy >= 60
+                        ? "text-amber-600 dark:text-amber-400"
+                        : "text-rose-600 dark:text-rose-400",
+                  )}>
+                    {summary.avgAccuracy}%
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">平均准确率</div>
+                </div>
+              </div>
+
+              {summary.topMissed.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">
+                    高频错误词 Top {summary.topMissed.length}：
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {summary.topMissed.map((item) => (
+                      <span
+                        key={item.word}
+                        className="inline-flex items-center gap-1 rounded-full bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs px-2 py-0.5"
+                      >
+                        {item.word}
+                        <span className="text-rose-400 text-[10px]">×{item.count}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 导出 PDF */}
+              <div className="pt-2 border-t flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="inline-flex items-center gap-1.5 text-xs text-violet-600 dark:text-violet-400 hover:underline cursor-pointer"
+                >
+                  <FileDown className="h-3.5 w-3.5" />
+                  导出精听记录 PDF
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
