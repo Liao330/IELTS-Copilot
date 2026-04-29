@@ -401,6 +401,44 @@ function ExampleRow({
   // ==================== render ====================
 
   const renderSentenceArea = () => {
+    // 有历史听写记录且已提交 → 始终显示对比结果（即使 readOnly 或 revealed）
+    if (submitted && hasInitialAttempt && revealed) {
+      // 显示对比结果行
+      const comparisonLine = (
+        <div className="flex flex-wrap items-baseline gap-y-1 text-sm font-mono leading-relaxed">
+          {tokens.map((t, i) => {
+            if (t.type === "sep") {
+              return <span key={i} className="whitespace-pre-wrap">{t.text}</span>;
+            }
+            const wi = t.wordIndex;
+            const userAnswer = answers[wi] || "";
+            const expected = t.text;
+            const isCorrect = userAnswer.trim().toLowerCase() === expected.toLowerCase();
+            return (
+              <span
+                key={i}
+                className={cn(
+                  "inline-block",
+                  isCorrect
+                    ? "text-emerald-700 dark:text-emerald-400"
+                    : "text-rose-700 dark:text-rose-400",
+                )}
+                title={isCorrect ? "正确" : `你写的：${userAnswer || "（空）"} → 正确：${expected}`}
+              >
+                {isCorrect ? expected : (
+                  <>
+                    {userAnswer && <span className="line-through opacity-60 mr-0.5">{userAnswer}</span>}
+                    <span className="font-bold underline decoration-dashed">{expected}</span>
+                  </>
+                )}
+              </span>
+            );
+          })}
+        </div>
+      );
+      return comparisonLine;
+    }
+
     // 已揭晓：可点击单词新增障碍词
     if (revealed) {
       if (!readOnly && onNewBlockerWord) {
@@ -595,10 +633,10 @@ function ExampleRow({
       {/* 句子区 */}
       {renderSentenceArea()}
 
-      {/* 听写操作栏（盲听 + 非只读） */}
-      {!readOnly && !revealed && (
+      {/* 听写操作栏（盲听 + 非只读） 或 历史记录回显 */}
+      {(!readOnly && !revealed) || (submitted && hasInitialAttempt) ? (
         <div className="mt-1.5 flex items-center gap-2">
-          {!dictMode ? (
+          {!dictMode && !readOnly ? (
             <button
               type="button"
               onClick={handleStartDictation}
@@ -644,14 +682,16 @@ function ExampleRow({
                   )}
                 </span>
               )}
-              <button
-                type="button"
-                onClick={handleRetry}
-                className="text-xs text-sky-600 dark:text-sky-400 hover:underline cursor-pointer inline-flex items-center gap-1"
-              >
-                <RotateCcw className="h-3 w-3" />
-                再试
-              </button>
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={handleRetry}
+                  className="text-xs text-sky-600 dark:text-sky-400 hover:underline cursor-pointer inline-flex items-center gap-1"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  再试
+                </button>
+              )}
             </div>
           ) : (
             <button
@@ -664,7 +704,7 @@ function ExampleRow({
             </button>
           )}
         </div>
-      )}
+      ) : null}
 
       {/* 翻译 */}
       {revealed ? (
