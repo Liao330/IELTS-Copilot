@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles, Volume2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface WordEditorProps {
@@ -58,6 +58,22 @@ export function WordEditor({ open, onOpenChange, word, initialWord, initialData,
   });
   const [saving, setSaving] = useState(false);
   const [translating, setTranslating] = useState(false);
+  const [playing, setPlaying] = useState(false);
+
+  const handlePlayWord = async () => {
+    if (!form.word.trim() || playing) return;
+    setPlaying(true);
+    try {
+      const blob = await api.ttsFetchBlob(form.word.trim());
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.onended = () => { URL.revokeObjectURL(url); setPlaying(false); };
+      audio.onerror = () => { URL.revokeObjectURL(url); setPlaying(false); };
+      await audio.play();
+    } catch {
+      setPlaying(false);
+    }
+  };
 
   const [autoFillTriggered, setAutoFillTriggered] = useState(false);
   const prevOpenRef = useRef(false);
@@ -214,7 +230,7 @@ export function WordEditor({ open, onOpenChange, word, initialWord, initialData,
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          {/* 单词 + AI 查词按钮 */}
+          {/* 单词 + 播放 + AI 查词按钮 */}
           <div className="space-y-1.5">
             <Label>单词/短语 *</Label>
             <div className="flex gap-2">
@@ -223,6 +239,16 @@ export function WordEditor({ open, onOpenChange, word, initialWord, initialData,
                 value={form.word}
                 onChange={(e) => setForm((p) => ({ ...p, word: e.target.value }))}
               />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handlePlayWord}
+                disabled={!form.word.trim() || playing}
+                className="flex-shrink-0 h-9 w-9"
+                title="播放发音"
+              >
+                <Volume2 className={`h-4 w-4 ${playing ? "text-sky-500 animate-pulse" : ""}`} />
+              </Button>
               {!isEdit && (
                 <Button
                   variant="outline"

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import HTTPException
 from sqlalchemy import select, and_
@@ -12,6 +12,7 @@ from app.models.listening_practice import (
     ListeningPracticeSession,
     ListeningPracticeSentence,
     ListeningPracticeGenerated,
+    ListeningDictationAttempt,
 )
 from app.models.vocabulary import VocabularyWord
 from app.prompts.listening_practice_prompt import LISTENING_PRACTICE_GENERATE_PROMPT
@@ -28,6 +29,24 @@ VOCAB_SOURCE_PREFIX = "listening-practice:"  # 写入 source_conversation_id 的
 
 def _normalize_word(word: str) -> str:
     return word.strip().lower()
+
+
+async def _get_recent_accuracy(db: AsyncSession, session_id: str) -> float | None:
+    """获取该 session 近期听写的平均准确率。返回 None 表示无数据。"""
+    # 查该 session 下所有句子的 generated blocks 的 attempts
+    stmt = (
+        select(ListeningDictationAttempt.accuracy_pct)
+        .join(ListeningPracticeGenerated, ListeningDictationAttempt.generated_block_id == ListeningPracticeGenerated.id)
+        .join(ListeningPracticeSentence, ListeningPracticeGenerated.sentence_id == ListeningPracticeSentence.id)
+        .where(ListeningPracticeSentence.session_id == session_id)
+        .order_by(ListeningDictationAttempt.created_at.desc())
+        .limit(30)  # 最近 30 次听写
+    )
+    result = await db.execute(stmt)
+    pcts = [row[0] for row in result.all()]
+    if not pcts:
+        return None
+    return sum(pcts) / len(pcts)
 
 
 def _clean_json_response(raw: str) -> str:
@@ -188,6 +207,11 @@ async def generate_for_sentence(
         if user_note:
             payload["user_context"] = user_note
 
+        # 动态难度：根据历史准确率调整
+        avg_accuracy = await _get_recent_accuracy(db, sentence.session_id)
+        if avg_accuracy is not None:
+            payload["recent_avg_accuracy"] = round(avg_accuracy, 1)
+
         user_payload = json.dumps(payload, ensure_ascii=False)
 
         # 延伸模式：如果该句所在 session 的 note 含"延伸"标记，只生成1句简单句
@@ -222,6 +246,29 @@ async def generate_for_sentence(
 - **examples 只需要 2 条**：1 条 difficulty_level 1（Easy，8-12 词）+ 1 条 difficulty_level 2（Medium，12-18 词）
 - 不需要生成 difficulty_level 3（Hard）的句子
 - 其余规则不变
+"""
+
+        # 动态难度调节（基于历史准确率）
+        if avg_accuracy is not None:
+            if avg_accuracy > 85:
+                system_prompt += f"""
+
+## 难度提升（学生近期平均准确率 {avg_accuracy:.0f}%，偏高）
+学生近期听写表现优秀，请适当提升练习难度：
+- Easy 句子可以稍长（10-14 词），加入更多修饰成分
+- Medium 句子使用更复杂的从句结构（15-22 词）
+- 障碍词放在更隐蔽的语境位置（如从句中间、被其他词包裹）
+- 增加干扰元素（如同音词出现在附近、更快的节奏感）
+"""
+            elif avg_accuracy < 45:
+                system_prompt += f"""
+
+## 难度降低（学生近期平均准确率 {avg_accuracy:.0f}%，偏低）
+学生近期听写表现困难，请降低练习难度：
+- Easy 句子尽量短（6-10 词），结构简单直白
+- Medium 句子控制在 10-14 词，避免复杂从句
+- 障碍词放在句子显眼位置（如句首、句尾、重读位置）
+- 减少干扰：句中其他词尽量简单常见，让障碍词更容易被捕捉
 """
 
         messages = [
