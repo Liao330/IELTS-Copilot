@@ -183,11 +183,19 @@ async def generate_for_sentence(
     cached_map = {g.blocker_word: g for g in cached_list}
 
     if force_refresh:
-        # 全部删掉重来
+        # 只删除没有听写记录的 block（保留有练习历史的）
         for g in cached_list:
-            await db.delete(g)
+            # 检查是否有听写记录
+            attempt_q = await db.execute(
+                select(ListeningDictationAttempt.id).where(
+                    ListeningDictationAttempt.generated_block_id == g.id
+                ).limit(1)
+            )
+            has_attempts = attempt_q.scalar_one_or_none() is not None
+            if not has_attempts:
+                await db.delete(g)
+                del cached_map[g.blocker_word]
         await db.flush()
-        cached_map = {}
 
     # 需要调 LLM 的词
     missing = [w for w in unique_words if w not in cached_map]
