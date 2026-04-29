@@ -274,6 +274,7 @@ export default function ListeningPracticeDetailPage() {
     try {
       const res = await api.generateListeningPractice(sentence.id, {
         force_refresh: forceRefresh,
+        max_examples: 2,  // 默认只生成 Easy+Medium，Hard 需手动触发
       });
       setSession((prev) =>
         prev
@@ -816,6 +817,25 @@ export default function ListeningPracticeDetailPage() {
                   onNewBlockerWord={addDiscoveredWord}
                   onAddMissedWord={addDiscoveredWord}
                   priorities={priorities}
+                  onUpdateBlocks={(sentenceId, blockerWord, updatedBlock) => {
+                    setSession((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            sentences: prev.sentences.map((s) =>
+                              s.id === sentenceId
+                                ? {
+                                    ...s,
+                                    generated_blocks: s.generated_blocks.map((b) =>
+                                      b.blocker_word === blockerWord ? updatedBlock : b,
+                                    ),
+                                  }
+                                : s,
+                            ),
+                          }
+                        : prev,
+                    );
+                  }}
                 />
               ))}
             </div>
@@ -1209,6 +1229,7 @@ interface SentenceBlockProps {
   onNewBlockerWord?: (word: string) => void;
   onAddMissedWord?: (word: string) => void;
   priorities?: Record<string, { priority: "must" | "recommended" | "skip"; reason: string }>;
+  onUpdateBlocks?: (sentenceId: string, blockerWord: string, updatedBlock: import("@/types").ListeningGeneratedBlock) => void;
 }
 
 function SentenceBlock({
@@ -1225,6 +1246,7 @@ function SentenceBlock({
   onNewBlockerWord,
   onAddMissedWord,
   priorities,
+  onUpdateBlocks,
 }: SentenceBlockProps) {
   const [showGenerated, setShowGenerated] = useState(true);
   // 盲听信号（按钮点击时变动，触发所有 ExampleRow 统一 blind/reveal）
@@ -1441,6 +1463,18 @@ function SentenceBlock({
               blindSignal={blindSignal}
               onNewBlockerWord={!isDemo ? onNewBlockerWord : undefined}
               onAddMissedWord={!isDemo ? onAddMissedWord : undefined}
+              onGenerateHard={!isDemo ? async () => {
+                // 重新生成该词含 Hard 句
+                const res = await api.generateListeningPractice(sentence.id, {
+                  words: [block.blocker_word],
+                  force_refresh: true,
+                  max_examples: 3,
+                });
+                const updatedBlock = res.blocks.find((b) => b.blocker_word === block.blocker_word);
+                if (updatedBlock && onUpdateBlocks) {
+                  onUpdateBlocks(sentence.id, block.blocker_word, updatedBlock);
+                }
+              } : undefined}
             />
           ))}
         </div>

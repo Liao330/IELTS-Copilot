@@ -33,6 +33,8 @@ class GeneratedBlockOut(BaseModel):
     explanation: str
     examples: list[GeneratedExample]
     created_at: datetime
+    # 每个 example_index 的最近一次听写记录（用于回显对比结果）
+    latest_attempts: dict[str, "DictationAttemptOut"] | None = None
 
 
 # ========== Session ==========
@@ -161,6 +163,7 @@ class DictationAttemptCreate(BaseModel):
     total_count: int = Field(..., ge=1)
     accuracy_pct: int = Field(..., ge=0, le=100)
     missed_words: list[str] = []
+    user_answers: list[str] = []  # 用户每个词位的答案
 
 
 class DictationAttemptOut(BaseModel):
@@ -172,6 +175,7 @@ class DictationAttemptOut(BaseModel):
     total_count: int
     accuracy_pct: int
     missed_words: list[str]
+    user_answers: list[str]
     created_at: datetime
 
 

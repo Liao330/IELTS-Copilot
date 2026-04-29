@@ -32,6 +32,8 @@ interface Props {
   onNewBlockerWord?: (word: string) => void;
   /** 当听写产出潜在障碍词且用户点"加入列表"时触发 */
   onAddMissedWord?: (word: string) => void;
+  /** 手动触发生成 Hard 句（由父组件提供） */
+  onGenerateHard?: () => Promise<void>;
 }
 
 const DIFFICULTY_COLORS: Record<string, string> = {
@@ -58,6 +60,7 @@ export function GenerateResultCard({
   onOpenChange,
   onNewBlockerWord,
   onAddMissedWord,
+  onGenerateHard,
 }: Props) {
   const [internalOpen, setInternalOpen] = useState(defaultOpen);
   const open = externalOpen ?? internalOpen;
@@ -113,12 +116,49 @@ export function GenerateResultCard({
                   blindSignal={blindSignal}
                   onNewBlockerWord={onNewBlockerWord}
                   onAddMissedWord={onAddMissedWord}
+                  initialAttempt={block.latest_attempts?.[String(i)] ?? undefined}
                 />
               ))}
           </div>
+          {/* 如果没有 Hard 句，显示手动生成按钮 */}
+          {!readOnly && onGenerateHard && !block.examples.some((ex) => ex.difficulty_level === 3) && (
+            <GenerateHardButton onGenerate={onGenerateHard} />
+          )}
         </div>
       )}
     </div>
+  );
+}
+
+
+// ==================== Generate Hard Button ====================
+
+function GenerateHardButton({ onGenerate }: { onGenerate: () => Promise<void> }) {
+  const [loading, setLoading] = useState(false);
+  const handleClick = async () => {
+    setLoading(true);
+    try {
+      await onGenerate();
+    } finally {
+      setLoading(false);
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={loading}
+      className="text-xs text-rose-600 dark:text-rose-400 hover:underline cursor-pointer inline-flex items-center gap-1 mt-1 disabled:opacity-50"
+    >
+      {loading ? (
+        <span className="animate-pulse">生成中...</span>
+      ) : (
+        <>
+          <Plus className="h-3 w-3" />
+          挑战 Hard 句
+        </>
+      )}
+    </button>
   );
 }
 
@@ -160,6 +200,7 @@ function ExampleRow({
   blindSignal,
   onNewBlockerWord,
   onAddMissedWord,
+  initialAttempt,
 }: {
   example: ListeningGeneratedExample;
   exampleIndex: number;
@@ -169,26 +210,30 @@ function ExampleRow({
   blindSignal?: "blind" | "reveal";
   onNewBlockerWord?: (word: string) => void;
   onAddMissedWord?: (word: string) => void;
+  initialAttempt?: { user_answers: string[]; play_count: number; accuracy_pct: number; missed_words: string[] };
 }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const blindByDefault = useBlindModeStore((s) => s.blindByDefault);
 
-  const initialRevealed = readOnly ? true : !blindByDefault;
+  // 如果有历史听写记录，直接进入已提交状态
+  const hasInitialAttempt = !!(initialAttempt && initialAttempt.user_answers.length > 0);
+
+  const initialRevealed = readOnly ? true : hasInitialAttempt ? true : !blindByDefault;
   const [revealed, setRevealed] = useState(initialRevealed);
   const [hintRevealed, setHintRevealed] = useState(initialRevealed);
 
   // 听写模式
-  const [dictMode, setDictMode] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [dictMode, setDictMode] = useState(hasInitialAttempt);
+  const [submitted, setSubmitted] = useState(hasInitialAttempt);
 
   // 播放次数追踪
-  const [playCount, setPlayCount] = useState(0);
+  const [playCount, setPlayCount] = useState(hasInitialAttempt ? (initialAttempt?.play_count ?? 0) : 0);
   // 对比后的播放次数（区分做题时听和对比后听）
   const [postPlayCount, setPostPlayCount] = useState(0);
 
   // 历史听写次数
-  const [attemptCount, setAttemptCount] = useState(0);
+  const [attemptCount, setAttemptCount] = useState(hasInitialAttempt ? 1 : 0);
 
   const tokens = useMemo(() => tokenize(example.text), [example.text]);
   const wordCount = useMemo(() => tokens.filter(t => t.type === "word").length, [tokens]);
@@ -197,8 +242,10 @@ function ExampleRow({
   const maxPlays = example.difficulty_level === 1 ? 3 : example.difficulty_level === 2 ? 5 : Infinity;
   const playLimitReached = !submitted && playCount >= maxPlays;
 
-  // 每个 word token 的用户输入
-  const [answers, setAnswers] = useState<string[]>(() => Array(wordCount).fill(""));
+  // 每个 word token 的用户输入（从历史记录初始化）
+  const [answers, setAnswers] = useState<string[]>(() =>
+    hasInitialAttempt ? initialAttempt!.user_answers : Array(wordCount).fill(""),
+  );
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // 响应父级信号
@@ -280,6 +327,7 @@ function ExampleRow({
         total_count: total,
         accuracy_pct: pct,
         missed_words: missed,
+        user_answers: answers,
       }).catch(() => {});
     }
   };

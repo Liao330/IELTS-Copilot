@@ -384,6 +384,7 @@ export interface ListeningGeneratedBlock {
   explanation: string;
   examples: ListeningGeneratedExample[];
   created_at: string;
+  latest_attempts?: Record<string, DictationAttempt> | null;
 }
 
 export interface ListeningSentence {
@@ -465,6 +466,7 @@ export interface DictationAttempt {
   total_count: number;
   accuracy_pct: number;
   missed_words: string[];
+  user_answers: string[];
   created_at: string;
 }
 
@@ -476,6 +478,7 @@ export interface DictationAttemptCreate {
   total_count: number;
   accuracy_pct: number;
   missed_words: string[];
+  user_answers: string[];
 }
 
 export interface DiscoveredWord {

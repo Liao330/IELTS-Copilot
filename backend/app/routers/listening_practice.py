@@ -86,6 +86,19 @@ def _serialize_generated(g: ListeningPracticeGenerated) -> GeneratedBlockOut:
     except Exception:
         ex_list = []
     examples = [GeneratedExample(**ex) for ex in ex_list]
+
+    # 包含每个 example_index 的最新听写记录
+    latest_attempts_map = None
+    if hasattr(g, "dictation_attempts") and g.dictation_attempts:
+        latest_attempts_map = {}
+        # 按 example_index 分组，取最新的
+        by_index: dict[int, ListeningDictationAttempt] = {}
+        for a in g.dictation_attempts:
+            if a.example_index not in by_index or a.created_at > by_index[a.example_index].created_at:
+                by_index[a.example_index] = a
+        for idx, a in by_index.items():
+            latest_attempts_map[str(idx)] = _serialize_attempt(a)
+
     return GeneratedBlockOut(
         id=g.id,
         sentence_id=g.sentence_id,
@@ -94,6 +107,7 @@ def _serialize_generated(g: ListeningPracticeGenerated) -> GeneratedBlockOut:
         explanation=g.explanation,
         examples=examples,
         created_at=g.created_at,
+        latest_attempts=latest_attempts_map,
     )
 
 
@@ -249,6 +263,8 @@ async def _load_session_detail(db: AsyncSession, session_id: str) -> SessionDeta
         .options(
             selectinload(ListeningPracticeSession.sentences).selectinload(
                 ListeningPracticeSentence.generated_blocks
+            ).selectinload(
+                ListeningPracticeGenerated.dictation_attempts
             )
         )
     )
@@ -652,6 +668,7 @@ async def save_dictation_attempt(
         total_count=body.total_count,
         accuracy_pct=body.accuracy_pct,
         missed_words=json.dumps(body.missed_words) if body.missed_words else None,
+        user_answers=json.dumps(body.user_answers) if body.user_answers else None,
     )
     db.add(attempt)
     await db.commit()
@@ -876,6 +893,12 @@ def _serialize_attempt(a: ListeningDictationAttempt) -> DictationAttemptOut:
             missed = json.loads(a.missed_words)
         except Exception:
             pass
+    user_answers = []
+    if a.user_answers:
+        try:
+            user_answers = json.loads(a.user_answers)
+        except Exception:
+            pass
     return DictationAttemptOut(
         id=a.id,
         generated_block_id=a.generated_block_id,
@@ -885,5 +908,6 @@ def _serialize_attempt(a: ListeningDictationAttempt) -> DictationAttemptOut:
         total_count=a.total_count,
         accuracy_pct=a.accuracy_pct,
         missed_words=missed,
+        user_answers=user_answers,
         created_at=a.created_at,
     )

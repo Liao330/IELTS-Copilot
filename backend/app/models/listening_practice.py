@@ -109,6 +109,8 @@ class ListeningDictationAttempt(Base):
     accuracy_pct: Mapped[int] = mapped_column(Integer, nullable=False)
     # JSON: ["word1", "word2"]
     missed_words: Mapped[Optional[str]] = mapped_column(Text)
+    # JSON: ["answer1", "answer2", ...] — 用户填写的每个词位答案（用于回显）
+    user_answers: Mapped[Optional[str]] = mapped_column(Text)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
