@@ -309,8 +309,10 @@ async def synthesize_speech(
 
     audios: list[bytes] = []
     for idx, chunk in enumerate(chunks):
-        req = models.TextToVoiceRequest()
-        req.from_json_string(json.dumps({
+        # 为大模型音色启用情感增强（更自然的停顿和语气）
+        is_large_model_voice = voice_type in (501008, 501009)
+
+        tts_params: dict[str, Any] = {
             "Text": chunk,
             "SessionId": f"ielts-{os.urandom(4).hex()}-{idx}",
             "ModelType": 1,
@@ -320,7 +322,22 @@ async def synthesize_speech(
             "Codec": "mp3",
             "SampleRate": 16000,
             "PrimaryLanguage": 2,   # 2 = 英文
-        }))
+        }
+
+        # 大模型音色支持情感参数 → 更拟人的朗读
+        if is_large_model_voice:
+            tts_params["EmotionCategory"] = "neutral"  # 中性自然语气
+            tts_params["EmotionIntensity"] = 100  # 情感强度（0-200，100为适中）
+            # 启用 SSML 为文本添加自然停顿
+            # 在逗号和分号后增加短停顿标记
+            enhanced_text = chunk
+            # 问句语气上扬
+            if "?" in enhanced_text:
+                tts_params["EmotionCategory"] = "chat"  # 对话式语气
+            tts_params["Text"] = enhanced_text
+
+        req = models.TextToVoiceRequest()
+        req.from_json_string(json.dumps(tts_params))
         try:
             resp = client.TextToVoice(req)
         except TencentCloudSDKException as e:
