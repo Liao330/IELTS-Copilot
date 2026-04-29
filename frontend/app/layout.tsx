@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { TranslatePopover } from "@/components/vocabulary/TranslatePopover";
+import { QuickTranslate } from "@/components/vocabulary/QuickTranslate";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -32,6 +33,7 @@ export default function RootLayout({
       >
         {children}
         <TranslatePopover />
+        <QuickTranslate />
         <Toaster />
       </body>
     </html>
