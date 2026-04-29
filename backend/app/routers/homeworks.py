@@ -17,6 +17,7 @@ from app.models.file import File
 from app.schemas.homework import (
     HomeworkOut, HomeworkCreate, HomeworkUpdate,
     HomeworkFeedbackOut, FeedbackCreate, FeedbackUpdate, HomeworkDateGroup, FileInfo,
+    HomeworkSearchRequest, HomeworkSearchResult, HomeworkSearchResponse,
 )
 from app.utils.score_parser import parse_scores
 
@@ -540,4 +541,77 @@ async def generate_review_note(homework_id: str, db: AsyncSession = Depends(get_
         id=fb.id, homework_id=fb.homework_id, feedback_type=fb.feedback_type,
         content=fb.content, file_id=None, file_name=None, file_mime_type=None,
         scores=None, created_at=fb.created_at,
+    )
+
+
+# ==================== 摘要 & 搜索 ====================
+
+@router.post("/{homework_id}/generate-summary")
+async def generate_summary(homework_id: str, db: AsyncSession = Depends(get_db)):
+    """为单个作业生成/刷新 AI 摘要"""
+    from app.services.homework_summary_service import generate_summary_for_homework
+
+    hw = await db.get(Homework, homework_id)
+    if not hw:
+        raise HTTPException(status_code=404, detail="Homework not found")
+
+    summary = await generate_summary_for_homework(db, homework_id)
+    await db.commit()
+
+    if summary is None:
+        raise HTTPException(status_code=500, detail="摘要生成失败，请检查 API Key 配置")
+
+    return {"homework_id": homework_id, "summary": summary}
+
+
+@router.post("/batch-generate-summaries")
+async def batch_generate_summaries(db: AsyncSession = Depends(get_db)):
+    """批量为无摘要的作业生成摘要"""
+    from app.services.homework_summary_service import generate_summary_for_homework
+
+    stmt = select(Homework).where(Homework.summary.is_(None))
+    result = await db.execute(stmt)
+    homeworks = result.scalars().all()
+
+    if not homeworks:
+        return {"message": "所有作业都已有摘要", "generated": 0, "total": 0}
+
+    generated = 0
+    errors = 0
+    for hw in homeworks:
+        try:
+            summary = await generate_summary_for_homework(db, hw.id)
+            if summary:
+                generated += 1
+            else:
+                errors += 1
+        except Exception as e:
+            print(f"[batch_summary] 失败 hw={hw.id}: {e}")
+            errors += 1
+
+    await db.commit()
+    return {
+        "message": f"批量生成完成：成功 {generated}，失败 {errors}",
+        "generated": generated,
+        "errors": errors,
+        "total": len(homeworks),
+    }
+
+
+@router.post("/search", response_model=HomeworkSearchResponse)
+async def search_homeworks(body: HomeworkSearchRequest, db: AsyncSession = Depends(get_db)):
+    """AI 语义搜索作业"""
+    from app.services.homework_summary_service import search_homeworks_by_query
+
+    results = await search_homeworks_by_query(db, body.query, body.category)
+
+    # 计算搜索范围
+    count_stmt = select(func.count()).select_from(Homework)
+    if body.category:
+        count_stmt = count_stmt.where(Homework.category == body.category)
+    total = (await db.execute(count_stmt)).scalar() or 0
+
+    return HomeworkSearchResponse(
+        results=[HomeworkSearchResult(**r) for r in results],
+        total_searched=total,
     )

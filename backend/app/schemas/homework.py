@@ -36,6 +36,8 @@ class HomeworkOut(BaseModel):
     file_mime_type: Optional[str] = None
     files: list[FileInfo] = []
     feedbacks: list[HomeworkFeedbackOut] = []
+    summary: Optional[str] = None
+    summary_updated_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 
@@ -75,3 +77,23 @@ class HomeworkDateGroup(BaseModel):
     date: date
     categories: dict[str, int]  # e.g. {"writing": 2, "speaking": 1}
     total: int
+
+
+# ========== 作业搜索 ==========
+
+class HomeworkSearchRequest(BaseModel):
+    query: str
+    category: Optional[str] = None  # 可选按类别过滤
+
+
+class HomeworkSearchResult(BaseModel):
+    homework_id: str
+    title: str
+    category: str
+    homework_date: date
+    relevance_reason: str  # AI 给出的匹配理由
+
+
+class HomeworkSearchResponse(BaseModel):
+    results: list[HomeworkSearchResult]
+    total_searched: int  # 搜索范围内的作业总数

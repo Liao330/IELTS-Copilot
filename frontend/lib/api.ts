@@ -124,6 +124,16 @@ export const api = {
     request<import("@/types").Homework>(`/api/homeworks/${homeworkId}/files/${fileId}`, { method: "DELETE" }),
   generateReviewNote: (homeworkId: string) =>
     request<import("@/types").HomeworkFeedback>(`/api/homeworks/${homeworkId}/generate-review-note`, { method: "POST" }),
+  // 摘要 & 搜索
+  generateHomeworkSummary: (homeworkId: string) =>
+    request<{ homework_id: string; summary: string }>(`/api/homeworks/${homeworkId}/generate-summary`, { method: "POST" }),
+  batchGenerateSummaries: () =>
+    request<{ message: string; generated: number; errors: number; total: number }>("/api/homeworks/batch-generate-summaries", { method: "POST" }),
+  searchHomeworks: (query: string, category?: string) =>
+    request<{ results: { homework_id: string; title: string; category: string; homework_date: string; relevance_reason: string }[]; total_searched: number }>(
+      "/api/homeworks/search",
+      { method: "POST", body: JSON.stringify({ query, category: category || undefined }) },
+    ),
   getFileDownloadUrl: (fileId: string) => `${API_BASE}/api/homeworks/files/${fileId}/download`,
   getFilePreviewUrl: (fileId: string) => `${API_BASE}/api/homeworks/files/${fileId}/preview`,
 

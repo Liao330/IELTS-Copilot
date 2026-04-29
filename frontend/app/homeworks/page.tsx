@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft, Plus, ChevronLeft, ChevronRight, Upload,
   FileText, Mic, BookOpen, Headphones, Calendar, Trash2, Pencil,
-  MessageSquarePlus, Star,
+  MessageSquarePlus, Star, Search, Loader2, Sparkles, X,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { CreateHomeworkDialog } from "@/components/homework/CreateHomeworkDialog";
@@ -58,6 +58,33 @@ export default function HomeworksPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [minScore, setMinScore] = useState<number | undefined>(undefined);
+
+  // 搜索状态
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<{ homework_id: string; title: string; category: string; homework_date: string; relevance_reason: string }[] | null>(null);
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setSearching(true);
+    try {
+      const res = await api.searchHomeworks(searchQuery.trim(), category || undefined);
+      setSearchResults(res.results);
+      if (res.results.length === 0) {
+        toast({ description: `在 ${res.total_searched} 份作业中未找到相关内容` });
+      }
+    } catch (err) {
+      console.error(err);
+      toast({ variant: "destructive", description: "搜索失败" });
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const clearSearch = () => {
+    setSearchQuery("");
+    setSearchResults(null);
+  };
 
   // 日历导航状态
   const now = new Date();
@@ -222,6 +249,80 @@ export default function HomeworksPage() {
       </header>
 
       <main className="container mx-auto px-4 py-6 max-w-5xl">
+        {/* AI 语义搜索 */}
+        <div className="mb-4 rounded-lg border bg-card p-3">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
+                placeholder="AI 搜索：描述你想找的内容，如「口语中道歉相关的练习」「听力 Section 3 学术讨论」"
+                className="w-full rounded-md border bg-background px-9 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={clearSearch}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            <Button
+              size="sm"
+              onClick={handleSearch}
+              disabled={searching || !searchQuery.trim()}
+              className="gap-1.5 shrink-0"
+            >
+              {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              搜索
+            </Button>
+          </div>
+
+          {/* 搜索结果 */}
+          {searchResults !== null && (
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground font-medium">
+                  找到 {searchResults.length} 份相关作业
+                </span>
+                <button type="button" onClick={clearSearch} className="text-xs text-muted-foreground hover:text-foreground">
+                  清除搜索
+                </button>
+              </div>
+              {searchResults.map((r) => {
+                const CatIcon = CATEGORY_ICONS[r.category] || FileText;
+                return (
+                  <button
+                    key={r.homework_id}
+                    type="button"
+                    onClick={() => router.push(`/homeworks/${r.homework_id}`)}
+                    className="w-full flex items-start gap-3 rounded-md border p-3 text-left hover:bg-accent transition-colors"
+                  >
+                    <div className="flex items-center justify-center h-8 w-8 rounded-md bg-gradient-to-br from-violet-400 to-purple-500 text-white shrink-0 mt-0.5">
+                      <CatIcon className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="font-medium text-sm truncate">{r.title}</span>
+                        <Badge variant="outline" className="text-[10px] shrink-0">
+                          {CATEGORY_LABELS[r.category] || r.category}
+                        </Badge>
+                        <span className="text-[10px] text-muted-foreground shrink-0">{r.homework_date}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{r.relevance_reason}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* 两级日历导航 */}
         <div className="mb-6 rounded-lg border bg-card p-4">
           {filterMonth === null ? (

@@ -15,6 +15,8 @@ class Homework(Base):
     homework_date = Column(Date, nullable=False)  # 作业日期
     description = Column(Text, nullable=True)  # 备注说明
     file_id = Column(String, ForeignKey("files.id"), nullable=True)  # 兼容旧数据（单文件）
+    summary = Column(Text, nullable=True)  # AI 生成的结构化摘要
+    summary_updated_at = Column(DateTime, nullable=True)  # 摘要最后更新时间
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

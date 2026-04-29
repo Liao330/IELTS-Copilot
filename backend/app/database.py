@@ -53,6 +53,8 @@ async def _migrate_add_columns(conn):
         ("daily_report_cache", "include_notes", "BOOLEAN DEFAULT 0"),
         ("homework_feedbacks", "scores", "TEXT"),
         ("listening_practice_sentences", "note", "TEXT"),
+        ("homeworks", "summary", "TEXT"),
+        ("homeworks", "summary_updated_at", "TEXT"),
     ]
     for table, column, col_type in new_columns:
         try:
