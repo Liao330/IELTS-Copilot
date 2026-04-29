@@ -139,6 +139,7 @@ async def generate_for_sentence(
     sentence: ListeningPracticeSentence,
     words: list[str],
     force_refresh: bool = False,
+    max_examples: int | None = None,
 ) -> list[ListeningPracticeGenerated]:
     """为指定句子的障碍词批量生成/返回缓存练习块。"""
     if not words:
@@ -198,14 +199,28 @@ async def generate_for_sentence(
         sess = session_q.scalar_one_or_none()
         is_extension = bool(sess and sess.note and "延伸" in sess.note)
 
+        # 确定生成数量：max_examples 参数 > 延伸模式 > 默认3句
+        effective_max = max_examples
+        if effective_max is None and is_extension:
+            effective_max = 1
+
         system_prompt = LISTENING_PRACTICE_GENERATE_PROMPT
-        if is_extension:
+        if effective_max == 1:
             system_prompt += """
 
-## 延伸模式（特殊规则，覆盖上方规则1）
-当前为延伸障碍词练习，请遵循以下特殊规则：
+## 精简模式（特殊规则，覆盖上方规则1）
+当前为精简练习模式，请遵循以下特殊规则：
 - **examples 只需要 1 条**，difficulty_level 为 1（Easy，8-12 词短句）
 - 练习句必须简单直白，让学生快速巩固
+- 其余规则不变
+"""
+        elif effective_max == 2:
+            system_prompt += """
+
+## 精简模式（特殊规则，覆盖上方规则1）
+当前为精简练习模式，请遵循以下特殊规则：
+- **examples 只需要 2 条**：1 条 difficulty_level 1（Easy，8-12 词）+ 1 条 difficulty_level 2（Medium，12-18 词）
+- 不需要生成 difficulty_level 3（Hard）的句子
 - 其余规则不变
 """
 

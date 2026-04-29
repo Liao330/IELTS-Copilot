@@ -64,6 +64,12 @@ export default function ListeningPracticeDetailPage() {
   const [batchGenerating, setBatchGenerating] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ done: 0, total: 0 });
 
+  // 智能分级
+  const [priorities, setPriorities] = useState<Record<string, { priority: "must" | "recommended" | "skip"; reason: string }>>({});
+  const [prioritizing, setPrioritizing] = useState(false);
+  const [estimatedMinutes, setEstimatedMinutes] = useState<number | null>(null);
+  const [priorityStats, setPriorityStats] = useState<{ must: number; recommended: number; skip: number } | null>(null);
+
   // 延伸障碍词列表
   const [discoveredWords, setDiscoveredWords] = useState<{ id: string; word: string; note?: string | null }[]>([]);
   const [showDiscoveredPanel, setShowDiscoveredPanel] = useState(false);
@@ -293,7 +299,7 @@ export default function ListeningPracticeDetailPage() {
     }
   };
 
-  // 一键生成全部
+  // 一键生成全部（带智能分级）
   const handleBatchGenerate = async () => {
     if (!session) return;
     const needGen = session.sentences.filter(
@@ -308,12 +314,64 @@ export default function ListeningPracticeDetailPage() {
       toast({ description: "所有句子都已生成练习 ✓" });
       return;
     }
+
     setBatchGenerating(true);
     setBatchProgress({ done: 0, total: needGen.length });
+
+    // 第一步：AI 分级（如果还没分级过）
+    let currentPriorities = priorities;
+    if (Object.keys(currentPriorities).length === 0) {
+      setPrioritizing(true);
+      try {
+        const sentences = session.sentences
+          .filter((s) => s.blocker_words.length > 0)
+          .map((s) => ({
+            text: s.original_text,
+            blocker_words: s.blocker_words.map((b) => b.word),
+            note: s.note,
+          }));
+        const res = await api.prioritizeBlockers({ sentences });
+        const map: Record<string, { priority: "must" | "recommended" | "skip"; reason: string }> = {};
+        for (const p of res.priorities) {
+          map[p.word.toLowerCase()] = { priority: p.priority, reason: p.reason };
+        }
+        currentPriorities = map;
+        setPriorities(map);
+        setPriorityStats(res.stats);
+        setEstimatedMinutes(res.estimated_minutes);
+      } catch (err) {
+        console.error("分级失败，使用默认模式", err);
+      } finally {
+        setPrioritizing(false);
+      }
+    }
+
+    // 第二步：根据分级结果决定每个词生成几句
     for (let i = 0; i < needGen.length; i++) {
       const s = needGen[i];
+      // 确定该句中各障碍词的 max_examples
+      // 如果有分级结果，按最高优先级的词决定整句生成策略
+      let maxExamples: number | undefined = undefined;
+      if (Object.keys(currentPriorities).length > 0) {
+        const wordPriorities = s.blocker_words.map(
+          (b) => currentPriorities[b.word.toLowerCase()]?.priority ?? "must",
+        );
+        // 如果句中有 must 词 → 生成 2 句（Easy + Medium）
+        // 如果全是 recommended → 生成 1 句
+        // 如果全是 skip → 跳过该句
+        if (wordPriorities.every((p) => p === "skip")) {
+          setBatchProgress({ done: i + 1, total: needGen.length });
+          continue;
+        }
+        const hasMust = wordPriorities.some((p) => p === "must");
+        maxExamples = hasMust ? 2 : 1;
+      }
+
       try {
-        const res = await api.generateListeningPractice(s.id, { force_refresh: false });
+        const res = await api.generateListeningPractice(s.id, {
+          force_refresh: false,
+          max_examples: maxExamples,
+        });
         setSession((prev) =>
           prev
             ? {
@@ -684,35 +742,55 @@ export default function ListeningPracticeDetailPage() {
               </div>
             )}
 
-            {/* 一键生成按钮 */}
+            {/* 一键生成按钮 + 分级信息 */}
             {!isDemo && totalBlockers > 0 && (
-              <div className="mb-2 flex items-center gap-2">
-                <Button
-                  size="sm"
-                  onClick={handleBatchGenerate}
-                  disabled={batchGenerating || needGenCount === 0}
-                  className="gap-1.5 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white"
-                >
-                  {batchGenerating ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      生成中 {batchProgress.done}/{batchProgress.total}...
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="h-3.5 w-3.5" />
-                      {needGenCount > 0
-                        ? `一键生成全部（${needGenCount} 句待生成）`
-                        : "全部已生成 ✓"}
-                    </>
+              <div className="mb-2 space-y-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    size="sm"
+                    onClick={handleBatchGenerate}
+                    disabled={batchGenerating || needGenCount === 0}
+                    className="gap-1.5 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white"
+                  >
+                    {batchGenerating ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        {prioritizing ? "AI 分级中..." : `生成中 ${batchProgress.done}/${batchProgress.total}...`}
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="h-3.5 w-3.5" />
+                        {needGenCount > 0
+                          ? `智能生成（${needGenCount} 句待生成）`
+                          : "全部已生成 ✓"}
+                      </>
+                    )}
+                  </Button>
+                  {estimatedMinutes !== null && (
+                    <span className="text-xs text-muted-foreground">
+                      ⏱ 预计 {estimatedMinutes} 分钟
+                    </span>
                   )}
-                </Button>
+                </div>
+                {/* 分级结果统计 */}
+                {priorityStats && (
+                  <div className="flex items-center gap-3 text-xs">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-0.5 font-medium">
+                      🔴 必练 {priorityStats.must}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-2 py-0.5 font-medium">
+                      🟡 建议 {priorityStats.recommended}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 font-medium">
+                      🟢 跳过 {priorityStats.skip}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
 
             <p className="text-xs text-muted-foreground leading-relaxed">
-              点击答案句中的任意单词来标记/取消「障碍词」。标记后点击「生成精听练习」由 AI
-              根据难点类型产出 3-5 句梯度练习。每句旁的 ▶️ 可用拟人语音播放（雅思英音默认，可切美/澳音）。
+              点击答案句中的任意单词来标记/取消「障碍词」。点击「智能生成」后 AI 自动分级：🔴必练词生成 2 句（Easy+Medium），🟡建议词生成 1 句，🟢可跳过词仅标记不练。
             </p>
           </div>
 
@@ -737,6 +815,7 @@ export default function ListeningPracticeDetailPage() {
                   isDemo={isDemo}
                   onNewBlockerWord={addDiscoveredWord}
                   onAddMissedWord={addDiscoveredWord}
+                  priorities={priorities}
                 />
               ))}
             </div>
@@ -1129,6 +1208,7 @@ interface SentenceBlockProps {
   isDemo?: boolean;
   onNewBlockerWord?: (word: string) => void;
   onAddMissedWord?: (word: string) => void;
+  priorities?: Record<string, { priority: "must" | "recommended" | "skip"; reason: string }>;
 }
 
 function SentenceBlock({
@@ -1144,6 +1224,7 @@ function SentenceBlock({
   isDemo = false,
   onNewBlockerWord,
   onAddMissedWord,
+  priorities,
 }: SentenceBlockProps) {
   const [showGenerated, setShowGenerated] = useState(true);
   // 盲听信号（按钮点击时变动，触发所有 ExampleRow 统一 blind/reveal）
@@ -1256,9 +1337,34 @@ function SentenceBlock({
                 已预标 <span className="font-bold text-amber-600">{sentence.blocker_words.length}</span> 个障碍词（示例不可修改）
               </>
             ) : sentence.blocker_words.length > 0 ? (
-              <>
-                已标记 <span className="font-bold text-sky-600">{sentence.blocker_words.length}</span> 个障碍词
-              </>
+              <span className="flex items-center gap-2 flex-wrap">
+                <span>
+                  已标记 <span className="font-bold text-sky-600">{sentence.blocker_words.length}</span> 个障碍词
+                </span>
+                {priorities && sentence.blocker_words.length > 0 && (
+                  <span className="flex items-center gap-1">
+                    {sentence.blocker_words.map((b) => {
+                      const p = priorities[b.word.toLowerCase()];
+                      if (!p) return null;
+                      const colors = {
+                        must: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+                        recommended: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+                        skip: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+                      };
+                      const labels = { must: "必练", recommended: "建议", skip: "跳过" };
+                      return (
+                        <span
+                          key={b.word}
+                          className={cn("inline-flex items-center rounded px-1 py-0.5 text-[10px] font-medium", colors[p.priority])}
+                          title={p.reason}
+                        >
+                          {b.word}·{labels[p.priority]}
+                        </span>
+                      );
+                    })}
+                  </span>
+                )}
+              </span>
             ) : (
               "点击上方单词标记障碍词"
             )}

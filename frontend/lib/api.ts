@@ -228,7 +228,7 @@ export const api = {
     ),
   generateListeningPractice: (
     sentenceId: string,
-    data?: { words?: string[]; force_refresh?: boolean },
+    data?: { words?: string[]; force_refresh?: boolean; max_examples?: number },
   ) =>
     request<import("@/types").ListeningGenerateResponse>(
       `/api/listening-practice/sentences/${sentenceId}/generate`,
@@ -282,6 +282,12 @@ export const api = {
   analyzeMissedWords: (data: { original_text: string; user_answers: string[]; missed_words: string[]; missed_indices: number[] }) =>
     request<{ analyzed_words: { word: string; note: string }[] }>(
       `/api/listening-practice/analyze-missed-words`,
+      { method: "POST", body: JSON.stringify(data) },
+    ),
+  // AI 障碍词分级
+  prioritizeBlockers: (data: { sentences: { text: string; blocker_words: string[]; note?: string | null }[] }) =>
+    request<{ priorities: { word: string; priority: "must" | "recommended" | "skip"; reason: string }[]; stats: { must: number; recommended: number; skip: number }; estimated_minutes: number }>(
+      `/api/listening-practice/prioritize-blockers`,
       { method: "POST", body: JSON.stringify(data) },
     ),
 

@@ -109,6 +109,7 @@ class GenerateForSentenceRequest(BaseModel):
     """为某句生成/刷新练习句（传入障碍词列表，默认取句内已保存的）"""
     words: list[str] | None = None  # 若不传，使用 sentence.blocker_words 中的词
     force_refresh: bool = False  # 为 True 时忽略缓存重新生成
+    max_examples: int | None = None  # 控制每个障碍词生成几句（1/2/3），None=默认3句
 
 
 class GenerateResultItem(BaseModel):
@@ -215,3 +216,31 @@ class AnalyzedBlockerWord(BaseModel):
 
 class AnalyzeMissedWordsResponse(BaseModel):
     analyzed_words: list[AnalyzedBlockerWord]
+
+
+# ========== 智能分级 ==========
+
+PriorityLevel = Literal["must", "recommended", "skip"]
+
+
+class PrioritizeSentenceInput(BaseModel):
+    text: str
+    blocker_words: list[str]
+    note: str | None = None
+
+
+class PrioritizeRequest(BaseModel):
+    """批量对多个句子的障碍词进行优先级分级"""
+    sentences: list[PrioritizeSentenceInput]
+
+
+class PrioritizedWord(BaseModel):
+    word: str
+    priority: PriorityLevel
+    reason: str
+
+
+class PrioritizeResponse(BaseModel):
+    priorities: list[PrioritizedWord]
+    stats: dict  # {"must": N, "recommended": N, "skip": N}
+    estimated_minutes: int  # 预估练习时间（分钟）

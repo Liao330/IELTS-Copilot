@@ -44,6 +44,9 @@ from app.schemas.listening_practice import (
     AnalyzeMissedWordsRequest,
     AnalyzedBlockerWord,
     AnalyzeMissedWordsResponse,
+    PrioritizeRequest,
+    PrioritizedWord,
+    PrioritizeResponse,
 )
 from app.services.listening_practice_service import (
     sync_blockers_to_vocabulary,
@@ -488,6 +491,7 @@ async def generate_practice(
         sentence=sentence,
         words=words,
         force_refresh=data.force_refresh,
+        max_examples=data.max_examples,
     )
     await db.commit()
 
@@ -769,6 +773,100 @@ async def analyze_missed_words(
         analyzed = [AnalyzedBlockerWord(word=w, note="") for w in body.missed_words]
 
     return AnalyzeMissedWordsResponse(analyzed_words=analyzed)
+
+
+# ==================== 智能分级 ====================
+
+@router.post("/prioritize-blockers", response_model=PrioritizeResponse)
+async def prioritize_blockers(
+    body: PrioritizeRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """AI 对障碍词进行优先级分级：must/recommended/skip"""
+    import json as json_mod
+    from app.prompts.listening_prioritize_prompt import LISTENING_PRIORITIZE_PROMPT
+    from app.services.llm_service import complete_chat
+    from app.utils.llm_config import get_llm_config
+    from app.services.listening_practice_service import _clean_json_response
+
+    # 收集所有障碍词
+    all_words: list[str] = []
+    for s in body.sentences:
+        all_words.extend(s.blocker_words)
+
+    if not all_words:
+        return PrioritizeResponse(
+            priorities=[],
+            stats={"must": 0, "recommended": 0, "skip": 0},
+            estimated_minutes=0,
+        )
+
+    # 构建 AI 输入
+    payload = {
+        "sentences": [
+            {"text": s.text, "blocker_words": s.blocker_words, "note": s.note}
+            for s in body.sentences
+        ]
+    }
+
+    model_name, api_key, api_base = await get_llm_config(db)
+    if not api_key:
+        # Fallback: all words as "must"
+        priorities = [PrioritizedWord(word=w, priority="must", reason="未配置 API Key，默认必练") for w in all_words]
+        stats = {"must": len(all_words), "recommended": 0, "skip": 0}
+        estimated = len(all_words) * 2
+        return PrioritizeResponse(priorities=priorities, stats=stats, estimated_minutes=estimated)
+
+    messages = [
+        {"role": "system", "content": LISTENING_PRIORITIZE_PROMPT},
+        {"role": "user", "content": json_mod.dumps(payload, ensure_ascii=False)},
+    ]
+
+    try:
+        raw = await complete_chat(
+            model=model_name,
+            api_key=api_key,
+            api_base=api_base,
+            messages=messages,
+            temperature=0.3,
+        )
+        cleaned = _clean_json_response(raw)
+        parsed = json_mod.loads(cleaned)
+
+        if not isinstance(parsed, list):
+            raise ValueError("Non-array response")
+
+        priorities: list[PrioritizedWord] = []
+        seen_words: set[str] = set()
+        for item in parsed:
+            word = item.get("word", "")
+            priority = item.get("priority", "must")
+            reason = item.get("reason", "")
+            if priority not in ("must", "recommended", "skip"):
+                priority = "must"
+            if word.lower() not in seen_words:
+                priorities.append(PrioritizedWord(word=word, priority=priority, reason=reason))
+                seen_words.add(word.lower())
+
+        # 补全 AI 漏掉的词
+        for w in all_words:
+            if w.lower() not in seen_words:
+                priorities.append(PrioritizedWord(word=w, priority="must", reason="未被 AI 分级，默认必练"))
+                seen_words.add(w.lower())
+
+    except Exception:
+        # Fallback: all words as "must"
+        priorities = [PrioritizedWord(word=w, priority="must", reason="分级失败，默认必练") for w in all_words]
+
+    # 统计
+    stats = {"must": 0, "recommended": 0, "skip": 0}
+    for p in priorities:
+        stats[p.priority] = stats.get(p.priority, 0) + 1
+
+    # 预估时间：must = 2min/词, recommended = 1min/词, skip = 0
+    estimated = stats["must"] * 2 + stats["recommended"] * 1
+
+    return PrioritizeResponse(priorities=priorities, stats=stats, estimated_minutes=estimated)
 
 
 def _serialize_attempt(a: ListeningDictationAttempt) -> DictationAttemptOut:
