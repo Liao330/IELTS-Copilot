@@ -15,6 +15,7 @@ from app.models.listening_practice import (
     ListeningPracticeSentence,
     ListeningPracticeGenerated,
     ListeningDictationAttempt,
+    ListeningDiscoveredWord,
 )
 from app.models.vocabulary import VocabularyWord
 from app.schemas.listening_practice import (
@@ -37,6 +38,12 @@ from app.schemas.listening_practice import (
     DictationAttemptCreate,
     DictationAttemptOut,
     DictationAttemptsResponse,
+    DiscoveredWordCreate,
+    DiscoveredWordOut,
+    DiscoveredWordsResponse,
+    AnalyzeMissedWordsRequest,
+    AnalyzedBlockerWord,
+    AnalyzeMissedWordsResponse,
 )
 from app.services.listening_practice_service import (
     sync_blockers_to_vocabulary,
@@ -665,6 +672,103 @@ async def get_dictation_attempts(
     result = await db.execute(stmt)
     attempts = result.scalars().all()
     return DictationAttemptsResponse(attempts=[_serialize_attempt(a) for a in attempts])
+
+
+# ==================== 延伸障碍词 ====================
+
+@router.get("/sessions/{session_id}/discovered-words", response_model=DiscoveredWordsResponse)
+async def get_discovered_words(session_id: str, db: AsyncSession = Depends(get_db)):
+    """获取某 session 的延伸障碍词列表"""
+    stmt = (
+        select(ListeningDiscoveredWord)
+        .where(ListeningDiscoveredWord.session_id == session_id)
+        .order_by(ListeningDiscoveredWord.created_at)
+    )
+    result = await db.execute(stmt)
+    words = result.scalars().all()
+    return DiscoveredWordsResponse(words=[
+        DiscoveredWordOut(
+            id=w.id, session_id=w.session_id, word=w.word,
+            note=w.note, source=w.source, created_at=w.created_at,
+        ) for w in words
+    ])
+
+
+@router.post("/sessions/{session_id}/discovered-words", response_model=DiscoveredWordOut)
+async def add_discovered_word(
+    session_id: str,
+    body: DiscoveredWordCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    """添加一个延伸障碍词"""
+    # 去重
+    existing = await db.execute(
+        select(ListeningDiscoveredWord).where(
+            ListeningDiscoveredWord.session_id == session_id,
+            func.lower(ListeningDiscoveredWord.word) == body.word.lower(),
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="该词已存在")
+
+    word = ListeningDiscoveredWord(
+        session_id=session_id,
+        word=body.word,
+        note=body.note,
+        source=body.source,
+    )
+    db.add(word)
+    await db.commit()
+    await db.refresh(word)
+    return DiscoveredWordOut(
+        id=word.id, session_id=word.session_id, word=word.word,
+        note=word.note, source=word.source, created_at=word.created_at,
+    )
+
+
+@router.delete("/discovered-words/{word_id}")
+async def delete_discovered_word(word_id: str, db: AsyncSession = Depends(get_db)):
+    """删除一个延伸障碍词"""
+    word = await db.get(ListeningDiscoveredWord, word_id)
+    if not word:
+        raise HTTPException(status_code=404, detail="Not found")
+    await db.delete(word)
+    await db.commit()
+    return {"ok": True}
+
+
+# ==================== AI 分析错词 ====================
+
+@router.post("/analyze-missed-words", response_model=AnalyzeMissedWordsResponse)
+async def analyze_missed_words(
+    body: AnalyzeMissedWordsRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """AI分析听写错词，组合连续错词为短语并生成备注"""
+    import json as json_mod
+    from app.prompts.listening_analyze_prompt import LISTENING_ANALYZE_MISSED_PROMPT
+    from app.services.listening_practice_service import complete_chat
+
+    user_msg = json_mod.dumps({
+        "original_text": body.original_text,
+        "user_answers": body.user_answers,
+        "missed_words": body.missed_words,
+        "missed_indices": body.missed_indices,
+    }, ensure_ascii=False)
+
+    try:
+        raw = await complete_chat(
+            system=LISTENING_ANALYZE_MISSED_PROMPT,
+            user=user_msg,
+            db=db,
+        )
+        items = json_mod.loads(raw)
+        analyzed = [AnalyzedBlockerWord(word=it["word"], note=it["note"]) for it in items]
+    except Exception as e:
+        # Fallback: just return individual words without AI analysis
+        analyzed = [AnalyzedBlockerWord(word=w, note="") for w in body.missed_words]
+
+    return AnalyzeMissedWordsResponse(analyzed_words=analyzed)
 
 
 def _serialize_attempt(a: ListeningDictationAttempt) -> DictationAttemptOut:

@@ -184,12 +184,18 @@ function ExampleRow({
 
   // 播放次数追踪
   const [playCount, setPlayCount] = useState(0);
+  // 对比后的播放次数（区分做题时听和对比后听）
+  const [postPlayCount, setPostPlayCount] = useState(0);
 
   // 历史听写次数
   const [attemptCount, setAttemptCount] = useState(0);
 
   const tokens = useMemo(() => tokenize(example.text), [example.text]);
   const wordCount = useMemo(() => tokens.filter(t => t.type === "word").length, [tokens]);
+
+  // 听写时最多播放次数限制（Easy=3, Medium=5, Hard=无限）
+  const maxPlays = example.difficulty_level === 1 ? 3 : example.difficulty_level === 2 ? 5 : Infinity;
+  const playLimitReached = !submitted && playCount >= maxPlays;
 
   // 每个 word token 的用户输入
   const [answers, setAnswers] = useState<string[]>(() => Array(wordCount).fill(""));
@@ -205,6 +211,7 @@ function ExampleRow({
       setSubmitted(false);
       setAnswers(Array(wordCount).fill(""));
       setPlayCount(0);
+      setPostPlayCount(0);
     } else if (blindSignal === "reveal") {
       setRevealed(true);
       setHintRevealed(true);
@@ -281,6 +288,7 @@ function ExampleRow({
     setSubmitted(false);
     setAnswers(Array(wordCount).fill(""));
     setPlayCount(0);
+    setPostPlayCount(0);
     setTimeout(() => inputRefs.current[0]?.focus(), 50);
   };
 
@@ -477,11 +485,29 @@ function ExampleRow({
         </span>
         <div className="flex items-center gap-1">
           {!readOnly && (
+            <>
             <PlayButton
               text={example.text}
               size="sm"
-              onPlay={() => setPlayCount((n) => n + 1)}
+              onPlay={() => {
+                if (submitted) {
+                  setPostPlayCount((n) => n + 1);
+                } else if (playCount < maxPlays) {
+                  setPlayCount((n) => n + 1);
+                }
+              }}
             />
+            {!submitted && playCount > 0 && playCount < maxPlays && (
+              <span className="text-[10px] text-muted-foreground ml-1">
+                {playCount}/{maxPlays === Infinity ? "∞" : maxPlays}
+              </span>
+            )}
+            {playLimitReached && !submitted && (
+              <span className="text-[10px] text-rose-500 ml-1">
+                已达上限，请作答
+              </span>
+            )}
+            </>
           )}
           {!readOnly && (
             <button
@@ -540,8 +566,12 @@ function ExampleRow({
                   {attemptCount > 1 && (
                     <span className="mr-1 text-sky-600 dark:text-sky-400 font-medium">第 {attemptCount} 次练习 ·</span>
                   )}
-                  {playCount > 0 && (
-                    <span className="mr-1">🎧 已听 {playCount} 次 ·</span>
+                  {(playCount > 0 || postPlayCount > 0) && (
+                    <span className="mr-1">
+                      🎧 听写时听了 {playCount} 次
+                      {postPlayCount > 0 && <span> · 对比后又听了 {postPlayCount} 次</span>}
+                      {" ·"}
+                    </span>
                   )}
                   正确 {stats.correct}/{stats.total} 词 ({stats.pct}%)
                   {stats.missed.length > 0 && (
@@ -629,8 +659,26 @@ function ExampleRow({
 
 // ============ 渲染工具 ============
 
+// 雅思听力中常见的城市/地名 — 不需要遮挡
+const COMMON_PLACES = new Set([
+  "london", "cambridge", "oxford", "sydney", "melbourne", "brisbane", "perth",
+  "auckland", "wellington", "vancouver", "toronto", "montreal", "edinburgh",
+  "manchester", "birmingham", "leeds", "bristol", "glasgow", "dublin",
+  "new york", "los angeles", "chicago", "boston", "seattle",
+  "paris", "berlin", "rome", "madrid", "amsterdam", "vienna", "zurich",
+  "singapore", "hong kong", "tokyo", "beijing", "shanghai",
+  "australia", "canada", "england", "britain", "scotland", "ireland",
+  "america", "europe", "asia", "africa",
+  "january", "february", "march", "april", "may", "june",
+  "july", "august", "september", "october", "november", "december",
+  "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
+]);
+
 function renderMasked(text: string): string {
-  return text.replace(/[A-Za-z']+/g, (w) => "█".repeat(Math.min(w.length, 12)));
+  return text.replace(/[A-Za-z']+/g, (w) => {
+    if (COMMON_PLACES.has(w.toLowerCase())) return w;
+    return "█".repeat(Math.min(w.length, 12));
+  });
 }
 
 function renderHighlighted(text: string, word: string): React.ReactNode {

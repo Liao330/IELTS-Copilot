@@ -65,7 +65,7 @@ export default function ListeningPracticeDetailPage() {
   const [batchProgress, setBatchProgress] = useState({ done: 0, total: 0 });
 
   // 延伸障碍词列表
-  const [discoveredWords, setDiscoveredWords] = useState<string[]>([]);
+  const [discoveredWords, setDiscoveredWords] = useState<{ id: string; word: string; note?: string | null }[]>([]);
   const [showDiscoveredPanel, setShowDiscoveredPanel] = useState(false);
   const [creatingExtSession, setCreatingExtSession] = useState(false);
 
@@ -83,21 +83,33 @@ export default function ListeningPracticeDetailPage() {
   // 删除句子
   const [deletingSentence, setDeletingSentence] = useState<ListeningSentence | null>(null);
 
-  const addDiscoveredWord = useCallback((word: string) => {
+  const addDiscoveredWord = useCallback((word: string, note?: string) => {
     const lower = word.toLowerCase();
     setDiscoveredWords((prev) => {
-      if (prev.some((w) => w.toLowerCase() === lower)) {
+      if (prev.some((w) => w.word.toLowerCase() === lower)) {
         toast({ description: `「${word}」已在延伸障碍词列表中` });
         return prev;
       }
+      // Fire-and-forget API call
+      api.addDiscoveredWord(sessionId, { word, note: note || undefined, source: note ? "ai_analyzed" : "click" })
+        .then((saved) => {
+          setDiscoveredWords((cur) => cur.map((w) => w.word.toLowerCase() === lower ? { id: saved.id, word: saved.word, note: saved.note } : w));
+        })
+        .catch(() => {});
       toast({ description: `「${word}」已加入延伸障碍词列表` });
-      return [...prev, word];
+      return [...prev, { id: "", word, note }];
     });
     setShowDiscoveredPanel(true);
-  }, [toast]);
+  }, [toast, sessionId]);
 
   const removeDiscoveredWord = useCallback((word: string) => {
-    setDiscoveredWords((prev) => prev.filter((w) => w !== word));
+    setDiscoveredWords((prev) => {
+      const target = prev.find((w) => w.word === word);
+      if (target?.id) {
+        api.deleteDiscoveredWord(target.id).catch(() => {});
+      }
+      return prev.filter((w) => w.word !== word);
+    });
   }, []);
 
   const fetchSession = useCallback(async () => {
@@ -115,6 +127,16 @@ export default function ListeningPracticeDetailPage() {
   useEffect(() => {
     fetchSession();
   }, [fetchSession]);
+
+  useEffect(() => {
+    if (!sessionId) return;
+    api.getDiscoveredWords(sessionId).then((res) => {
+      if (res.words.length > 0) {
+        setDiscoveredWords(res.words.map((w) => ({ id: w.id, word: w.word, note: w.note })));
+        setShowDiscoveredPanel(true);
+      }
+    }).catch(() => {});
+  }, [sessionId]);
 
   // 乐观更新 + 远端持久化
   const toggleBlocker = async (
@@ -318,7 +340,7 @@ export default function ListeningPracticeDetailPage() {
     try {
       const newSession = await api.createListeningSession({
         title: `从「${session.title}」延伸的障碍词`,
-        note: `包含在精听练习中发现的 ${discoveredWords.length} 个新障碍词：${discoveredWords.join("、")}`,
+        note: `包含在精听练习中发现的 ${discoveredWords.length} 个新障碍词：${discoveredWords.map((w) => w.word).join("、")}`,
         sentences: [],
       });
       toast({ description: "已创建延伸练习，即将跳转" });
@@ -328,6 +350,41 @@ export default function ListeningPracticeDetailPage() {
       toast({ variant: "destructive", description: "创建失败" });
     } finally {
       setCreatingExtSession(false);
+    }
+  };
+
+  // 导出 PDF（html2canvas + jspdf）
+  const handleExportPDF = async () => {
+    toast({ description: "正在生成 PDF..." });
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      const { jsPDF } = await import("jspdf");
+      const mainEl = document.querySelector("main");
+      if (!mainEl) return;
+      const canvas = await html2canvas(mainEl as HTMLElement, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      let heightLeft = pdfHeight;
+      let position = 0;
+      pdf.addImage(imgData, "PNG", 0, position, pdfWidth, pdfHeight);
+      heightLeft -= pdf.internal.pageSize.getHeight();
+      while (heightLeft > 0) {
+        position -= pdf.internal.pageSize.getHeight();
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, pdfWidth, pdfHeight);
+        heightLeft -= pdf.internal.pageSize.getHeight();
+      }
+      pdf.save(`${session?.title || "精听记录"}.pdf`);
+      toast({ description: "PDF 已下载 ✓" });
+    } catch (err) {
+      console.error(err);
+      toast({ variant: "destructive", description: "PDF 生成失败" });
     }
   };
 
@@ -515,6 +572,18 @@ export default function ListeningPracticeDetailPage() {
             )}
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
+            {/* 导出 PDF（常驻） */}
+            {!isDemo && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPDF}
+                className="gap-1.5 hidden sm:flex"
+              >
+                <FileDown className="h-4 w-4" />
+                导出
+              </Button>
+            )}
             {/* 延伸障碍词列表按钮 */}
             {!isDemo && discoveredWords.length > 0 && (
               <Button
@@ -948,14 +1017,9 @@ function PracticeSummarySection({ sessionId }: { sessionId: string }) {
 
               {/* 导出 PDF */}
               <div className="pt-2 border-t flex justify-center">
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="inline-flex items-center gap-1.5 text-xs text-violet-600 dark:text-violet-400 hover:underline cursor-pointer"
-                >
-                  <FileDown className="h-3.5 w-3.5" />
-                  导出精听记录 PDF
-                </button>
+                <p className="text-[11px] text-muted-foreground">
+                  使用页面顶部「导出」按钮可保存完整精听记录为 PDF
+                </p>
               </div>
             </>
           )}
@@ -976,7 +1040,7 @@ function DiscoveredWordsPanel({
   creating,
   onClose,
 }: {
-  words: string[];
+  words: { id: string; word: string; note?: string | null }[];
   sessionTitle: string;
   onRemove: (word: string) => void;
   onCreate: () => void;
@@ -1003,13 +1067,15 @@ function DiscoveredWordsPanel({
       <div className="flex flex-wrap gap-1.5">
         {words.map((w) => (
           <span
-            key={w}
+            key={w.word}
             className="inline-flex items-center gap-1 rounded-full bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs font-medium px-2 py-0.5"
+            title={w.note || undefined}
           >
-            {w}
+            {w.word}
+            {w.note && <span className="text-rose-400 text-[10px]">💡</span>}
             <button
               type="button"
-              onClick={() => onRemove(w)}
+              onClick={() => onRemove(w.word)}
               className="hover:text-rose-900 dark:hover:text-rose-100 cursor-pointer"
             >
               <X className="h-3 w-3" />

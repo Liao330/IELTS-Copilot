@@ -478,6 +478,15 @@ export interface DictationAttemptCreate {
   missed_words: string[];
 }
 
+export interface DiscoveredWord {
+  id: string;
+  session_id: string;
+  word: string;
+  note: string | null;
+  source: string;
+  created_at: string;
+}
+
 
 // ========== Speech (TTS / ASR) ==========
 

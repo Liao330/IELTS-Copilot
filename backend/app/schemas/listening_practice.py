@@ -176,3 +176,42 @@ class DictationAttemptOut(BaseModel):
 
 class DictationAttemptsResponse(BaseModel):
     attempts: list[DictationAttemptOut]
+
+
+# ========== 延伸障碍词 ==========
+
+class DiscoveredWordCreate(BaseModel):
+    word: str = Field(..., min_length=1)
+    note: str | None = None
+    source: str = "click"  # "click" | "missed" | "ai_analyzed"
+
+
+class DiscoveredWordOut(BaseModel):
+    id: str
+    session_id: str
+    word: str
+    note: str | None
+    source: str
+    created_at: datetime
+
+
+class DiscoveredWordsResponse(BaseModel):
+    words: list[DiscoveredWordOut]
+
+
+# ========== AI 分析错词 ==========
+
+class AnalyzeMissedWordsRequest(BaseModel):
+    original_text: str
+    user_answers: list[str]
+    missed_words: list[str]
+    missed_indices: list[int]
+
+
+class AnalyzedBlockerWord(BaseModel):
+    word: str
+    note: str
+
+
+class AnalyzeMissedWordsResponse(BaseModel):
+    analyzed_words: list[AnalyzedBlockerWord]

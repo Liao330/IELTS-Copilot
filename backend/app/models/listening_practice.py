@@ -18,6 +18,8 @@ class ListeningPracticeSession(Base):
     title: Mapped[str] = mapped_column(String, nullable=False)
     note: Mapped[Optional[str]] = mapped_column(Text)
 
+    homework_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("homeworks.id", ondelete="SET NULL"), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -26,6 +28,11 @@ class ListeningPracticeSession(Base):
         back_populates="session",
         cascade="all, delete-orphan",
         order_by="ListeningPracticeSentence.order_index",
+    )
+    discovered_words = relationship(
+        "ListeningDiscoveredWord",
+        back_populates="session",
+        cascade="all, delete-orphan",
     )
 
 
@@ -106,3 +113,19 @@ class ListeningDictationAttempt(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     generated_block = relationship("ListeningPracticeGenerated", back_populates="dictation_attempts")
+
+
+class ListeningDiscoveredWord(Base):
+    """精听练习中发现的延伸障碍词"""
+    __tablename__ = "listening_discovered_words"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    session_id: Mapped[str] = mapped_column(
+        String, ForeignKey("listening_practice_sessions.id", ondelete="CASCADE"), nullable=False
+    )
+    word: Mapped[str] = mapped_column(String, nullable=False)
+    note: Mapped[Optional[str]] = mapped_column(Text)  # AI生成的备注说明
+    source: Mapped[str] = mapped_column(String, nullable=False, default="click")  # "click" | "missed" | "ai_analyzed"
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    session = relationship("ListeningPracticeSession", back_populates="discovered_words")

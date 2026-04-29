@@ -15,6 +15,7 @@ from app.models.listening_practice import (
     ListeningPracticeSentence,
     ListeningPracticeGenerated,
     ListeningDictationAttempt,
+    ListeningDiscoveredWord,
 )
 
 __all__ = [
@@ -23,5 +24,5 @@ __all__ = [
     "VocabularyWord", "FavoriteSentence",
     "ContextMaterial", "DailyReportCache",
     "ListeningPracticeSession", "ListeningPracticeSentence", "ListeningPracticeGenerated",
-    "ListeningDictationAttempt",
+    "ListeningDictationAttempt", "ListeningDiscoveredWord",
 ]

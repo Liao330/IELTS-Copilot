@@ -277,7 +277,15 @@ async def synthesize_speech(
     preset = VOICE_PRESETS.get(voice_id)
     voice_type = preset["voice_type"] if preset else (int(voice_id) if voice_id.isdigit() else 501009)
 
+    # 自动降速：含数字的句子（如地址、电话号码、日期）播放时需要停顿
+    import re as _re
+    has_numbers = bool(_re.search(r'\d', text))
+
     speed = _parse_speed(rate if rate is not None else cfg.get("default_rate") or cfg.get("default_speed"))
+
+    # 如果文本含数字且用户没有手动指定速率，自动降速
+    if has_numbers and (rate is None or rate == "" or rate == "+0%"):
+        speed = min(speed, -1.5)  # 至少 0.85x 速度
 
     # lazy import，避免启动开销
     try:

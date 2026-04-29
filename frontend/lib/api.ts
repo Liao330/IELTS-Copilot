@@ -263,6 +263,28 @@ export const api = {
     );
   },
 
+  // 延伸障碍词
+  getDiscoveredWords: (sessionId: string) =>
+    request<{ words: import("@/types").DiscoveredWord[] }>(
+      `/api/listening-practice/sessions/${sessionId}/discovered-words`,
+    ),
+  addDiscoveredWord: (sessionId: string, data: { word: string; note?: string; source?: string }) =>
+    request<import("@/types").DiscoveredWord>(
+      `/api/listening-practice/sessions/${sessionId}/discovered-words`,
+      { method: "POST", body: JSON.stringify(data) },
+    ),
+  deleteDiscoveredWord: (wordId: string) =>
+    request<{ ok: boolean }>(
+      `/api/listening-practice/discovered-words/${wordId}`,
+      { method: "DELETE" },
+    ),
+  // AI 分析错词
+  analyzeMissedWords: (data: { original_text: string; user_answers: string[]; missed_words: string[]; missed_indices: number[] }) =>
+    request<{ analyzed_words: { word: string; note: string }[] }>(
+      `/api/listening-practice/analyze-missed-words`,
+      { method: "POST", body: JSON.stringify(data) },
+    ),
+
   // Speech (TTS / ASR)
   getVoices: () => request<import("@/types").VoiceListResponse>("/api/speech/voices"),
   /** 一次 TTS 请求，返回音频 Blob（mp3）；前端可用 URL.createObjectURL 播放 */

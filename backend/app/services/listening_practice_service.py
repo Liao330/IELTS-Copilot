@@ -9,6 +9,7 @@ from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.listening_practice import (
+    ListeningPracticeSession,
     ListeningPracticeSentence,
     ListeningPracticeGenerated,
 )
@@ -188,8 +189,28 @@ async def generate_for_sentence(
 
         user_payload = json.dumps(payload, ensure_ascii=False)
 
+        # 延伸模式：如果该句所在 session 的 note 含"延伸"标记，只生成1句简单句
+        session_q = await db.execute(
+            select(ListeningPracticeSession).where(
+                ListeningPracticeSession.id == sentence.session_id
+            )
+        )
+        sess = session_q.scalar_one_or_none()
+        is_extension = bool(sess and sess.note and "延伸" in sess.note)
+
+        system_prompt = LISTENING_PRACTICE_GENERATE_PROMPT
+        if is_extension:
+            system_prompt += """
+
+## 延伸模式（特殊规则，覆盖上方规则1）
+当前为延伸障碍词练习，请遵循以下特殊规则：
+- **examples 只需要 1 条**，difficulty_level 为 1（Easy，8-12 词短句）
+- 练习句必须简单直白，让学生快速巩固
+- 其余规则不变
+"""
+
         messages = [
-            {"role": "system", "content": LISTENING_PRACTICE_GENERATE_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_payload},
         ]
 

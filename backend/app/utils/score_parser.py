@@ -252,20 +252,27 @@ def _parse_listening_reading_scores(text: str, category: str) -> Optional[dict]:
     # 提取 Part 分数
     parts: list[dict] = []
     # 匹配 "P1 5/10" / "Part 1 5/10" / "Section 1 5/10" / "P1: 5/10"
+    # 注意：P2/P3 可能没有分数（如 "P2  \nP3"），只匹配有分数的
     part_re = re.compile(
         r"(?:P(?:art|assage)?\s*|Section\s*)(\d)\s*[：:\s]\s*(\d+)\s*/\s*(\d+)",
         re.IGNORECASE,
     )
-    for m in part_re.finditer(text):
-        part_num = int(m.group(1))
-        correct = int(m.group(2))
-        total = int(m.group(3))
-        parts.append({
-            "part": part_num,
-            "correct": correct,
-            "total": total,
-            "label": f"Part {part_num}" if category == "reading" else f"Section {part_num}",
-        })
+    # 也尝试更宽松的格式：P1 后直接跟 "数字/数字"（无冒号分隔）
+    part_re2 = re.compile(
+        r"(?:P(?:art|assage)?\s*|Section\s*)(\d)\s+(\d+)\s*/\s*(\d+)",
+        re.IGNORECASE,
+    )
+    for regex in (part_re, part_re2):
+        for m in regex.finditer(text):
+            part_num = int(m.group(1))
+            correct = int(m.group(2))
+            total = int(m.group(3))
+            parts.append({
+                "part": part_num,
+                "correct": correct,
+                "total": total,
+                "label": f"Part {part_num}" if category == "reading" else f"Section {part_num}",
+            })
 
     # 去重（同一 part 可能出现多次，取第一次）
     seen_parts: set[int] = set()
@@ -285,20 +292,36 @@ def _parse_listening_reading_scores(text: str, category: str) -> Optional[dict]:
         total_raw = int(tm.group(1))
         total_max = int(tm.group(2))
 
+    # 备选：前 200 字符中匹配独立的 "X/40" 模式（无"总"前缀）
+    if total_raw is None:
+        fallback_re = re.compile(r"(\d+)\s*/\s*40")
+        fm = fallback_re.search(text[:200])
+        if fm:
+            total_raw = int(fm.group(1))
+            total_max = 40
+
     # 如果没有"总 X/Y"，尝试从 Parts 求和
     if total_raw is None and parts:
         total_raw = sum(p["correct"] for p in parts)
         total_max = sum(p["total"] for p in parts)
 
+    # 尝试从"正确题数：14"提取
+    if total_raw is None:
+        correct_re = re.compile(r"正确题数\s*[:：]\s*(\d+)")
+        cm = correct_re.search(text)
+        if cm:
+            total_raw = int(cm.group(1))
+            total_max = 40
+
     if total_raw is None:
         return None
 
-    # 提取显式 Band Score
+    # 提取显式 Band Score（支持 "分数：4. 5" 中间有空格的小数）
     band: Optional[float] = None
-    band_re = re.compile(r"(?:分数|Band|band\s*score)\s*[:：]?\s*(\d+(?:\.\d+)?)")
+    band_re = re.compile(r"(?:分数|Band|band\s*score)\s*[:：]?\s*(\d+(?:\.\s*\d+)?)")
     bm = band_re.search(text)
     if bm:
-        band = float(bm.group(1))
+        band = float(bm.group(1).replace(" ", ""))
 
     # 推算 Band Score
     if band is None and total_max and total_max >= 40:
