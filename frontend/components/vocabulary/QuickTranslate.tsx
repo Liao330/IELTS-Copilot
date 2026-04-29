@@ -83,7 +83,7 @@ export function QuickTranslate() {
       </button>
 
       {/* 查词面板 */}
-      {open && (
+      {open && !showWordEditor && (
         <div className="fixed inset-0 z-[9999] flex items-start justify-center pt-[15vh]">
           {/* 背景遮罩 */}
           <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
