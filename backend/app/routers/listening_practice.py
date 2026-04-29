@@ -89,15 +89,22 @@ def _serialize_generated(g: ListeningPracticeGenerated) -> GeneratedBlockOut:
 
     # 包含每个 example_index 的最新听写记录
     latest_attempts_map = None
-    if hasattr(g, "dictation_attempts") and g.dictation_attempts:
-        latest_attempts_map = {}
-        # 按 example_index 分组，取最新的
-        by_index: dict[int, ListeningDictationAttempt] = {}
-        for a in g.dictation_attempts:
-            if a.example_index not in by_index or a.created_at > by_index[a.example_index].created_at:
-                by_index[a.example_index] = a
-        for idx, a in by_index.items():
-            latest_attempts_map[str(idx)] = _serialize_attempt(a)
+    # 只在关系已被 eager load 时才访问（避免 async lazy load 报错）
+    from sqlalchemy.orm import object_session
+    from sqlalchemy import inspect as sa_inspect
+    try:
+        state = sa_inspect(g)
+        if "dictation_attempts" in state.dict and g.dictation_attempts:
+            latest_attempts_map = {}
+            # 按 example_index 分组，取最新的
+            by_index: dict[int, ListeningDictationAttempt] = {}
+            for a in g.dictation_attempts:
+                if a.example_index not in by_index or a.created_at > by_index[a.example_index].created_at:
+                    by_index[a.example_index] = a
+            for idx, a in by_index.items():
+                latest_attempts_map[str(idx)] = _serialize_attempt(a)
+    except Exception:
+        pass
 
     return GeneratedBlockOut(
         id=g.id,
