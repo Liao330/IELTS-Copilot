@@ -301,16 +301,19 @@ export default function ListeningPracticeDetailPage() {
   };
 
   // 一键生成全部（带智能分级）
-  const handleBatchGenerate = async () => {
+  const handleBatchGenerate = async (forceRefresh = false) => {
     if (!session) return;
-    const needGen = session.sentences.filter(
-      (s) =>
-        s.blocker_words.length > 0 &&
-        (s.generated_blocks.length === 0 ||
-          s.blocker_words.some(
-            (b) => !s.generated_blocks.some((g) => g.blocker_word === b.word.toLowerCase()),
-          )),
-    );
+    // 如果是重新生成，选取所有有障碍词的句子；否则只选未生成的
+    const needGen = forceRefresh
+      ? session.sentences.filter((s) => s.blocker_words.length > 0)
+      : session.sentences.filter(
+          (s) =>
+            s.blocker_words.length > 0 &&
+            (s.generated_blocks.length === 0 ||
+              s.blocker_words.some(
+                (b) => !s.generated_blocks.some((g) => g.blocker_word === b.word.toLowerCase()),
+              )),
+        );
     if (needGen.length === 0) {
       toast({ description: "所有句子都已生成练习 ✓" });
       return;
@@ -370,7 +373,7 @@ export default function ListeningPracticeDetailPage() {
 
       try {
         const res = await api.generateListeningPractice(s.id, {
-          force_refresh: false,
+          force_refresh: forceRefresh,
           max_examples: maxExamples,
         });
         setSession((prev) =>
@@ -583,6 +586,13 @@ export default function ListeningPracticeDetailPage() {
     ).length;
   }, [session]);
 
+  // 是否已全部生成过（用于显示"重新生成"按钮）
+  const allGenerated = useMemo(() => {
+    if (!session) return false;
+    const withBlockers = session.sentences.filter((s) => s.blocker_words.length > 0);
+    return withBlockers.length > 0 && needGenCount === 0;
+  }, [session, needGenCount]);
+
   const isDemo = !!session?.is_demo;
 
   if (loading) {
@@ -747,26 +757,49 @@ export default function ListeningPracticeDetailPage() {
             {!isDemo && totalBlockers > 0 && (
               <div className="mb-2 space-y-2">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <Button
-                    size="sm"
-                    onClick={handleBatchGenerate}
-                    disabled={batchGenerating || needGenCount === 0}
-                    className="gap-1.5 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white"
-                  >
-                    {batchGenerating ? (
-                      <>
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        {prioritizing ? "AI 分级中..." : `生成中 ${batchProgress.done}/${batchProgress.total}...`}
-                      </>
-                    ) : (
-                      <>
-                        <Zap className="h-3.5 w-3.5" />
-                        {needGenCount > 0
-                          ? `智能生成（${needGenCount} 句待生成）`
-                          : "全部已生成 ✓"}
-                      </>
-                    )}
-                  </Button>
+                  {allGenerated ? (
+                    <>
+                      <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">✓ 全部已生成</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleBatchGenerate(true)}
+                        disabled={batchGenerating}
+                        className="gap-1.5 text-xs"
+                      >
+                        {batchGenerating ? (
+                          <>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            {prioritizing ? "AI 分级中..." : `生成中 ${batchProgress.done}/${batchProgress.total}...`}
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="h-3.5 w-3.5" />
+                            重新生成全部
+                          </>
+                        )}
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={() => handleBatchGenerate(false)}
+                      disabled={batchGenerating || needGenCount === 0}
+                      className="gap-1.5 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white"
+                    >
+                      {batchGenerating ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          {prioritizing ? "AI 分级中..." : `生成中 ${batchProgress.done}/${batchProgress.total}...`}
+                        </>
+                      ) : (
+                        <>
+                          <Zap className="h-3.5 w-3.5" />
+                          智能生成（{needGenCount} 句待生成）
+                        </>
+                      )}
+                    </Button>
+                  )}
                   {estimatedMinutes !== null && (
                     <span className="text-xs text-muted-foreground">
                       ⏱ 预计 {estimatedMinutes} 分钟
