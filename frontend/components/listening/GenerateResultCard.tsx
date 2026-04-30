@@ -790,7 +790,7 @@ function ExampleRow({
 
 // ============ 渲染工具 ============
 
-// 雅思听力中常见的城市/地名 — 不需要遮挡
+// 雅思听力中常见的城市/地名 — 不需要遮挡（月份和星期是考点，需要遮挡）
 const COMMON_PLACES = new Set([
   "london", "cambridge", "oxford", "sydney", "melbourne", "brisbane", "perth",
   "auckland", "wellington", "vancouver", "toronto", "montreal", "edinburgh",
@@ -800,9 +800,6 @@ const COMMON_PLACES = new Set([
   "singapore", "hong kong", "tokyo", "beijing", "shanghai",
   "australia", "canada", "england", "britain", "scotland", "ireland",
   "america", "europe", "asia", "africa",
-  "january", "february", "march", "april", "may", "june",
-  "july", "august", "september", "october", "november", "december",
-  "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
 ]);
 
 function renderMasked(text: string): string {
