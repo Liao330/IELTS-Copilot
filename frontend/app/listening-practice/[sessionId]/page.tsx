@@ -395,66 +395,18 @@ export default function ListeningPracticeDetailPage() {
     toast({ description: `一键生成完成 🎉 共 ${needGen.length} 句` });
   };
 
-  // 创建延伸障碍词 session
+  // 创建延伸障碍词 session（后端自动匹配来源句）
   const handleCreateExtendSession = async () => {
     if (!session || discoveredWords.length === 0) return;
     setCreatingExtSession(true);
     try {
-      // 按来源句子分组，一个句子可能对应多个障碍词
-      const sentenceMap = new Map<string, { text: string; words: string[]; notes: string[] }>();
-      for (const dw of discoveredWords) {
-        const src = dw.sourceSentence || "";
-        if (!src) continue;
-        if (!sentenceMap.has(src)) {
-          sentenceMap.set(src, { text: src, words: [], notes: [] });
-        }
-        const entry = sentenceMap.get(src)!;
-        entry.words.push(dw.word);
-        if (dw.note) entry.notes.push(`${dw.word}: ${dw.note}`);
-      }
-
-      // 无来源句子的单独列出
-      const orphanWords = discoveredWords.filter((dw) => !dw.sourceSentence);
-
-      // 构建 sentences_with_context
-      const sentencesWithContext: { text: string; note?: string; blocker_words?: { word: string; start: number; end: number }[] }[] = [];
-
-      sentenceMap.forEach((entry) => {
-        // 为每个障碍词定位在句中的位置
-        const blockers: { word: string; start: number; end: number }[] = [];
-        for (const w of entry.words) {
-          const regex = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
-          const match = regex.exec(entry.text);
-          if (match) {
-            blockers.push({ word: w, start: match.index, end: match.index + match[0].length });
-          }
-        }
-        sentencesWithContext.push({
-          text: entry.text,
-          note: entry.notes.length > 0 ? entry.notes.join("；") : undefined,
-          blocker_words: blockers.length > 0 ? blockers : undefined,
-        });
-      });
-
-      // 没有来源句子的障碍词，创建占位句
-      if (orphanWords.length > 0) {
-        sentencesWithContext.push({
-          text: orphanWords.map((w) => w.word).join(", "),
-          note: `独立障碍词（无来源句）：${orphanWords.map((w) => `${w.word}${w.note ? `(${w.note})` : ""}`).join("、")}`,
-        });
-      }
-
-      const newSession = await api.createListeningSession({
-        title: `从「${session.title}」延伸的障碍词`,
-        note: `延伸 · 包含在精听练习中发现的 ${discoveredWords.length} 个新障碍词：${discoveredWords.map((w) => w.word).join("、")}`,
-        sentences_with_context: sentencesWithContext.length > 0 ? sentencesWithContext : undefined,
-        sentences: sentencesWithContext.length === 0 ? [] : undefined,
-      });
+      const newSession = await api.createExtensionSession(sessionId);
       toast({ description: "已创建延伸练习，即将跳转" });
       router.push(`/listening-practice/${newSession.id}`);
     } catch (err) {
       console.error(err);
-      toast({ variant: "destructive", description: "创建失败" });
+      const msg = err instanceof Error ? err.message : "创建失败";
+      toast({ variant: "destructive", description: msg });
     } finally {
       setCreatingExtSession(false);
     }

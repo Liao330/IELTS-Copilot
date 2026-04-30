@@ -765,6 +765,132 @@ async def delete_discovered_word(word_id: str, db: AsyncSession = Depends(get_db
     return {"ok": True}
 
 
+# ==================== 创建延伸练习（后端自动匹配来源句） ====================
+
+@router.post("/sessions/{session_id}/create-extension", response_model=SessionDetailOut)
+async def create_extension_session(session_id: str, db: AsyncSession = Depends(get_db)):
+    """从已有 session 的延伸障碍词创建新 session，自动匹配来源练习句并预标障碍词"""
+    import re as _re
+
+    # 1. 获取原 session
+    q = await db.execute(
+        select(ListeningPracticeSession).where(ListeningPracticeSession.id == session_id)
+    )
+    orig_session = q.scalar_one_or_none()
+    if not orig_session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # 2. 获取延伸障碍词
+    dw_q = await db.execute(
+        select(ListeningDiscoveredWord).where(ListeningDiscoveredWord.session_id == session_id)
+    )
+    discovered_words = dw_q.scalars().all()
+    if not discovered_words:
+        raise HTTPException(status_code=400, detail="没有延伸障碍词")
+
+    dw_list = [w.word for w in discovered_words]
+
+    # 3. 获取该 session 的所有 generated examples
+    sent_q = await db.execute(
+        select(ListeningPracticeSentence).where(
+            ListeningPracticeSentence.session_id == session_id
+        )
+    )
+    sentences = sent_q.scalars().all()
+    sentence_ids = [s.id for s in sentences]
+
+    gen_q = await db.execute(
+        select(ListeningPracticeGenerated).where(
+            ListeningPracticeGenerated.sentence_id.in_(sentence_ids)
+        )
+    )
+    generated_blocks = gen_q.scalars().all()
+
+    # 4. 对每个 discovered word，找到包含它的练习句（优先匹配 generated examples）
+    word_to_sentence: dict[str, str] = {}
+
+    # 先从 generated examples 中找
+    for g in generated_blocks:
+        try:
+            examples = json.loads(g.examples)
+        except Exception:
+            continue
+        for ex in examples:
+            text = ex.get("text", "")
+            for w in dw_list:
+                if w in word_to_sentence:
+                    continue
+                pattern = _re.compile(r"\b" + _re.escape(w) + r"\b", _re.IGNORECASE)
+                if pattern.search(text):
+                    word_to_sentence[w] = text
+
+    # 再从原答案句中找（如果 generated 中没找到）
+    for s in sentences:
+        for w in dw_list:
+            if w in word_to_sentence:
+                continue
+            pattern = _re.compile(r"\b" + _re.escape(w) + r"\b", _re.IGNORECASE)
+            if pattern.search(s.original_text):
+                word_to_sentence[w] = s.original_text
+
+    # 5. 按句子分组（一个句子可能对应多个障碍词）
+    sentence_to_words: dict[str, list[str]] = {}
+    for w, sent in word_to_sentence.items():
+        if sent not in sentence_to_words:
+            sentence_to_words[sent] = []
+        sentence_to_words[sent].append(w)
+
+    # 无来源的词
+    orphan_words = [w for w in dw_list if w not in word_to_sentence]
+
+    # 6. 创建新 session
+    new_session = ListeningPracticeSession(
+        id=str(uuid.uuid4()),
+        title=f"从「{orig_session.title}」延伸的障碍词",
+        note=f"延伸 · 包含 {len(dw_list)} 个障碍词，对应 {len(sentence_to_words)} 个来源练习句",
+    )
+    db.add(new_session)
+    await db.flush()
+
+    # 7. 插入句子 + 预标障碍词
+    order_idx = 0
+    for sent, words in sentence_to_words.items():
+        blockers = []
+        for w in words:
+            pattern = _re.compile(r"\b" + _re.escape(w) + r"\b", _re.IGNORECASE)
+            match = pattern.search(sent)
+            if match:
+                blockers.append({"word": w, "start": match.start(), "end": match.end(), "vocab_word_id": None})
+
+        note = "；".join([f"{w}: 听写时漏听/误写" for w in words])
+
+        sentence = ListeningPracticeSentence(
+            id=str(uuid.uuid4()),
+            session_id=new_session.id,
+            original_text=sent,
+            order_index=order_idx,
+            note=note,
+            blocker_words=json.dumps(blockers, ensure_ascii=False) if blockers else None,
+        )
+        db.add(sentence)
+        order_idx += 1
+
+    # 无来源的词单独一条
+    if orphan_words:
+        sentence = ListeningPracticeSentence(
+            id=str(uuid.uuid4()),
+            session_id=new_session.id,
+            original_text=", ".join(orphan_words),
+            order_index=order_idx,
+            note=f"独立障碍词（未匹配到来源句）：{', '.join(orphan_words)}",
+        )
+        db.add(sentence)
+
+    await db.commit()
+
+    return await _load_session_detail(db, new_session.id)
+
+
 # ==================== AI 分析错词 ====================
 
 @router.post("/analyze-missed-words", response_model=AnalyzeMissedWordsResponse)

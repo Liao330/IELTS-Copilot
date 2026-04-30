@@ -127,6 +127,9 @@ export const api = {
   // 摘要 & 搜索
   generateHomeworkSummary: (homeworkId: string) =>
     request<{ homework_id: string; summary: string }>(`/api/homeworks/${homeworkId}/generate-summary`, { method: "POST" }),
+  // 延伸练习（后端自动匹配来源句）
+  createExtensionSession: (sessionId: string) =>
+    request<import("@/types").ListeningSessionDetail>(`/api/listening-practice/sessions/${sessionId}/create-extension`, { method: "POST" }),
   batchGenerateSummaries: () =>
     request<{ message: string; generated: number; errors: number; total: number }>("/api/homeworks/batch-generate-summaries", { method: "POST" }),
   searchHomeworks: (query: string, category?: string) =>
