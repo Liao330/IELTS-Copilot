@@ -82,6 +82,7 @@ export function GenerateResultCard({
         </div>
         <div className="flex-1 text-left flex items-center gap-2 min-w-0 flex-wrap">
           <span className="font-bold text-lg">{block.blocker_word}</span>
+          <PlayButton text={block.blocker_word} size="sm" />
           <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium", color)}>
             {block.difficulty_type}
           </span>
@@ -474,11 +475,21 @@ function ExampleRow({
       return <p className="text-sm font-medium leading-relaxed">{renderHighlighted(example.text, word)}</p>;
     }
 
-    // 盲听遮罩（始终显示）
+    // 盲听遮罩（用 token 级渲染，和输入行保持相同 flex 布局对齐）
     const maskedLine = (
-      <p className="text-sm font-medium leading-relaxed text-muted-foreground/60 select-none">
-        {renderMasked(example.text)}
-      </p>
+      <div className="flex flex-wrap items-baseline gap-y-1 text-sm font-mono leading-relaxed text-muted-foreground/60 select-none">
+        {tokens.map((t, i) => {
+          if (t.type === "sep") {
+            return <span key={i} className="whitespace-pre-wrap">{t.text}</span>;
+          }
+          const maskLen = Math.min(t.text.length, 12);
+          return (
+            <span key={i} className="inline-block mx-px" style={{ width: `${Math.max(maskLen, 2)}ch` }}>
+              {"█".repeat(maskLen)}
+            </span>
+          );
+        })}
+      </div>
     );
 
     // 盲听 + 听写模式：遮罩在上，输入/结果在下
@@ -745,12 +756,6 @@ function ExampleRow({
 
 
 // ============ 渲染工具 ============
-
-function renderMasked(text: string): string {
-  return text.replace(/[A-Za-z']+/g, (w) => {
-    return "█".repeat(Math.min(w.length, 12));
-  });
-}
 
 function renderHighlighted(text: string, word: string): React.ReactNode {
   if (!word) return text;
