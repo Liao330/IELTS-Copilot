@@ -294,17 +294,9 @@ function ExampleRow({
   const handleStartDictation = () => {
     setDictMode(true);
     setSubmitted(false);
-    // 预填白名单词
-    const prefilled = tokens.filter(t => t.type === "word").map((t) =>
-      COMMON_PLACES.has(t.text.toLowerCase()) ? t.text : "",
-    );
-    setAnswers(prefilled);
+    setAnswers(Array(wordCount).fill(""));
     setPlayCount(0);
-    // 聚焦第一个非白名单的输入框
-    setTimeout(() => {
-      const firstInput = inputRefs.current.find((el) => el !== null);
-      firstInput?.focus();
-    }, 50);
+    setTimeout(() => inputRefs.current[0]?.focus(), 50);
   };
 
   const handleSubmitDictation = () => {
@@ -314,12 +306,8 @@ function ExampleRow({
     if (!readOnly && blockId) {
       const wordTokens = tokens.filter(t => t.type === "word");
       let correct = 0;
-      let totalCounted = 0;
       const missed: string[] = [];
       wordTokens.forEach((t, i) => {
-        // 白名单词不计入
-        if (COMMON_PLACES.has(t.text.toLowerCase())) return;
-        totalCounted++;
         const expected = t.text.toLowerCase();
         const actual = (answers[i] || "").trim().toLowerCase();
         if (expected === actual) {
@@ -328,7 +316,7 @@ function ExampleRow({
           missed.push(t.text);
         }
       });
-      const total = totalCounted || 1;
+      const total = wordTokens.length;
       const pct = Math.round((correct / total) * 100);
       api.saveDictationAttempt({
         generated_block_id: blockId,
@@ -345,17 +333,10 @@ function ExampleRow({
 
   const handleRetry = () => {
     setSubmitted(false);
-    // 预填白名单词
-    const prefilled = tokens.filter(t => t.type === "word").map((t) =>
-      COMMON_PLACES.has(t.text.toLowerCase()) ? t.text : "",
-    );
-    setAnswers(prefilled);
+    setAnswers(Array(wordCount).fill(""));
     setPlayCount(0);
     setPostPlayCount(0);
-    setTimeout(() => {
-      const firstInput = inputRefs.current.find((el) => el !== null);
-      firstInput?.focus();
-    }, 50);
+    setTimeout(() => inputRefs.current[0]?.focus(), 50);
   };
 
   const handleInputChange = (wordIdx: number, value: string) => {
@@ -396,11 +377,7 @@ function ExampleRow({
     let correct = 0;
     const missed: string[] = [];
     const wordTokens = tokens.filter(t => t.type === "word");
-    let totalCounted = 0;
     wordTokens.forEach((t, i) => {
-      // 白名单词不计入统计
-      if (COMMON_PLACES.has(t.text.toLowerCase())) return;
-      totalCounted++;
       const expected = t.text.toLowerCase();
       const actual = (answers[i] || "").trim().toLowerCase();
       if (expected === actual) {
@@ -409,8 +386,7 @@ function ExampleRow({
         missed.push(t.text);
       }
     });
-    if (totalCounted === 0) return { correct: 0, total: 0, pct: 100, missed: [] };
-    return { correct, total: totalCounted, pct: Math.round((correct / totalCounted) * 100), missed };
+    return { correct, total: wordTokens.length, pct: Math.round((correct / wordTokens.length) * 100), missed };
   }, [submitted, tokens, answers]);
 
   // blocker word 是否匹配某个 token（用于 revealed 态可点击判断）
@@ -520,18 +496,7 @@ function ExampleRow({
             const expected = t.text;
             const slotLen = Math.min(expected.length, 12);
 
-            // 白名单词（国家名/月份/星期等）：直接显示，不需要填写
-            const isWhitelisted = COMMON_PLACES.has(expected.toLowerCase());
-
             if (submitted) {
-              // 白名单词在提交后也显示为正确（绿色）
-              if (isWhitelisted) {
-                return (
-                  <span key={i} className="inline-block text-emerald-700 dark:text-emerald-400">
-                    {expected}
-                  </span>
-                );
-              }
               const isCorrect = userAnswer.trim().toLowerCase() === expected.toLowerCase();
               return (
                 <span
@@ -550,15 +515,6 @@ function ExampleRow({
                       <span className="font-bold underline decoration-dashed">{expected}</span>
                     </>
                   )}
-                </span>
-              );
-            }
-
-            // 未提交：白名单词直接显示原文（预填充，无需输入）
-            if (isWhitelisted) {
-              return (
-                <span key={i} className="inline-block text-foreground/70 mx-px">
-                  {expected}
                 </span>
               );
             }
@@ -790,21 +746,8 @@ function ExampleRow({
 
 // ============ 渲染工具 ============
 
-// 雅思听力中常见的城市/地名 — 不需要遮挡（月份和星期是考点，需要遮挡）
-const COMMON_PLACES = new Set([
-  "london", "cambridge", "oxford", "sydney", "melbourne", "brisbane", "perth",
-  "auckland", "wellington", "vancouver", "toronto", "montreal", "edinburgh",
-  "manchester", "birmingham", "leeds", "bristol", "glasgow", "dublin",
-  "new york", "los angeles", "chicago", "boston", "seattle",
-  "paris", "berlin", "rome", "madrid", "amsterdam", "vienna", "zurich",
-  "singapore", "hong kong", "tokyo", "beijing", "shanghai",
-  "australia", "canada", "england", "britain", "scotland", "ireland",
-  "america", "europe", "asia", "africa",
-]);
-
 function renderMasked(text: string): string {
   return text.replace(/[A-Za-z']+/g, (w) => {
-    if (COMMON_PLACES.has(w.toLowerCase())) return w;
     return "█".repeat(Math.min(w.length, 12));
   });
 }
