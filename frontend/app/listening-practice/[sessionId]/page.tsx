@@ -714,6 +714,22 @@ export default function ListeningPracticeDetailPage() {
             )}
           </div>
         </div>
+        {/* 固定进度条 */}
+        {practiceProgress.total > 0 && (
+          <div className="container mx-auto px-4 pb-1.5 pt-1">
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-cyan-500 transition-all duration-500"
+                  style={{ width: `${(practiceProgress.done / practiceProgress.total) * 100}%` }}
+                />
+              </div>
+              <span className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">
+                {practiceProgress.done}/{practiceProgress.total} 已训练
+              </span>
+            </div>
+          </div>
+        )}
       </header>
 
       <div className="container mx-auto px-4 py-6 flex gap-6">
@@ -743,25 +759,6 @@ export default function ListeningPracticeDetailPage() {
 
           {/* 统计 + 说明 */}
           <div className="mb-5 rounded-lg border bg-gradient-to-br from-sky-50/60 to-cyan-50/40 dark:from-sky-950/20 dark:to-cyan-950/10 p-4">
-            {/* 练习进度条 */}
-            {practiceProgress.total > 0 && (
-              <div className="mb-3">
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="text-muted-foreground">
-                    练习进度：{practiceProgress.done}/{practiceProgress.total} 个障碍词已训练
-                  </span>
-                  <span className="font-medium">
-                    {practiceProgress.total > 0 ? Math.round((practiceProgress.done / practiceProgress.total) * 100) : 0}%
-                  </span>
-                </div>
-                <div className="h-2 rounded-full bg-muted overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-cyan-500 transition-all duration-500"
-                    style={{ width: `${practiceProgress.total > 0 ? (practiceProgress.done / practiceProgress.total) * 100 : 0}%` }}
-                  />
-                </div>
-              </div>
-            )}
             <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
               <div className="flex items-center gap-2 text-sm">
                 <span className="inline-flex items-center gap-1 rounded-full bg-white dark:bg-white/10 px-2.5 py-1 font-medium border">
