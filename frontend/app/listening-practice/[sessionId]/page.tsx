@@ -1255,6 +1255,7 @@ function DiscoveredWordsPanel({
   creating: boolean;
   onClose: () => void;
 }) {
+  const [confirmMode, setConfirmMode] = useState(false);
   return (
     <div className="rounded-xl border bg-background p-4 space-y-3">
       <div className="flex items-center justify-between">
@@ -1296,27 +1297,47 @@ function DiscoveredWordsPanel({
         这些词在精听练习中被发现为潜在障碍词。可创建新练习专门攻克它们。
       </p>
 
-      <Button
-        size="sm"
-        onClick={onCreate}
-        disabled={creating}
-        className="w-full gap-1.5 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white"
-      >
-        {creating ? (
-          <>
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            创建中...
-          </>
-        ) : (
-          <>
-            <ArrowRight className="h-3.5 w-3.5" />
-            前往练习这些词
-          </>
-        )}
-      </Button>
-      <p className="text-[10px] text-muted-foreground text-center">
-        将创建「从「{sessionTitle}」延伸的障碍词」
-      </p>
+      {!confirmMode ? (
+        <Button
+          size="sm"
+          onClick={() => setConfirmMode(true)}
+          className="w-full gap-1.5 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white"
+        >
+          <ArrowRight className="h-3.5 w-3.5" />
+          前往练习这些词
+        </Button>
+      ) : (
+        <div className="space-y-2">
+          <p className="text-xs text-center text-muted-foreground">
+            将创建「从「{sessionTitle}」延伸的障碍词」并自动匹配来源句
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setConfirmMode(false)}
+              className="flex-1"
+            >
+              取消
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => { onCreate(); setConfirmMode(false); }}
+              disabled={creating}
+              className="flex-1 gap-1.5 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white"
+            >
+              {creating ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  创建中...
+                </>
+              ) : (
+                "确认创建"
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
