@@ -29,9 +29,9 @@ interface Props {
   externalOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   /** 当用户在练习句中点击非障碍词时触发（新增障碍词） */
-  onNewBlockerWord?: (word: string) => void;
+  onNewBlockerWord?: (word: string, note?: string, sourceSentence?: string) => void;
   /** 当听写产出潜在障碍词且用户点"加入列表"时触发 */
-  onAddMissedWord?: (word: string) => void;
+  onAddMissedWord?: (word: string, note?: string, sourceSentence?: string) => void;
   /** 手动触发生成 Hard 句（由父组件提供） */
   onGenerateHard?: () => Promise<void>;
   /** 听写提交后回调（用于更新进度条等） */
@@ -218,8 +218,8 @@ function ExampleRow({
   word: string;
   readOnly?: boolean;
   blindSignal?: "blind" | "reveal";
-  onNewBlockerWord?: (word: string) => void;
-  onAddMissedWord?: (word: string) => void;
+  onNewBlockerWord?: (word: string, note?: string, sourceSentence?: string) => void;
+  onAddMissedWord?: (word: string, note?: string, sourceSentence?: string) => void;
   initialAttempt?: { user_answers: string[]; play_count: number; accuracy_pct: number; missed_words: string[] };
   onDictationComplete?: () => void;
 }) {
@@ -435,7 +435,7 @@ function ExampleRow({
                 <button
                   key={i}
                   type="button"
-                  onClick={() => onNewBlockerWord(t.text)}
+                  onClick={() => onNewBlockerWord(t.text, undefined, example.text)}
                   className="inline rounded px-0.5 transition-colors hover:bg-rose-100 dark:hover:bg-rose-900/40 hover:text-rose-700 dark:hover:text-rose-300 cursor-pointer"
                   title={`点击将「${t.text}」加入延伸障碍词`}
                 >
@@ -659,7 +659,7 @@ function ExampleRow({
                           {onAddMissedWord && (
                             <button
                               type="button"
-                              onClick={() => onAddMissedWord(w)}
+                              onClick={() => onAddMissedWord(w, undefined, example.text)}
                               className="ml-0.5 text-sky-500 hover:text-sky-700 dark:hover:text-sky-300 cursor-pointer"
                               title={`将「${w}」加入延伸障碍词列表`}
                             >

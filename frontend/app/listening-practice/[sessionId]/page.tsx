@@ -71,7 +71,7 @@ export default function ListeningPracticeDetailPage() {
   const [priorityStats, setPriorityStats] = useState<{ must: number; recommended: number; skip: number } | null>(null);
 
   // 延伸障碍词列表
-  const [discoveredWords, setDiscoveredWords] = useState<{ id: string; word: string; note?: string | null }[]>([]);
+  const [discoveredWords, setDiscoveredWords] = useState<{ id: string; word: string; note?: string | null; sourceSentence?: string }[]>([]);
   const [showDiscoveredPanel, setShowDiscoveredPanel] = useState(false);
   const [creatingExtSession, setCreatingExtSession] = useState(false);
 
@@ -89,7 +89,7 @@ export default function ListeningPracticeDetailPage() {
   // 删除句子
   const [deletingSentence, setDeletingSentence] = useState<ListeningSentence | null>(null);
 
-  const addDiscoveredWord = useCallback((word: string, note?: string) => {
+  const addDiscoveredWord = useCallback((word: string, note?: string, sourceSentence?: string) => {
     const lower = word.toLowerCase();
     setDiscoveredWords((prev) => {
       if (prev.some((w) => w.word.toLowerCase() === lower)) {
@@ -99,11 +99,11 @@ export default function ListeningPracticeDetailPage() {
       // Fire-and-forget API call
       api.addDiscoveredWord(sessionId, { word, note: note || undefined, source: note ? "ai_analyzed" : "click" })
         .then((saved) => {
-          setDiscoveredWords((cur) => cur.map((w) => w.word.toLowerCase() === lower ? { id: saved.id, word: saved.word, note: saved.note } : w));
+          setDiscoveredWords((cur) => cur.map((w) => w.word.toLowerCase() === lower ? { id: saved.id, word: saved.word, note: saved.note, sourceSentence: w.sourceSentence } : w));
         })
         .catch(() => {});
       toast({ description: `「${word}」已加入延伸障碍词列表` });
-      return [...prev, { id: "", word, note }];
+      return [...prev, { id: "", word, note, sourceSentence }];
     });
     setShowDiscoveredPanel(true);
   }, [toast, sessionId]);
@@ -400,10 +400,55 @@ export default function ListeningPracticeDetailPage() {
     if (!session || discoveredWords.length === 0) return;
     setCreatingExtSession(true);
     try {
+      // 按来源句子分组，一个句子可能对应多个障碍词
+      const sentenceMap = new Map<string, { text: string; words: string[]; notes: string[] }>();
+      for (const dw of discoveredWords) {
+        const src = dw.sourceSentence || "";
+        if (!src) continue;
+        if (!sentenceMap.has(src)) {
+          sentenceMap.set(src, { text: src, words: [], notes: [] });
+        }
+        const entry = sentenceMap.get(src)!;
+        entry.words.push(dw.word);
+        if (dw.note) entry.notes.push(`${dw.word}: ${dw.note}`);
+      }
+
+      // 无来源句子的单独列出
+      const orphanWords = discoveredWords.filter((dw) => !dw.sourceSentence);
+
+      // 构建 sentences_with_context
+      const sentencesWithContext: { text: string; note?: string; blocker_words?: { word: string; start: number; end: number }[] }[] = [];
+
+      sentenceMap.forEach((entry) => {
+        // 为每个障碍词定位在句中的位置
+        const blockers: { word: string; start: number; end: number }[] = [];
+        for (const w of entry.words) {
+          const regex = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
+          const match = regex.exec(entry.text);
+          if (match) {
+            blockers.push({ word: w, start: match.index, end: match.index + match[0].length });
+          }
+        }
+        sentencesWithContext.push({
+          text: entry.text,
+          note: entry.notes.length > 0 ? entry.notes.join("；") : undefined,
+          blocker_words: blockers.length > 0 ? blockers : undefined,
+        });
+      });
+
+      // 没有来源句子的障碍词，创建占位句
+      if (orphanWords.length > 0) {
+        sentencesWithContext.push({
+          text: orphanWords.map((w) => w.word).join(", "),
+          note: `独立障碍词（无来源句）：${orphanWords.map((w) => `${w.word}${w.note ? `(${w.note})` : ""}`).join("、")}`,
+        });
+      }
+
       const newSession = await api.createListeningSession({
         title: `从「${session.title}」延伸的障碍词`,
-        note: `包含在精听练习中发现的 ${discoveredWords.length} 个新障碍词：${discoveredWords.map((w) => w.word).join("、")}`,
-        sentences: [],
+        note: `延伸 · 包含在精听练习中发现的 ${discoveredWords.length} 个新障碍词：${discoveredWords.map((w) => w.word).join("、")}`,
+        sentences_with_context: sentencesWithContext.length > 0 ? sentencesWithContext : undefined,
+        sentences: sentencesWithContext.length === 0 ? [] : undefined,
       });
       toast({ description: "已创建延伸练习，即将跳转" });
       router.push(`/listening-practice/${newSession.id}`);
