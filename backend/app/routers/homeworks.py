@@ -28,21 +28,22 @@ router = APIRouter(prefix="/api/homeworks", tags=["homeworks"])
 async def _try_parse_scores_from_files(db: AsyncSession, hw: Homework) -> None:
     """尝试从听力/阅读作业的附件 PDF 中提取分数。
 
-    如果成功且作业还没有自动提取过分数（feedback_type='auto_scores'），
-    则自动创建一条 HomeworkFeedback 存储 scores JSON。
+    每次调用都会重新解析（覆盖旧结果），确保文件更新后分数自动刷新。
     """
     if hw.category not in ("listening", "reading"):
         return
 
-    # 检查是否已经有 auto_scores 类型的 feedback
+    # 删除旧的 auto_scores（如果有）
     existing_q = await db.execute(
         select(HomeworkFeedback).where(
             HomeworkFeedback.homework_id == hw.id,
             HomeworkFeedback.feedback_type == "auto_scores",
         )
     )
-    if existing_q.scalar_one_or_none():
-        return  # 已经解析过
+    old = existing_q.scalar_one_or_none()
+    if old:
+        await db.delete(old)
+        await db.flush()
 
     # 遍历作业附件，找 PDF 并尝试解析
     for hf in (hw.homework_files or []):
@@ -311,6 +312,30 @@ async def update_homework(homework_id: str, data: HomeworkUpdate, db: AsyncSessi
         # Also set legacy file_id to first file for backward compat
         hw.file_id = file_ids[0] if file_ids else None
 
+    await db.commit()
+
+    # 重新解析分数（文件可能变了）
+    stmt = select(Homework).options(*_load_options()).where(Homework.id == homework_id)
+    result = await db.execute(stmt)
+    hw = result.scalar_one()
+    await _try_parse_scores_from_files(db, hw)
+    await db.commit()
+
+    stmt = select(Homework).options(*_load_options()).where(Homework.id == homework_id)
+    result = await db.execute(stmt)
+    hw = result.scalar_one()
+    return await _resolve_homework_out(hw, db)
+
+
+@router.post("/{homework_id}/reparse-scores", response_model=HomeworkOut)
+async def reparse_scores(homework_id: str, db: AsyncSession = Depends(get_db)):
+    """手动触发重新解析听力/阅读分数"""
+    stmt = select(Homework).options(*_load_options()).where(Homework.id == homework_id)
+    result = await db.execute(stmt)
+    hw = result.scalar_one_or_none()
+    if not hw:
+        raise HTTPException(status_code=404, detail="作业不存在")
+    await _try_parse_scores_from_files(db, hw)
     await db.commit()
 
     stmt = select(Homework).options(*_load_options()).where(Homework.id == homework_id)

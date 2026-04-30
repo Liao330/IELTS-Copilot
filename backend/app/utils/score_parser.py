@@ -251,10 +251,10 @@ def _parse_listening_reading_scores(text: str, category: str) -> Optional[dict]:
     """
     # 提取 Part 分数
     parts: list[dict] = []
-    # 匹配 "P1 5/10" / "Part 1 5/10" / "Section 1 5/10" / "P1: 5/10"
+    # 匹配 "P1 5/10" / "Part 1 5/10" / "Section 1 5/10" / "P1: 5/10" / "p1- 8/13"
     # 注意：P2/P3 可能没有分数（如 "P2  \nP3"），只匹配有分数的
     part_re = re.compile(
-        r"(?:P(?:art|assage)?\s*|Section\s*)(\d)\s*[：:\s]\s*(\d+)\s*/\s*(\d+)",
+        r"(?:P(?:art|assage)?\s*|Section\s*)(\d)\s*[：:\s\-]\s*(\d+)\s*/\s*(\d+)",
         re.IGNORECASE,
     )
     # 也尝试更宽松的格式：P1 后直接跟 "数字/数字"（无冒号分隔）
