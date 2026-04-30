@@ -19,6 +19,7 @@ class GeneratedExample(BaseModel):
     text: str
     translation: str
     difficulty_level: Literal[1, 2, 3]
+    scene: str = ""  # 2-4字场景提示（如：租房咨询）
     hint: str  # 中文，指出难点出现的位置
 
 

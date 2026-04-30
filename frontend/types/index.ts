@@ -373,6 +373,7 @@ export interface ListeningGeneratedExample {
   text: string;
   translation: string;
   difficulty_level: 1 | 2 | 3;
+  scene?: string;
   hint: string;
 }
 

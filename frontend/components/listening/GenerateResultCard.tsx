@@ -548,6 +548,11 @@ function ExampleRow({
       <div className="flex items-center justify-between gap-2 mb-1.5">
         <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
           Level {example.difficulty_level} · {style.label}
+          {example.scene && (
+            <span className="ml-1.5 normal-case text-sky-600 dark:text-sky-400 font-medium">
+              🎬 {example.scene}
+            </span>
+          )}
           {style.tag && (
             <span className="ml-1 normal-case text-rose-400 dark:text-rose-500 font-normal">
               ({style.tag})

@@ -27,12 +27,14 @@ LISTENING_PRACTICE_GENERATE_PROMPT = """你是一位资深雅思听力教练，�
         "text": "英文练习句1（简单短句 5-8 词，用最简单常见的词包裹障碍词）",
         "translation": "中文翻译",
         "difficulty_level": 1,
+        "scene": "2-4字中文场景提示（如：租房咨询、校园导览、医院预约）",
         "hint": "中文指出难点出现在句中哪里及应如何听辨（如：\\\"与前面的 for 连读成 /fərə/\\\"）"
       },
       {
         "text": "英文练习句2（稍长 8-12 词，仍然简单直白）",
         "translation": "...",
         "difficulty_level": 2,
+        "scene": "场景提示",
         "hint": "..."
       },
       {
