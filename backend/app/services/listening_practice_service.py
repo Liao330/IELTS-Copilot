@@ -215,11 +215,6 @@ async def generate_for_sentence(
         if user_note:
             payload["user_context"] = user_note
 
-        # 动态难度：根据历史准确率调整
-        avg_accuracy = await _get_recent_accuracy(db, sentence.session_id)
-        if avg_accuracy is not None:
-            payload["recent_avg_accuracy"] = round(avg_accuracy, 1)
-
         user_payload = json.dumps(payload, ensure_ascii=False)
 
         # 延伸模式：如果该句所在 session 的 note 含"延伸"标记，只生成1句简单句
@@ -242,8 +237,9 @@ async def generate_for_sentence(
 
 ## 精简模式（特殊规则，覆盖上方规则1）
 当前为精简练习模式，请遵循以下特殊规则：
-- **examples 只需要 1 条**，difficulty_level 为 1（Easy，8-12 词短句）
-- 练习句必须简单直白，让学生快速巩固
+- **examples 只需要 1 条**，difficulty_level 为 1（Easy，5-8 词短句）
+- 练习句必须简单直白，除障碍词外全用最常见的词
+- 让学生快速巩固障碍词
 - 其余规则不变
 """
         elif effective_max == 2:
@@ -251,32 +247,10 @@ async def generate_for_sentence(
 
 ## 精简模式（特殊规则，覆盖上方规则1）
 当前为精简练习模式，请遵循以下特殊规则：
-- **examples 只需要 2 条**：1 条 difficulty_level 1（Easy，8-12 词）+ 1 条 difficulty_level 2（Medium，12-18 词）
+- **examples 只需要 2 条**：1 条 difficulty_level 1（Easy，5-8 词）+ 1 条 difficulty_level 2（Medium，8-12 词）
 - 不需要生成 difficulty_level 3（Hard）的句子
+- 除障碍词外，其余用词必须极其简单常见
 - 其余规则不变
-"""
-
-        # 动态难度调节（基于历史准确率）
-        if avg_accuracy is not None:
-            if avg_accuracy > 85:
-                system_prompt += f"""
-
-## 难度提升（学生近期平均准确率 {avg_accuracy:.0f}%，偏高）
-学生近期听写表现优秀，请适当提升练习难度：
-- Easy 句子可以稍长（10-14 词），加入更多修饰成分
-- Medium 句子使用更复杂的从句结构（15-22 词）
-- 障碍词放在更隐蔽的语境位置（如从句中间、被其他词包裹）
-- 增加干扰元素（如同音词出现在附近、更快的节奏感）
-"""
-            elif avg_accuracy < 45:
-                system_prompt += f"""
-
-## 难度降低（学生近期平均准确率 {avg_accuracy:.0f}%，偏低）
-学生近期听写表现困难，请降低练习难度：
-- Easy 句子尽量短（6-10 词），结构简单直白
-- Medium 句子控制在 10-14 词，避免复杂从句
-- 障碍词放在句子显眼位置（如句首、句尾、重读位置）
-- 减少干扰：句中其他词尽量简单常见，让障碍词更容易被捕捉
 """
 
         messages = [
