@@ -727,6 +727,31 @@ export default function ListeningPracticeDetailPage() {
               <span className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">
                 {practiceProgress.done}/{practiceProgress.total} 已训练
               </span>
+              {practiceProgress.done < practiceProgress.total && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    // 找到第一个未训练的 block
+                    for (const s of session.sentences) {
+                      for (const b of s.generated_blocks) {
+                        if (!b.latest_attempts || Object.keys(b.latest_attempts).length === 0) {
+                          const el = document.getElementById(`block-${b.id}`);
+                          if (el) {
+                            el.scrollIntoView({ behavior: "smooth", block: "center" });
+                            // 闪烁高亮
+                            el.classList.add("ring-2", "ring-amber-400");
+                            setTimeout(() => el.classList.remove("ring-2", "ring-amber-400"), 2000);
+                          }
+                          return;
+                        }
+                      }
+                    }
+                  }}
+                  className="text-[11px] text-sky-600 dark:text-sky-400 hover:underline whitespace-nowrap shrink-0"
+                >
+                  跳转 →
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -1522,8 +1547,8 @@ function SentenceBlock({
             </div>
           </div>
           {sentence.generated_blocks.map((block) => (
+            <div key={`${block.id}-${blindPulse}`} id={`block-${block.id}`} className="transition-all duration-300 rounded-xl">
             <GenerateResultCard
-              key={`${block.id}-${blindPulse}`}
               block={block}
               blindSignal={blindSignal}
               onNewBlockerWord={!isDemo ? onNewBlockerWord : undefined}
@@ -1541,6 +1566,7 @@ function SentenceBlock({
                 }
               } : undefined}
             />
+            </div>
           ))}
         </div>
       )}
