@@ -72,24 +72,28 @@ export function GenerateResultCard({
 
   return (
     <div className="rounded-xl border bg-background overflow-hidden">
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors"
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setOpen(!open); }}
+        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer"
       >
         <div className="flex items-center justify-center h-8 w-8 rounded-md bg-gradient-to-br from-sky-400 to-cyan-500 text-white shrink-0">
           <Sparkles className="h-4 w-4" />
         </div>
         <div className="flex-1 text-left flex items-center gap-2 min-w-0 flex-wrap">
           <span className="font-bold text-lg">{block.blocker_word}</span>
-          <PlayButton text={block.blocker_word} size="sm" />
+          <span onClick={(e) => e.stopPropagation()}>
+            <PlayButton text={block.blocker_word} size="sm" />
+          </span>
           <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium", color)}>
             {block.difficulty_type}
           </span>
           <span className="text-xs text-muted-foreground truncate">· {block.examples.length} 句练习</span>
         </div>
         {open ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
-      </button>
+      </div>
 
       {open && (
         <div className="px-4 pb-4 space-y-3">
