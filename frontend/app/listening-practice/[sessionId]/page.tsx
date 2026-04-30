@@ -938,7 +938,7 @@ export default function ListeningPracticeDetailPage() {
                                     ...s,
                                     generated_blocks: s.generated_blocks.map((b) =>
                                       b.id === blockId && (!b.latest_attempts || Object.keys(b.latest_attempts).length === 0)
-                                        ? { ...b, latest_attempts: { "0": {} as import("@/types").DictationAttempt } }
+                                        ? { ...b, latest_attempts: { "0": { id: "", generated_block_id: blockId, example_index: 0, play_count: 0, correct_count: 0, total_count: 1, accuracy_pct: 0, missed_words: [], user_answers: [], created_at: "" } } }
                                         : b,
                                     ),
                                   }
