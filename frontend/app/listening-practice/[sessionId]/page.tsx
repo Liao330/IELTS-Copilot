@@ -926,6 +926,28 @@ export default function ListeningPracticeDetailPage() {
                         : prev,
                     );
                   }}
+                  onDictationComplete={(sentenceId, blockId) => {
+                    // 标记该 block 有听写记录，触发进度条更新
+                    setSession((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            sentences: prev.sentences.map((s) =>
+                              s.id === sentenceId
+                                ? {
+                                    ...s,
+                                    generated_blocks: s.generated_blocks.map((b) =>
+                                      b.id === blockId && (!b.latest_attempts || Object.keys(b.latest_attempts).length === 0)
+                                        ? { ...b, latest_attempts: { "0": {} as import("@/types").DictationAttempt } }
+                                        : b,
+                                    ),
+                                  }
+                                : s,
+                            ),
+                          }
+                        : prev,
+                    );
+                  }}
                 />
               ))}
             </div>
@@ -1320,6 +1342,7 @@ interface SentenceBlockProps {
   onAddMissedWord?: (word: string) => void;
   priorities?: Record<string, { priority: "must" | "recommended" | "skip"; reason: string }>;
   onUpdateBlocks?: (sentenceId: string, blockerWord: string, updatedBlock: import("@/types").ListeningGeneratedBlock) => void;
+  onDictationComplete?: (sentenceId: string, blockId: string) => void;
 }
 
 function SentenceBlock({
@@ -1337,6 +1360,7 @@ function SentenceBlock({
   onAddMissedWord,
   priorities,
   onUpdateBlocks,
+  onDictationComplete,
 }: SentenceBlockProps) {
   const [showGenerated, setShowGenerated] = useState(true);
   // 盲听信号（按钮点击时变动，触发所有 ExampleRow 统一 blind/reveal）
@@ -1565,6 +1589,7 @@ function SentenceBlock({
                   onUpdateBlocks(sentence.id, block.blocker_word, updatedBlock);
                 }
               } : undefined}
+              onDictationComplete={onDictationComplete ? (blockId) => onDictationComplete(sentence.id, blockId) : undefined}
             />
             </div>
           ))}

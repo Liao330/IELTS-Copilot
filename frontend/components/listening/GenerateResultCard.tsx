@@ -34,6 +34,8 @@ interface Props {
   onAddMissedWord?: (word: string) => void;
   /** 手动触发生成 Hard 句（由父组件提供） */
   onGenerateHard?: () => Promise<void>;
+  /** 听写提交后回调（用于更新进度条等） */
+  onDictationComplete?: (blockId: string, exampleIndex: number) => void;
 }
 
 const DIFFICULTY_COLORS: Record<string, string> = {
@@ -61,6 +63,7 @@ export function GenerateResultCard({
   onNewBlockerWord,
   onAddMissedWord,
   onGenerateHard,
+  onDictationComplete,
 }: Props) {
   const [internalOpen, setInternalOpen] = useState(defaultOpen);
   const open = externalOpen ?? internalOpen;
@@ -122,6 +125,7 @@ export function GenerateResultCard({
                   onNewBlockerWord={onNewBlockerWord}
                   onAddMissedWord={onAddMissedWord}
                   initialAttempt={block.latest_attempts?.[String(i)] ?? undefined}
+                  onDictationComplete={onDictationComplete ? () => onDictationComplete(block.id, i) : undefined}
                 />
               ))}
           </div>
@@ -206,6 +210,7 @@ function ExampleRow({
   onNewBlockerWord,
   onAddMissedWord,
   initialAttempt,
+  onDictationComplete,
 }: {
   example: ListeningGeneratedExample;
   exampleIndex: number;
@@ -216,6 +221,7 @@ function ExampleRow({
   onNewBlockerWord?: (word: string) => void;
   onAddMissedWord?: (word: string) => void;
   initialAttempt?: { user_answers: string[]; play_count: number; accuracy_pct: number; missed_words: string[] };
+  onDictationComplete?: () => void;
 }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -333,6 +339,8 @@ function ExampleRow({
         missed_words: missed,
         user_answers: answers,
       }).catch(() => {});
+      // 通知父组件更新进度
+      onDictationComplete?.();
     }
   };
 
