@@ -59,6 +59,7 @@ class SessionCreate(BaseModel):
 class SessionUpdate(BaseModel):
     title: str | None = Field(None, min_length=1, max_length=200)
     note: str | None = None
+    homework_id: str | None = None
 
 
 class SessionSummaryOut(BaseModel):

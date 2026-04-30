@@ -1152,8 +1152,13 @@ function ListeningReadingScoreCard({ scores }: { scores: LRScores }) {
 
 function ListeningPracticeLink({ homeworkId, homeworkTitle }: { homeworkId: string; homeworkTitle: string }) {
   const router = useRouter();
+  const { toast } = useToast();
   const [sessions, setSessions] = useState<import("@/types").ListeningSessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showLinkDialog, setShowLinkDialog] = useState(false);
+  const [allSessions, setAllSessions] = useState<import("@/types").ListeningSessionSummary[]>([]);
+  const [loadingAll, setLoadingAll] = useState(false);
+  const [linking, setLinking] = useState(false);
 
   useEffect(() => {
     api.getListeningSessionsByHomework(homeworkId)
@@ -1163,26 +1168,62 @@ function ListeningPracticeLink({ homeworkId, homeworkTitle }: { homeworkId: stri
   }, [homeworkId]);
 
   const handleCreate = () => {
-    // 跳转到精听练习新建页，带上 homework 关联信息
     router.push(`/listening-practice/new?homework_id=${homeworkId}&title=${encodeURIComponent(homeworkTitle)}`);
   };
 
+  const handleOpenLink = async () => {
+    setShowLinkDialog(true);
+    setLoadingAll(true);
+    try {
+      const all = await api.listListeningSessions();
+      // 排除已关联到当前作业的 + demo
+      const unlinked = all.filter((s) => !s.is_demo && s.homework_id !== homeworkId);
+      setAllSessions(unlinked);
+    } catch {
+      toast({ variant: "destructive", description: "加载精听列表失败" });
+    } finally {
+      setLoadingAll(false);
+    }
+  };
+
+  const handleLink = async (sessionId: string) => {
+    setLinking(true);
+    try {
+      await api.updateListeningSession(sessionId, { homework_id: homeworkId });
+      // 刷新列表
+      const updated = await api.getListeningSessionsByHomework(homeworkId);
+      setSessions(updated);
+      setShowLinkDialog(false);
+      toast({ description: "已关联精听练习" });
+    } catch (err) {
+      toast({ variant: "destructive", description: err instanceof Error ? err.message : "关联失败" });
+    } finally {
+      setLinking(false);
+    }
+  };
+
   return (
+    <>
     <div className="mb-6 rounded-lg border bg-gradient-to-br from-sky-50/60 to-cyan-50/40 dark:from-sky-950/20 dark:to-cyan-950/10 p-4">
       <div className="flex items-center justify-between mb-2">
         <h2 className="font-semibold flex items-center gap-2">
           🎧 精听练习
         </h2>
-        <Button size="sm" variant="outline" className="gap-1.5" onClick={handleCreate}>
-          <Plus className="h-3.5 w-3.5" />
-          创建精听
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={handleOpenLink}>
+            关联已有
+          </Button>
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={handleCreate}>
+            <Plus className="h-3.5 w-3.5" />
+            创建精听
+          </Button>
+        </div>
       </div>
 
       {loading ? (
         <p className="text-xs text-muted-foreground">加载中...</p>
       ) : sessions.length === 0 ? (
-        <p className="text-xs text-muted-foreground">暂无关联的精听练习，点击右上「创建精听」开始</p>
+        <p className="text-xs text-muted-foreground">暂无关联的精听练习，可创建或关联已有的</p>
       ) : (
         <div className="space-y-2">
           {sessions.map((s) => (
@@ -1204,5 +1245,41 @@ function ListeningPracticeLink({ homeworkId, homeworkTitle }: { homeworkId: stri
         </div>
       )}
     </div>
+
+    {/* 关联已有精听对话框 */}
+    <Dialog open={showLinkDialog} onOpenChange={setShowLinkDialog}>
+      <DialogContent className="sm:max-w-md max-h-[70vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>关联已有精听练习</DialogTitle>
+        </DialogHeader>
+        {loadingAll ? (
+          <div className="py-8 text-center text-muted-foreground text-sm">加载中...</div>
+        ) : allSessions.length === 0 ? (
+          <div className="py-8 text-center text-muted-foreground text-sm">没有可关联的精听练习</div>
+        ) : (
+          <div className="space-y-2 py-2">
+            {allSessions.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => handleLink(s.id)}
+                disabled={linking}
+                className="w-full flex items-center justify-between gap-3 rounded-md border p-3 text-left hover:bg-accent transition-colors disabled:opacity-50"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{s.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {s.sentence_count} 句 · {new Date(s.updated_at).toLocaleDateString("zh-CN")}
+                    {s.homework_id && <span className="ml-1 text-amber-600">（已关联其他作业）</span>}
+                  </p>
+                </div>
+                <span className="text-xs text-sky-600 shrink-0">关联</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

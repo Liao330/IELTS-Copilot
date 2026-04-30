@@ -337,6 +337,8 @@ async def update_session(session_id: str, data: SessionUpdate, db: AsyncSession 
         session.title = data.title.strip()
     if data.note is not None:
         session.note = data.note
+    if data.homework_id is not None:
+        session.homework_id = data.homework_id or None
     session.updated_at = datetime.utcnow()
 
     await db.commit()

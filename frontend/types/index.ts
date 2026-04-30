@@ -440,6 +440,7 @@ export interface ListeningSessionCreate {
 export interface ListeningSessionUpdate {
   title?: string;
   note?: string;
+  homework_id?: string;
 }
 
 export interface ListeningGenerateResponse {
