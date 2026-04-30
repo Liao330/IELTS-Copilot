@@ -50,6 +50,7 @@ class SentenceInput(BaseModel):
 class SessionCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
     note: str | None = None
+    homework_id: str | None = None  # 关联听力作业
     # 两种传法二选一，优先使用 sentences_with_context
     sentences: list[str] | None = None
     sentences_with_context: list[SentenceInput] | None = None
@@ -67,6 +68,7 @@ class SessionSummaryOut(BaseModel):
     note: str | None = None
     sentence_count: int
     blocker_count: int
+    homework_id: str | None = None
     created_at: datetime
     updated_at: datetime
     is_demo: bool = False  # 内置示例会话标记（只读、置顶、样式差异化）
@@ -88,6 +90,7 @@ class SessionDetailOut(BaseModel):
     id: str
     title: str
     note: str | None = None
+    homework_id: str | None = None
     created_at: datetime
     updated_at: datetime
     sentences: list[SentenceOut]

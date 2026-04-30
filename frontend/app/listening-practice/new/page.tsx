@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,11 +34,23 @@ type EditableItem = ListeningCleanupItem;
  *
  * 不提供"按换行符拆句"的 fallback，避免粘贴的原始笔记被误当作答案句。
  */
-export default function NewListeningPracticePage() {
+export default function NewListeningPracticePageWrapper() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><span className="text-muted-foreground">加载中...</span></div>}>
+      <NewListeningPracticePage />
+    </Suspense>
+  );
+}
+
+function NewListeningPracticePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
 
-  const [title, setTitle] = useState("");
+  const homeworkId = searchParams.get("homework_id") || undefined;
+  const homeworkTitle = searchParams.get("title") || "";
+
+  const [title, setTitle] = useState(homeworkTitle ? `${homeworkTitle}-精听` : "");
   const [note, setNote] = useState("");
   const [rawText, setRawText] = useState("");
   const [cleaning, setCleaning] = useState(false);
@@ -107,6 +119,7 @@ export default function NewListeningPracticePage() {
       const session = await api.createListeningSession({
         title: title.trim(),
         note: note.trim() || undefined,
+        homework_id: homeworkId,
         sentences_with_context: items.map((it) => ({
           text: it.text,
           note: it.note || undefined,

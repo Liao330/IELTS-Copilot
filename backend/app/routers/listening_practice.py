@@ -188,9 +188,39 @@ async def list_sessions(db: AsyncSession = Depends(get_db)):
             note=s.note,
             sentence_count=sentence_count,
             blocker_count=blocker_count,
+            homework_id=s.homework_id,
             created_at=s.created_at,
             updated_at=s.updated_at,
             is_demo=is_demo_session(s.id),
+        ))
+    return results
+
+
+@router.get("/sessions/by-homework/{homework_id}", response_model=list[SessionSummaryOut])
+async def get_sessions_by_homework(homework_id: str, db: AsyncSession = Depends(get_db)):
+    """获取关联到某个作业的精听练习列表"""
+    stmt = select(ListeningPracticeSession).where(
+        ListeningPracticeSession.homework_id == homework_id
+    ).order_by(desc(ListeningPracticeSession.updated_at))
+    result = await db.execute(stmt)
+    sessions = result.scalars().all()
+
+    results = []
+    for s in sessions:
+        sent_q = await db.execute(
+            select(func.count()).where(ListeningPracticeSentence.session_id == s.id)
+        )
+        sentence_count = sent_q.scalar() or 0
+        results.append(SessionSummaryOut(
+            id=s.id,
+            title=s.title,
+            note=s.note,
+            sentence_count=sentence_count,
+            blocker_count=0,
+            homework_id=s.homework_id,
+            created_at=s.created_at,
+            updated_at=s.updated_at,
+            is_demo=False,
         ))
     return results
 
@@ -201,6 +231,7 @@ async def create_session(data: SessionCreate, db: AsyncSession = Depends(get_db)
         id=str(uuid.uuid4()),
         title=data.title.strip(),
         note=data.note,
+        homework_id=data.homework_id,
     )
     db.add(session)
     await db.flush()
@@ -284,6 +315,7 @@ async def _load_session_detail(db: AsyncSession, session_id: str) -> SessionDeta
         id=session.id,
         title=session.title,
         note=session.note,
+        homework_id=session.homework_id,
         created_at=session.created_at,
         updated_at=session.updated_at,
         sentences=[_serialize_sentence(s) for s in sentences],

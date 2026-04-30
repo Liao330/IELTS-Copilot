@@ -395,6 +395,11 @@ export default function HomeworkDetailPage() {
           );
         })()}
 
+        {/* 精听练习关联（仅听力作业） */}
+        {homework.category === "listening" && (
+          <ListeningPracticeLink homeworkId={homework.id} homeworkTitle={homework.title} />
+        )}
+
         {/* 反馈区域 */}
         <div>
           {(() => {
@@ -1136,6 +1141,66 @@ function ListeningReadingScoreCard({ scores }: { scores: LRScores }) {
       {scores.overall == null && (
         <div className="text-xs text-muted-foreground">
           未能推算 Band Score（需要完整的 40 题才能换算）
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ==================== 精听练习关联组件 ====================
+
+function ListeningPracticeLink({ homeworkId, homeworkTitle }: { homeworkId: string; homeworkTitle: string }) {
+  const router = useRouter();
+  const [sessions, setSessions] = useState<import("@/types").ListeningSessionSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.getListeningSessionsByHomework(homeworkId)
+      .then(setSessions)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [homeworkId]);
+
+  const handleCreate = () => {
+    // 跳转到精听练习新建页，带上 homework 关联信息
+    router.push(`/listening-practice/new?homework_id=${homeworkId}&title=${encodeURIComponent(homeworkTitle)}`);
+  };
+
+  return (
+    <div className="mb-6 rounded-lg border bg-gradient-to-br from-sky-50/60 to-cyan-50/40 dark:from-sky-950/20 dark:to-cyan-950/10 p-4">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="font-semibold flex items-center gap-2">
+          🎧 精听练习
+        </h2>
+        <Button size="sm" variant="outline" className="gap-1.5" onClick={handleCreate}>
+          <Plus className="h-3.5 w-3.5" />
+          创建精听
+        </Button>
+      </div>
+
+      {loading ? (
+        <p className="text-xs text-muted-foreground">加载中...</p>
+      ) : sessions.length === 0 ? (
+        <p className="text-xs text-muted-foreground">暂无关联的精听练习，点击右上「创建精听」开始</p>
+      ) : (
+        <div className="space-y-2">
+          {sessions.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => router.push(`/listening-practice/${s.id}`)}
+              className="w-full flex items-center justify-between gap-3 rounded-md border bg-background p-3 text-left hover:bg-accent transition-colors"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">{s.title}</p>
+                <p className="text-xs text-muted-foreground">
+                  {s.sentence_count} 句 · {new Date(s.updated_at).toLocaleDateString("zh-CN")}
+                </p>
+              </div>
+              <span className="text-xs text-sky-600 dark:text-sky-400 shrink-0">查看 →</span>
+            </button>
+          ))}
         </div>
       )}
     </div>

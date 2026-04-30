@@ -630,6 +630,16 @@ export default function ListeningPracticeDetailPage() {
               <Headphones className="h-5 w-5 text-sky-500 shrink-0" />
             )}
             <h1 className="text-lg font-semibold truncate">{session.title}</h1>
+            {session.homework_id && (
+              <button
+                type="button"
+                onClick={() => router.push(`/homeworks/${session.homework_id}`)}
+                className="inline-flex items-center gap-1 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-2 py-0.5 text-[10px] font-medium hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors shrink-0"
+                title="查看关联作业"
+              >
+                📚 作业
+              </button>
+            )}
             {!isDemo && (
               <button
                 type="button"

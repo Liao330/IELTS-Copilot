@@ -406,6 +406,7 @@ export interface ListeningSessionSummary {
   note: string | null;
   sentence_count: number;
   blocker_count: number;
+  homework_id?: string | null;
   created_at: string;
   updated_at: string;
   is_demo?: boolean;
@@ -415,6 +416,7 @@ export interface ListeningSessionDetail {
   id: string;
   title: string;
   note: string | null;
+  homework_id?: string | null;
   created_at: string;
   updated_at: string;
   sentences: ListeningSentence[];
@@ -430,6 +432,7 @@ export interface ListeningSentenceInput {
 export interface ListeningSessionCreate {
   title: string;
   note?: string;
+  homework_id?: string;
   sentences?: string[];
   sentences_with_context?: ListeningSentenceInput[];
 }

@@ -134,6 +134,9 @@ export const api = {
     ),
   createExtensionSession: (sessionId: string) =>
     request<import("@/types").ListeningSessionDetail>(`/api/listening-practice/sessions/${sessionId}/create-extension`, { method: "POST" }),
+  // 按作业查精听练习
+  getListeningSessionsByHomework: (homeworkId: string) =>
+    request<import("@/types").ListeningSessionSummary[]>(`/api/listening-practice/sessions/by-homework/${homeworkId}`),
   batchGenerateSummaries: () =>
     request<{ message: string; generated: number; errors: number; total: number }>("/api/homeworks/batch-generate-summaries", { method: "POST" }),
   searchHomeworks: (query: string, category?: string) =>
