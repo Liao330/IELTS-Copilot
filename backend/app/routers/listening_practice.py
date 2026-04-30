@@ -767,12 +767,10 @@ async def delete_discovered_word(word_id: str, db: AsyncSession = Depends(get_db
 
 # ==================== 创建延伸练习（后端自动匹配来源句） ====================
 
-@router.post("/sessions/{session_id}/create-extension", response_model=SessionDetailOut)
-async def create_extension_session(session_id: str, db: AsyncSession = Depends(get_db)):
-    """从已有 session 的延伸障碍词创建新 session，自动匹配来源练习句并预标障碍词"""
+async def _match_extension_words(db: AsyncSession, session_id: str):
+    """匹配延伸障碍词到来源句子，返回 (orig_session, matched_sentences, orphan_words)"""
     import re as _re
 
-    # 1. 获取原 session
     q = await db.execute(
         select(ListeningPracticeSession).where(ListeningPracticeSession.id == session_id)
     )
@@ -780,7 +778,6 @@ async def create_extension_session(session_id: str, db: AsyncSession = Depends(g
     if not orig_session:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    # 2. 获取延伸障碍词
     dw_q = await db.execute(
         select(ListeningDiscoveredWord).where(ListeningDiscoveredWord.session_id == session_id)
     )
@@ -790,7 +787,6 @@ async def create_extension_session(session_id: str, db: AsyncSession = Depends(g
 
     dw_list = [w.word for w in discovered_words]
 
-    # 3. 获取该 session 的所有 generated examples
     sent_q = await db.execute(
         select(ListeningPracticeSentence).where(
             ListeningPracticeSentence.session_id == session_id
@@ -806,10 +802,8 @@ async def create_extension_session(session_id: str, db: AsyncSession = Depends(g
     )
     generated_blocks = gen_q.scalars().all()
 
-    # 4. 对每个 discovered word，找到包含它的练习句（优先匹配 generated examples）
     word_to_sentence: dict[str, str] = {}
 
-    # 先从 generated examples 中找
     for g in generated_blocks:
         try:
             examples = json.loads(g.examples)
@@ -824,7 +818,6 @@ async def create_extension_session(session_id: str, db: AsyncSession = Depends(g
                 if pattern.search(text):
                     word_to_sentence[w] = text
 
-    # 再从原答案句中找（如果 generated 中没找到）
     for s in sentences:
         for w in dw_list:
             if w in word_to_sentence:
@@ -833,17 +826,55 @@ async def create_extension_session(session_id: str, db: AsyncSession = Depends(g
             if pattern.search(s.original_text):
                 word_to_sentence[w] = s.original_text
 
-    # 5. 按句子分组（一个句子可能对应多个障碍词）
     sentence_to_words: dict[str, list[str]] = {}
     for w, sent in word_to_sentence.items():
         if sent not in sentence_to_words:
             sentence_to_words[sent] = []
         sentence_to_words[sent].append(w)
 
-    # 无来源的词
     orphan_words = [w for w in dw_list if w not in word_to_sentence]
 
-    # 6. 创建新 session
+    return orig_session, sentence_to_words, orphan_words, dw_list
+
+
+@router.get("/sessions/{session_id}/preview-extension")
+async def preview_extension_session(session_id: str, db: AsyncSession = Depends(get_db)):
+    """预览延伸 session：返回匹配结果但不创建"""
+    import re as _re
+
+    orig_session, sentence_to_words, orphan_words, dw_list = await _match_extension_words(db, session_id)
+
+    preview_sentences = []
+    for sent, words in sentence_to_words.items():
+        blockers = []
+        for w in words:
+            pattern = _re.compile(r"\b" + _re.escape(w) + r"\b", _re.IGNORECASE)
+            match = pattern.search(sent)
+            if match:
+                blockers.append({"word": w, "start": match.start(), "end": match.end()})
+        preview_sentences.append({
+            "text": sent,
+            "blocker_words": blockers,
+            "note": "；".join([f"{w}: 听写时漏听/误写" for w in words]),
+        })
+
+    return {
+        "title": f"从「{orig_session.title}」延伸的障碍词",
+        "total_words": len(dw_list),
+        "matched_sentences": len(preview_sentences),
+        "orphan_words": orphan_words,
+        "sentences": preview_sentences,
+    }
+
+
+@router.post("/sessions/{session_id}/create-extension", response_model=SessionDetailOut)
+async def create_extension_session(session_id: str, db: AsyncSession = Depends(get_db)):
+    """从已有 session 的延伸障碍词创建新 session，自动匹配来源练习句并预标障碍词"""
+    import re as _re
+
+    orig_session, sentence_to_words, orphan_words, dw_list = await _match_extension_words(db, session_id)
+
+    # 创建新 session
     new_session = ListeningPracticeSession(
         id=str(uuid.uuid4()),
         title=f"从「{orig_session.title}」延伸的障碍词",
@@ -852,7 +883,6 @@ async def create_extension_session(session_id: str, db: AsyncSession = Depends(g
     db.add(new_session)
     await db.flush()
 
-    # 7. 插入句子 + 预标障碍词
     order_idx = 0
     for sent, words in sentence_to_words.items():
         blockers = []
@@ -875,7 +905,6 @@ async def create_extension_session(session_id: str, db: AsyncSession = Depends(g
         db.add(sentence)
         order_idx += 1
 
-    # 无来源的词单独一条
     if orphan_words:
         sentence = ListeningPracticeSentence(
             id=str(uuid.uuid4()),
@@ -887,7 +916,6 @@ async def create_extension_session(session_id: str, db: AsyncSession = Depends(g
         db.add(sentence)
 
     await db.commit()
-
     return await _load_session_detail(db, new_session.id)
 
 

@@ -128,6 +128,10 @@ export const api = {
   generateHomeworkSummary: (homeworkId: string) =>
     request<{ homework_id: string; summary: string }>(`/api/homeworks/${homeworkId}/generate-summary`, { method: "POST" }),
   // 延伸练习（后端自动匹配来源句）
+  previewExtensionSession: (sessionId: string) =>
+    request<{ title: string; total_words: number; matched_sentences: number; orphan_words: string[]; sentences: { text: string; blocker_words: { word: string; start: number; end: number }[]; note: string }[] }>(
+      `/api/listening-practice/sessions/${sessionId}/preview-extension`,
+    ),
   createExtensionSession: (sessionId: string) =>
     request<import("@/types").ListeningSessionDetail>(`/api/listening-practice/sessions/${sessionId}/create-extension`, { method: "POST" }),
   batchGenerateSummaries: () =>

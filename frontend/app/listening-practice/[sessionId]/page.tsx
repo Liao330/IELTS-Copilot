@@ -73,7 +73,6 @@ export default function ListeningPracticeDetailPage() {
   // 延伸障碍词列表
   const [discoveredWords, setDiscoveredWords] = useState<{ id: string; word: string; note?: string | null; sourceSentence?: string }[]>([]);
   const [showDiscoveredPanel, setShowDiscoveredPanel] = useState(false);
-  const [creatingExtSession, setCreatingExtSession] = useState(false);
 
   // 追加答案句
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -395,21 +394,10 @@ export default function ListeningPracticeDetailPage() {
     toast({ description: `一键生成完成 🎉 共 ${needGen.length} 句` });
   };
 
-  // 创建延伸障碍词 session（后端自动匹配来源句）
+  // 创建延伸障碍词 session（跳转到预览页）
   const handleCreateExtendSession = async () => {
     if (!session || discoveredWords.length === 0) return;
-    setCreatingExtSession(true);
-    try {
-      const newSession = await api.createExtensionSession(sessionId);
-      toast({ description: "已创建延伸练习，即将跳转" });
-      router.push(`/listening-practice/${newSession.id}`);
-    } catch (err) {
-      console.error(err);
-      const msg = err instanceof Error ? err.message : "创建失败";
-      toast({ variant: "destructive", description: msg });
-    } finally {
-      setCreatingExtSession(false);
-    }
+    router.push(`/listening-practice/extend/${sessionId}`);
   };
 
   // 导出 PDF（html2canvas + jspdf）
@@ -962,10 +950,8 @@ export default function ListeningPracticeDetailPage() {
             <div className="sticky top-20">
               <DiscoveredWordsPanel
                 words={discoveredWords}
-                sessionTitle={session.title}
                 onRemove={removeDiscoveredWord}
                 onCreate={handleCreateExtendSession}
-                creating={creatingExtSession}
                 onClose={() => setShowDiscoveredPanel(false)}
               />
             </div>
@@ -978,10 +964,8 @@ export default function ListeningPracticeDetailPage() {
         <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur shadow-lg max-h-[50vh] overflow-y-auto">
           <DiscoveredWordsPanel
             words={discoveredWords}
-            sessionTitle={session.title}
             onRemove={removeDiscoveredWord}
             onCreate={handleCreateExtendSession}
-            creating={creatingExtSession}
             onClose={() => setShowDiscoveredPanel(false)}
           />
         </div>
@@ -1242,20 +1226,15 @@ function PracticeSummarySection({ sessionId }: { sessionId: string }) {
 
 function DiscoveredWordsPanel({
   words,
-  sessionTitle,
   onRemove,
   onCreate,
-  creating,
   onClose,
 }: {
   words: { id: string; word: string; note?: string | null }[];
-  sessionTitle: string;
   onRemove: (word: string) => void;
   onCreate: () => void;
-  creating: boolean;
   onClose: () => void;
 }) {
-  const [confirmMode, setConfirmMode] = useState(false);
   return (
     <div className="rounded-xl border bg-background p-4 space-y-3">
       <div className="flex items-center justify-between">
@@ -1297,47 +1276,14 @@ function DiscoveredWordsPanel({
         这些词在精听练习中被发现为潜在障碍词。可创建新练习专门攻克它们。
       </p>
 
-      {!confirmMode ? (
-        <Button
-          size="sm"
-          onClick={() => setConfirmMode(true)}
-          className="w-full gap-1.5 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white"
-        >
-          <ArrowRight className="h-3.5 w-3.5" />
-          前往练习这些词
-        </Button>
-      ) : (
-        <div className="space-y-2">
-          <p className="text-xs text-center text-muted-foreground">
-            将创建「从「{sessionTitle}」延伸的障碍词」并自动匹配来源句
-          </p>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setConfirmMode(false)}
-              className="flex-1"
-            >
-              取消
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => { onCreate(); setConfirmMode(false); }}
-              disabled={creating}
-              className="flex-1 gap-1.5 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white"
-            >
-              {creating ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  创建中...
-                </>
-              ) : (
-                "确认创建"
-              )}
-            </Button>
-          </div>
-        </div>
-      )}
+      <Button
+        size="sm"
+        onClick={onCreate}
+        className="w-full gap-1.5 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white"
+      >
+        <ArrowRight className="h-3.5 w-3.5" />
+        前往练习这些词
+      </Button>
     </div>
   );
 }
