@@ -228,7 +228,7 @@ function ExampleRow({
   const blindByDefault = useBlindModeStore((s) => s.blindByDefault);
 
   // 如果有历史听写记录，直接进入已提交状态
-  const hasInitialAttempt = !!(initialAttempt && initialAttempt.user_answers && initialAttempt.user_answers.length > 0);
+  const hasInitialAttempt = !!(initialAttempt?.user_answers?.length && initialAttempt.user_answers.length > 0);
 
   // 有历史记录时：默认隐藏（显示遮罩+对比记录），点揭晓才显示原句
   const initialRevealed = readOnly && !hasInitialAttempt ? true : hasInitialAttempt ? false : !blindByDefault;
