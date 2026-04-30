@@ -216,16 +216,16 @@ async def transcribe_audio(
 
 
 # 腾讯云英文音色预设（VoiceType ID，来自官方音色列表）
-# - 501008 WeJames   男声（大模型英文）
-# - 501009 WeWinny   女声（大模型英文）
+# - 501008 WeJames   男声（大模型英文·美式）
+# - 501009 WeWinny   女声（大模型英文·美式）
 # - 101050 WeJack    男声（精品英文）
 VOICE_PRESETS: dict[str, dict[str, Any]] = {
-    "501009": {"id": "501009", "voice_type": 501009, "label": "英文 · WeWinny（女·大模型）", "accent": "en"},
-    "501008": {"id": "501008", "voice_type": 501008, "label": "英文 · WeJames（男·大模型）", "accent": "en"},
+    "501009": {"id": "501009", "voice_type": 501009, "label": "美式英文 · WeWinny（女·大模型）", "accent": "en-US"},
+    "501008": {"id": "501008", "voice_type": 501008, "label": "美式英文 · WeJames（男·大模型）", "accent": "en-US"},
     "101050": {"id": "101050", "voice_type": 101050, "label": "英文 · WeJack（男·精品）", "accent": "en"},
 }
 
-DEFAULT_VOICE = "501009"  # 女声，雅思听力里女声出现频率略高
+DEFAULT_VOICE = "501009"  # 女声美式发音
 
 
 def _parse_speed(rate: str | int | None) -> float:
