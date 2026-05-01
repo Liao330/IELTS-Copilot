@@ -453,6 +453,11 @@ function ListeningWordsTab({
   const fetchQueue = useCallback(async () => {
     try {
       const list = await api.listDueListeningWords(50);
+      // 随机排列
+      for (let i = list.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [list[i], list[j]] = [list[j], list[i]];
+      }
       setQueue(list);
       setIdx(0); setInput(""); setLastResult(null); setRevealed(false);
     } catch (err) {
@@ -590,14 +595,14 @@ function QuestionCard({
       <Input
         autoFocus
         value={input}
-        onChange={(e) => setInput(e.target.value)}
+        onChange={(e) => { if (!revealed) setInput(e.target.value); }}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             if (!revealed) onSubmit();
             else onNext();
           }
         }}
-        disabled={revealed}
+        readOnly={revealed}
         placeholder={placeholder}
         className={cn("text-center text-lg h-12", inputMono ? "font-mono" : "font-medium")}
       />

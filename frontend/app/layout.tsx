@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { TranslatePopover } from "@/components/vocabulary/TranslatePopover";
 import { QuickTranslate } from "@/components/vocabulary/QuickTranslate";
+import { FeedbackButton } from "@/components/FeedbackButton";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -34,6 +35,7 @@ export default function RootLayout({
         {children}
         <TranslatePopover />
         <QuickTranslate />
+        <FeedbackButton />
         <Toaster />
       </body>
     </html>

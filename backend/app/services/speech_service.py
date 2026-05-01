@@ -285,7 +285,7 @@ async def synthesize_speech(
 
     # 如果文本含数字且用户没有手动指定速率，自动降速
     if has_numbers and (rate is None or rate == "" or rate == "+0%"):
-        speed = min(speed, -1.5)  # 至少 0.85x 速度
+        speed = min(speed, -2.5)  # 含数字/字母+数字的内容大幅降速
 
     # lazy import，避免启动开销
     try:
