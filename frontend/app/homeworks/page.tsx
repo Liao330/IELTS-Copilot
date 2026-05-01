@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import type { Homework, HomeworkDateGroup } from "@/types";
@@ -490,6 +490,9 @@ export default function HomeworksPage() {
           ))}
         </div>
 
+        {/* 分数趋势图（仅子类 tab 时显示） */}
+        {category && <ScoreTrendChart homeworks={homeworks} category={category} />}
+
         {/* 高分筛选 */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <Star className="h-3.5 w-3.5 text-amber-500" />
@@ -647,6 +650,126 @@ export default function HomeworksPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+
+// ==================== 分数趋势图 ====================
+
+function ScoreTrendChart({ homeworks, category }: { homeworks: Homework[]; category: string }) {
+  // 提取该类别下有分数的作业，按日期排序
+  const dataPoints = useMemo(() => {
+    const points: { date: string; score: number; title: string }[] = [];
+    for (const hw of homeworks) {
+      if (hw.category !== category) continue;
+      for (const fb of hw.feedbacks) {
+        if (fb.scores?.overall) {
+          points.push({
+            date: hw.homework_date,
+            score: fb.scores.overall,
+            title: hw.title,
+          });
+          break; // 每个作业只取第一个有分数的 feedback
+        }
+      }
+    }
+    // 按日期排序
+    points.sort((a, b) => a.date.localeCompare(b.date));
+    return points;
+  }, [homeworks, category]);
+
+  if (dataPoints.length < 2) {
+    return null; // 至少 2 个数据点才显示图表
+  }
+
+  const scores = dataPoints.map((d) => d.score);
+  const minScore = Math.floor(Math.min(...scores) - 0.5);
+  const maxScore = Math.ceil(Math.max(...scores) + 0.5);
+  const range = maxScore - minScore || 1;
+  const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+
+  // SVG 尺寸
+  const W = 600;
+  const H = 160;
+  const PAD_L = 35;
+  const PAD_R = 15;
+  const PAD_T = 15;
+  const PAD_B = 30;
+  const chartW = W - PAD_L - PAD_R;
+  const chartH = H - PAD_T - PAD_B;
+
+  const toX = (i: number) => PAD_L + (i / (dataPoints.length - 1)) * chartW;
+  const toY = (s: number) => PAD_T + chartH - ((s - minScore) / range) * chartH;
+
+  // 折线路径
+  const linePath = dataPoints.map((d, i) => `${i === 0 ? "M" : "L"} ${toX(i).toFixed(1)} ${toY(d.score).toFixed(1)}`).join(" ");
+
+  // Y 轴刻度
+  const yTicks: number[] = [];
+  for (let s = minScore; s <= maxScore; s += 0.5) {
+    if (s === Math.round(s) || s === Math.round(s) + 0.5) yTicks.push(s);
+  }
+
+  const CATEGORY_COLORS_LINE: Record<string, string> = {
+    writing: "#3b82f6",
+    speaking: "#22c55e",
+    reading: "#a855f7",
+    listening: "#f97316",
+  };
+  const lineColor = CATEGORY_COLORS_LINE[category] || "#3b82f6";
+
+  return (
+    <div className="mb-4 rounded-lg border bg-card p-4">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-xs font-semibold text-muted-foreground">
+          📈 {CATEGORY_LABELS[category] || category}分数趋势
+        </h3>
+        <span className="text-[10px] text-muted-foreground">
+          平均 {avg.toFixed(1)} · {dataPoints.length} 次
+        </span>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" style={{ maxHeight: 180 }}>
+        {/* Y 轴刻度线 */}
+        {yTicks.map((s) => (
+          <g key={s}>
+            <line x1={PAD_L} x2={W - PAD_R} y1={toY(s)} y2={toY(s)} stroke="currentColor" strokeOpacity={0.08} />
+            <text x={PAD_L - 5} y={toY(s) + 3} textAnchor="end" fontSize={10} fill="currentColor" opacity={0.4}>
+              {s}
+            </text>
+          </g>
+        ))}
+
+        {/* 平均线 */}
+        <line x1={PAD_L} x2={W - PAD_R} y1={toY(avg)} y2={toY(avg)} stroke={lineColor} strokeOpacity={0.25} strokeDasharray="4 4" />
+
+        {/* 折线 */}
+        <path d={linePath} fill="none" stroke={lineColor} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+
+        {/* 数据点 */}
+        {dataPoints.map((d, i) => (
+          <g key={i}>
+            <circle cx={toX(i)} cy={toY(d.score)} r={4} fill={lineColor} />
+            <circle cx={toX(i)} cy={toY(d.score)} r={6} fill={lineColor} fillOpacity={0.15} />
+            {/* 分数标签 */}
+            <text x={toX(i)} y={toY(d.score) - 8} textAnchor="middle" fontSize={9} fontWeight={600} fill={lineColor}>
+              {d.score}
+            </text>
+          </g>
+        ))}
+
+        {/* X 轴日期（只显示首尾和间隔的） */}
+        {dataPoints.map((d, i) => {
+          if (dataPoints.length <= 6 || i === 0 || i === dataPoints.length - 1 || i % Math.ceil(dataPoints.length / 5) === 0) {
+            return (
+              <text key={i} x={toX(i)} y={H - 5} textAnchor="middle" fontSize={9} fill="currentColor" opacity={0.4}>
+                {d.date.slice(5)} {/* MM-DD */}
+              </text>
+            );
+          }
+          return null;
+        })}
+      </svg>
     </div>
   );
 }
