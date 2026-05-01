@@ -458,6 +458,7 @@ export interface ListeningCleanupItem {
 
 export interface ListeningCleanupResponse {
   sentences: ListeningCleanupItem[];
+  summary?: string;
 }
 
 // ========== 听写记录 ==========

@@ -34,6 +34,7 @@ LISTENING_CLEANUP_PROMPT = """你是一个专业的雅思听力精听教练助�
 ## 输出格式（严格 JSON）
 ```json
 {
+  "summary": "本次听力复盘总结（中文，100-200字）：归纳主要错误类型和改进建议",
   "sentences": [
     {
       "text": "Ok. In that case the quickest and most comfortable is a cab and of course there are always plenty available.",
@@ -48,6 +49,13 @@ LISTENING_CLEANUP_PROMPT = """你是一个专业的雅思听力精听教练助�
   ]
 }
 ```
+
+## summary 字段要求
+分析用户本次所有错题，归纳总结：
+1. **错误类型分布**：如"拼写错误 3 题、连读漏听 2 题、完全没听出 4 题"
+2. **共性问题**：如"数字辨音弱、/t/尾音经常被吞、弱读位置单词易忽略"
+3. **改进建议**：1-2 条针对性的练习方向
+4. 用中文，100-200 字，实事求是不要泛泛而谈
 
 ## 严格约束
 1. **只输出 JSON**，不要任何解释性文字、不要 Markdown 代码围栏。

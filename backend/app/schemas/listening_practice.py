@@ -147,6 +147,7 @@ class CleanupSentenceItem(BaseModel):
 
 class CleanupResponse(BaseModel):
     sentences: list[CleanupSentenceItem]
+    summary: str = ""  # AI 归纳的本次错误总结
 
 
 class SentenceNoteUpdate(BaseModel):

@@ -55,6 +55,7 @@ function NewListeningPracticePage() {
   const [rawText, setRawText] = useState("");
   const [cleaning, setCleaning] = useState(false);
   const [items, setItems] = useState<EditableItem[] | null>(null);
+  const [cleanupSummary, setCleanupSummary] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const stage: "compose" | "review" = items ? "review" : "compose";
@@ -76,6 +77,7 @@ function NewListeningPracticePage() {
         });
       } else {
         setItems(res.sentences);
+        setCleanupSummary(res.summary || "");
         toast({ description: `AI 整理出 ${res.sentences.length} 条答案句` });
       }
     } catch (err) {
@@ -188,12 +190,20 @@ function NewListeningPracticePage() {
 
           {/* ==================== Step 2：预览编辑 ==================== */}
           {stage === "review" && items && (
-            <ReviewStage
-              items={items}
-              updateItem={updateItem}
-              removeItem={removeItem}
-              onBack={backToCompose}
-            />
+            <>
+              {cleanupSummary && (
+                <div className="mb-4 rounded-lg border border-sky-200 dark:border-sky-800 bg-sky-50/50 dark:bg-sky-950/20 p-4">
+                  <p className="text-xs font-semibold text-sky-700 dark:text-sky-300 mb-1">📊 本次听力复盘总结</p>
+                  <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{cleanupSummary}</p>
+                </div>
+              )}
+              <ReviewStage
+                items={items}
+                updateItem={updateItem}
+                removeItem={removeItem}
+                onBack={backToCompose}
+              />
+            </>
           )}
 
           <div className="flex items-center gap-2 pt-2">

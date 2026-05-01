@@ -565,8 +565,8 @@ async def cleanup_raw_note(data: CleanupRequest, db: AsyncSession = Depends(get_
     """把用户粘贴的原始笔记用 AI 整理为结构化的答案句列表。
     不落库，由前端预览/编辑后调 create_session 接口保存。
     """
-    items = await cleanup_listening_note(db, data.raw_text)
-    return CleanupResponse(sentences=items)
+    result = await cleanup_listening_note(db, data.raw_text)
+    return CleanupResponse(sentences=result["sentences"], summary=result.get("summary", ""))
 
 
 # ==================== 句子 note 编辑 ====================

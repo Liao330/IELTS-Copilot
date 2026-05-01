@@ -72,6 +72,9 @@ async def cleanup_listening_note(
     if not isinstance(items, list):
         raise HTTPException(status_code=500, detail="AI 返回缺少 sentences 数组")
 
+    # 提取 summary（如果有）
+    summary = parsed.get("summary", "") if isinstance(parsed, dict) else ""
+
     result: list[dict[str, Any]] = []
     for it in items:
         if not isinstance(it, dict):
@@ -112,7 +115,7 @@ async def cleanup_listening_note(
             "prefilled_blockers": prefilled,
         })
 
-    return result
+    return {"sentences": result, "summary": summary}
 
 
 def _locate_words_in_text(text: str, words: list[str]) -> list[dict[str, Any]]:
