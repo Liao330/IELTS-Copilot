@@ -1,18 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { MessageCircle, Plus, Copy, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 
-const STORAGE_KEY = "ielts-copilot-feedback-items";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
 
 interface FeedbackItem {
   id: string;
   text: string;
   done: boolean;
-  createdAt: string;
+  created_at: string;
 }
 
 export function FeedbackButton() {
@@ -21,41 +21,60 @@ export function FeedbackButton() {
   const [items, setItems] = useState<FeedbackItem[]>([]);
   const [newText, setNewText] = useState("");
 
-  // 从 localStorage 加载
-  useEffect(() => {
+  const fetchItems = useCallback(async () => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setItems(JSON.parse(raw));
+      const res = await fetch(`${API_BASE}/api/feedback/`);
+      if (res.ok) setItems(await res.json());
     } catch {}
   }, []);
 
-  // 保存到 localStorage
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  }, [items]);
+  useEffect(() => { fetchItems(); }, [fetchItems]);
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!newText.trim()) return;
-    setItems((prev) => [
-      ...prev,
-      { id: Date.now().toString(), text: newText.trim(), done: false, createdAt: new Date().toISOString() },
-    ]);
-    setNewText("");
+    try {
+      const res = await fetch(`${API_BASE}/api/feedback/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: newText.trim() }),
+      });
+      if (res.ok) {
+        const item = await res.json();
+        setItems((prev) => [...prev, item]);
+        setNewText("");
+      }
+    } catch {
+      toast({ variant: "destructive", description: "添加失败" });
+    }
   };
 
-  const handleToggle = (id: string) => {
-    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, done: !it.done } : it)));
+  const handleToggle = async (id: string) => {
+    const item = items.find((it) => it.id === id);
+    if (!item) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/feedback/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ done: !item.done }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setItems((prev) => prev.map((it) => (it.id === id ? updated : it)));
+      }
+    } catch {}
   };
 
-  const handleDelete = (id: string) => {
-    setItems((prev) => prev.filter((it) => it.id !== id));
+  const handleDelete = async (id: string) => {
+    try {
+      await fetch(`${API_BASE}/api/feedback/${id}`, { method: "DELETE" });
+      setItems((prev) => prev.filter((it) => it.id !== id));
+    } catch {}
   };
 
   const handleCopyAll = () => {
     const text = items
       .map((it, i) => `${i + 1}. [${it.done ? "✓" : " "}] ${it.text}`)
       .join("\n");
-    // 使用 fallback 方式复制（兼容 HTTP 站点）
     try {
       const ta = document.createElement("textarea");
       ta.value = text;
@@ -67,11 +86,10 @@ export function FeedbackButton() {
       document.body.removeChild(ta);
       toast({ description: "已复制所有反馈到剪贴板" });
     } catch {
-      // 尝试 clipboard API
       navigator.clipboard?.writeText(text).then(() => {
         toast({ description: "已复制所有反馈到剪贴板" });
       }).catch(() => {
-        toast({ variant: "destructive", description: "复制失败，请手动复制" });
+        toast({ variant: "destructive", description: "复制失败" });
       });
     }
   };
@@ -81,7 +99,7 @@ export function FeedbackButton() {
       {/* 左下角悬浮按钮 */}
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => { setOpen(true); fetchItems(); }}
         className="fixed bottom-6 left-6 z-[9998] flex items-center justify-center h-10 w-10 rounded-full bg-gradient-to-br from-slate-600 to-slate-700 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all"
         title="反馈建议"
       >

@@ -21,6 +21,7 @@ async def get_db():
 
 async def init_db():
     from app.models import Agent, Conversation, Message, File, Note, Setting, Homework, HomeworkFile, HomeworkFeedback, VocabularyWord, FavoriteSentence, ContextMaterial, DailyReportCache  # noqa
+    from app.models.feedback import FeedbackItem  # noqa
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         # Add new columns if they don't exist (SQLite doesn't support IF NOT EXISTS for columns)
