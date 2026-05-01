@@ -17,6 +17,7 @@ class ListeningPracticeSession(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     title: Mapped[str] = mapped_column(String, nullable=False)
     note: Mapped[Optional[str]] = mapped_column(Text)
+    cleanup_summary: Mapped[Optional[str]] = mapped_column(Text)  # AI 复盘总结
 
     homework_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("homeworks.id", ondelete="SET NULL"), nullable=True)
 

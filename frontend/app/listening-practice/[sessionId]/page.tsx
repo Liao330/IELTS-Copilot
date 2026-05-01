@@ -805,6 +805,15 @@ export default function ListeningPracticeDetailPage() {
               </div>
             )}
 
+            {/* AI 复盘总结 */}
+            {!isDemo && (
+              <SessionSummaryBlock
+                summary={session.cleanup_summary || null}
+                sessionId={sessionId}
+                onUpdated={(newSummary) => setSession((prev) => prev ? { ...prev, cleanup_summary: newSummary } : prev)}
+              />
+            )}
+
             {/* 一键生成按钮 + 分级信息 */}
             {!isDemo && totalBlockers > 0 && (
               <div className="mb-2 space-y-2">
@@ -1732,6 +1741,58 @@ function SentenceNoteEditor({ value, onCommit, readOnly = false }: SentenceNoteE
 
 
 // ==================== 盲听默认偏好开关 ====================
+
+// ==================== AI 复盘总结 ====================
+
+function SessionSummaryBlock({
+  summary,
+}: {
+  summary: string | null;
+  sessionId: string;
+  onUpdated: (newSummary: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(!!summary);
+
+  if (!summary) {
+    return null;
+  }
+
+  const parts = summary.split(/(?<=[。.])/).filter((s) => s.trim());
+
+  return (
+    <div className="mb-3 rounded-xl border border-sky-200 dark:border-sky-800 bg-gradient-to-br from-sky-50/80 to-indigo-50/40 dark:from-sky-950/30 dark:to-indigo-950/20 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="w-full px-4 py-2 flex items-center justify-between hover:bg-sky-100/50 dark:hover:bg-sky-900/20 transition-colors"
+      >
+        <span className="text-xs font-semibold text-sky-800 dark:text-sky-200 flex items-center gap-1.5">
+          📊 AI 复盘总结
+        </span>
+        <ChevronUp className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${expanded ? "" : "rotate-180"}`} />
+      </button>
+      {expanded && (
+        <div className="px-4 pb-3 space-y-2 border-t border-sky-200/60 dark:border-sky-800/60 pt-2">
+          {parts.map((part, i) => {
+            const trimmed = part.trim();
+            if (!trimmed) return null;
+            const isSuggestion = /建议|练习|训练|方向/.test(trimmed);
+            const isIssue = /问题|核心|薄弱|不足/.test(trimmed);
+            return (
+              <div key={i} className="flex items-start gap-2">
+                <span className="shrink-0 mt-0.5 text-xs">
+                  {isSuggestion ? "💡" : isIssue ? "⚠️" : "📋"}
+                </span>
+                <p className="text-xs leading-relaxed text-foreground/90">{trimmed}</p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 function BlindDefaultToggle() {
   const blindByDefault = useBlindModeStore((s) => s.blindByDefault);

@@ -417,6 +417,7 @@ export interface ListeningSessionDetail {
   title: string;
   note: string | null;
   homework_id?: string | null;
+  cleanup_summary?: string | null;
   created_at: string;
   updated_at: string;
   sentences: ListeningSentence[];
@@ -433,6 +434,7 @@ export interface ListeningSessionCreate {
   title: string;
   note?: string;
   homework_id?: string;
+  cleanup_summary?: string;
   sentences?: string[];
   sentences_with_context?: ListeningSentenceInput[];
 }
@@ -441,6 +443,7 @@ export interface ListeningSessionUpdate {
   title?: string;
   note?: string;
   homework_id?: string;
+  cleanup_summary?: string;
 }
 
 export interface ListeningGenerateResponse {

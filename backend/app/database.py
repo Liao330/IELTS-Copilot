@@ -56,6 +56,7 @@ async def _migrate_add_columns(conn):
         ("listening_practice_sentences", "note", "TEXT"),
         ("homeworks", "summary", "TEXT"),
         ("homeworks", "summary_updated_at", "TEXT"),
+        ("listening_practice_sessions", "cleanup_summary", "TEXT"),
     ]
     for table, column, col_type in new_columns:
         try:

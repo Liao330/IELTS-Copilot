@@ -122,6 +122,7 @@ function NewListeningPracticePage() {
         title: title.trim(),
         note: note.trim() || undefined,
         homework_id: homeworkId,
+        cleanup_summary: cleanupSummary || undefined,
         sentences_with_context: items.map((it) => ({
           text: it.text,
           note: it.note || undefined,
@@ -191,12 +192,7 @@ function NewListeningPracticePage() {
           {/* ==================== Step 2：预览编辑 ==================== */}
           {stage === "review" && items && (
             <>
-              {cleanupSummary && (
-                <div className="mb-4 rounded-lg border border-sky-200 dark:border-sky-800 bg-sky-50/50 dark:bg-sky-950/20 p-4">
-                  <p className="text-xs font-semibold text-sky-700 dark:text-sky-300 mb-1">📊 本次听力复盘总结</p>
-                  <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{cleanupSummary}</p>
-                </div>
-              )}
+              {cleanupSummary && <CleanupSummaryCard summary={cleanupSummary} />}
               <ReviewStage
                 items={items}
                 updateItem={updateItem}
@@ -685,6 +681,41 @@ function CleanupItemRow({
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ============ 复盘总结卡片（结构化展示） ============
+
+function CleanupSummaryCard({ summary }: { summary: string }) {
+  // 尝试按句号分段，提取不同部分
+  const parts = summary.split(/(?<=[。.])/).filter((s) => s.trim());
+
+  return (
+    <div className="mb-4 rounded-xl border border-sky-200 dark:border-sky-800 bg-gradient-to-br from-sky-50/80 to-indigo-50/40 dark:from-sky-950/30 dark:to-indigo-950/20 overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-sky-200/60 dark:border-sky-800/60 bg-sky-100/50 dark:bg-sky-900/20">
+        <p className="text-sm font-semibold text-sky-800 dark:text-sky-200 flex items-center gap-1.5">
+          📊 本次听力复盘总结
+        </p>
+      </div>
+      <div className="px-4 py-3 space-y-2">
+        {parts.map((part, i) => {
+          const trimmed = part.trim();
+          if (!trimmed) return null;
+          // 识别是否是"建议"类内容
+          const isSuggestion = /建议|练习|训练|方向/.test(trimmed);
+          const isIssue = /问题|核心|薄弱|不足/.test(trimmed);
+          return (
+            <div key={i} className="flex items-start gap-2">
+              <span className="shrink-0 mt-0.5">
+                {isSuggestion ? "💡" : isIssue ? "⚠️" : "📋"}
+              </span>
+              <p className="text-sm leading-relaxed text-foreground/90">{trimmed}</p>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

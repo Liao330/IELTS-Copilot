@@ -232,6 +232,7 @@ async def create_session(data: SessionCreate, db: AsyncSession = Depends(get_db)
         title=data.title.strip(),
         note=data.note,
         homework_id=data.homework_id,
+        cleanup_summary=data.cleanup_summary,
     )
     db.add(session)
     await db.flush()
@@ -316,6 +317,7 @@ async def _load_session_detail(db: AsyncSession, session_id: str) -> SessionDeta
         title=session.title,
         note=session.note,
         homework_id=session.homework_id,
+        cleanup_summary=session.cleanup_summary,
         created_at=session.created_at,
         updated_at=session.updated_at,
         sentences=[_serialize_sentence(s) for s in sentences],
@@ -339,6 +341,8 @@ async def update_session(session_id: str, data: SessionUpdate, db: AsyncSession 
         session.note = data.note
     if data.homework_id is not None:
         session.homework_id = data.homework_id or None
+    if data.cleanup_summary is not None:
+        session.cleanup_summary = data.cleanup_summary
     session.updated_at = datetime.utcnow()
 
     await db.commit()

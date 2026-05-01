@@ -51,6 +51,7 @@ class SessionCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
     note: str | None = None
     homework_id: str | None = None  # 关联听力作业
+    cleanup_summary: str | None = None  # AI 复盘总结
     # 两种传法二选一，优先使用 sentences_with_context
     sentences: list[str] | None = None
     sentences_with_context: list[SentenceInput] | None = None
@@ -60,6 +61,7 @@ class SessionUpdate(BaseModel):
     title: str | None = Field(None, min_length=1, max_length=200)
     note: str | None = None
     homework_id: str | None = None
+    cleanup_summary: str | None = None
 
 
 class SessionSummaryOut(BaseModel):
@@ -92,6 +94,7 @@ class SessionDetailOut(BaseModel):
     title: str
     note: str | None = None
     homework_id: str | None = None
+    cleanup_summary: str | None = None
     created_at: datetime
     updated_at: datetime
     sentences: list[SentenceOut]
