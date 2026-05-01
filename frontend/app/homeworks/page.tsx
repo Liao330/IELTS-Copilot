@@ -658,23 +658,26 @@ export default function HomeworksPage() {
 // ==================== 分数趋势图 ====================
 
 function ScoreTrendChart({ homeworks, category }: { homeworks: Homework[]; category: string }) {
+  const router = useRouter();
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; title: string; date: string; score: number } | null>(null);
+
   // 提取该类别下有分数的作业，按日期排序
   const dataPoints = useMemo(() => {
-    const points: { date: string; score: number; title: string }[] = [];
+    const points: { id: string; date: string; score: number; title: string }[] = [];
     for (const hw of homeworks) {
       if (hw.category !== category) continue;
       for (const fb of hw.feedbacks) {
         if (fb.scores?.overall) {
           points.push({
+            id: hw.id,
             date: hw.homework_date,
             score: fb.scores.overall,
             title: hw.title,
           });
-          break; // 每个作业只取第一个有分数的 feedback
+          break;
         }
       }
     }
-    // 按日期排序
     points.sort((a, b) => a.date.localeCompare(b.date));
     return points;
   }, [homeworks, category]);
@@ -746,11 +749,30 @@ function ScoreTrendChart({ homeworks, category }: { homeworks: Homework[]; categ
         {/* 折线 */}
         <path d={linePath} fill="none" stroke={lineColor} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
 
-        {/* 数据点 */}
+        {/* 数据点（可点击 + 悬浮提示） */}
         {dataPoints.map((d, i) => (
-          <g key={i}>
+          <g
+            key={i}
+            className="cursor-pointer"
+            onClick={() => router.push(`/homeworks/${d.id}`)}
+            onMouseEnter={(e) => {
+              const svg = e.currentTarget.closest("svg");
+              if (!svg) return;
+              const rect = svg.getBoundingClientRect();
+              const scaleX = rect.width / W;
+              const scaleY = rect.height / H;
+              setTooltip({
+                x: rect.left + toX(i) * scaleX,
+                y: rect.top + toY(d.score) * scaleY - 10,
+                title: d.title,
+                date: d.date,
+                score: d.score,
+              });
+            }}
+            onMouseLeave={() => setTooltip(null)}
+          >
             <circle cx={toX(i)} cy={toY(d.score)} r={4} fill={lineColor} />
-            <circle cx={toX(i)} cy={toY(d.score)} r={6} fill={lineColor} fillOpacity={0.15} />
+            <circle cx={toX(i)} cy={toY(d.score)} r={8} fill={lineColor} fillOpacity={0} className="hover:fill-opacity-15" />
             {/* 分数标签 */}
             <text x={toX(i)} y={toY(d.score) - 8} textAnchor="middle" fontSize={9} fontWeight={600} fill={lineColor}>
               {d.score}
@@ -770,6 +792,23 @@ function ScoreTrendChart({ homeworks, category }: { homeworks: Homework[]; categ
           return null;
         })}
       </svg>
+
+      {/* 悬浮提示框 */}
+      {tooltip && (
+        <div
+          className="fixed z-50 pointer-events-none animate-in fade-in-0 duration-100"
+          style={{
+            left: tooltip.x,
+            top: tooltip.y,
+            transform: "translate(-50%, -100%)",
+          }}
+        >
+          <div className="bg-popover border rounded-lg shadow-lg px-3 py-2 text-xs whitespace-nowrap">
+            <p className="font-semibold">{tooltip.title}</p>
+            <p className="text-muted-foreground">{tooltip.date} · {tooltip.score} 分</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
