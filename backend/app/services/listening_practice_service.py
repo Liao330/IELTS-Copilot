@@ -49,6 +49,25 @@ async def _get_recent_accuracy(db: AsyncSession, session_id: str) -> float | Non
     return sum(pcts) / len(pcts)
 
 
+async def _auto_translate_word(db: AsyncSession, word: str) -> str | None:
+    """快速翻译单词获取中文释义，失败返回 None"""
+    try:
+        model_name, api_key, api_base = await get_llm_config(db)
+        if not api_key:
+            return None
+        messages = [
+            {"role": "system", "content": "你是英中翻译助手。只输出简短中文释义（不超过10字），不要任何解释。"},
+            {"role": "user", "content": word},
+        ]
+        result = await complete_chat(
+            model=model_name, api_key=api_key, api_base=api_base,
+            messages=messages, temperature=0.1,
+        )
+        return result.strip()[:30] if result else None
+    except Exception:
+        return None
+
+
 def _clean_json_response(raw: str) -> str:
     """剥离 LLM 返回中可能的 markdown 代码块包裹"""
     cleaned = raw.strip()
@@ -121,13 +140,20 @@ async def sync_blockers_to_vocabulary(
             )
             existing = existing_q.scalars().first()
             if existing:
+                # 如果已有但 meaning 是占位符，尝试更新
+                if existing.meaning and "待补充" in existing.meaning:
+                    meaning = await _auto_translate_word(db, w)
+                    if meaning:
+                        existing.meaning = meaning
                 word_id_map[w] = existing.id
             else:
+                # 自动翻译获取释义
+                meaning = await _auto_translate_word(db, w) or f"({w})"
                 new_id = str(uuid.uuid4())
                 db.add(VocabularyWord(
                     id=new_id,
                     word=w,
-                    meaning="（精听标记，待补充释义）",
+                    meaning=meaning,
                     category="listening",
                     source_conversation_id=source_id,
                     next_review_at=datetime.utcnow(),

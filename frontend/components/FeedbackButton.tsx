@@ -55,18 +55,25 @@ export function FeedbackButton() {
     const text = items
       .map((it, i) => `${i + 1}. [${it.done ? "✓" : " "}] ${it.text}`)
       .join("\n");
-    navigator.clipboard.writeText(text).then(() => {
-      toast({ description: "已复制所有反馈到剪贴板" });
-    }).catch(() => {
-      // Fallback
+    // 使用 fallback 方式复制（兼容 HTTP 站点）
+    try {
       const ta = document.createElement("textarea");
       ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
       document.body.appendChild(ta);
       ta.select();
       document.execCommand("copy");
       document.body.removeChild(ta);
       toast({ description: "已复制所有反馈到剪贴板" });
-    });
+    } catch {
+      // 尝试 clipboard API
+      navigator.clipboard?.writeText(text).then(() => {
+        toast({ description: "已复制所有反馈到剪贴板" });
+      }).catch(() => {
+        toast({ variant: "destructive", description: "复制失败，请手动复制" });
+      });
+    }
   };
 
   return (

@@ -762,7 +762,9 @@ async def add_discovered_word(
     body: DiscoveredWordCreate,
     db: AsyncSession = Depends(get_db),
 ):
-    """添加一个延伸障碍词"""
+    """添加一个延伸障碍词（同时自动同步到单词本作为听力单词）"""
+    from app.services.listening_practice_service import _auto_translate_word
+
     # 去重
     existing = await db.execute(
         select(ListeningDiscoveredWord).where(
@@ -780,6 +782,24 @@ async def add_discovered_word(
         source=body.source,
     )
     db.add(word)
+
+    # 自动同步到单词本（如果还没有）
+    from app.models.vocabulary import VocabularyWord
+    vocab_q = await db.execute(
+        select(VocabularyWord).where(VocabularyWord.word.ilike(body.word))
+    )
+    vocab_existing = vocab_q.scalars().first()
+    if not vocab_existing:
+        meaning = await _auto_translate_word(db, body.word) or f"({body.word})"
+        db.add(VocabularyWord(
+            id=str(uuid.uuid4()),
+            word=body.word,
+            meaning=meaning,
+            category="listening",
+            source_conversation_id=f"listening-practice:{session_id}",
+            next_review_at=datetime.utcnow(),
+        ))
+
     await db.commit()
     await db.refresh(word)
     return DiscoveredWordOut(
