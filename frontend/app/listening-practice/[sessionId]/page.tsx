@@ -1746,15 +1746,49 @@ function SentenceNoteEditor({ value, onCommit, readOnly = false }: SentenceNoteE
 
 function SessionSummaryBlock({
   summary,
+  sessionId,
+  onUpdated,
 }: {
   summary: string | null;
   sessionId: string;
   onUpdated: (newSummary: string) => void;
 }) {
+  const { toast } = useToast();
   const [expanded, setExpanded] = useState(!!summary);
+  const [generating, setGenerating] = useState(false);
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    try {
+      const res = await api.generateSessionSummary(sessionId);
+      onUpdated(res.cleanup_summary);
+      setExpanded(true);
+      toast({ description: "复盘总结已生成" });
+    } catch (err) {
+      toast({ variant: "destructive", description: err instanceof Error ? err.message : "生成失败" });
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   if (!summary) {
-    return null;
+    return (
+      <div className="mb-3">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleGenerate}
+          disabled={generating}
+          className="gap-1.5 text-xs w-full"
+        >
+          {generating ? (
+            <><Loader2 className="h-3.5 w-3.5 animate-spin" />生成 AI 复盘总结...</>
+          ) : (
+            <>📊 生成 AI 复盘总结</>
+          )}
+        </Button>
+      </div>
+    );
   }
 
   const parts = summary.split(/(?<=[。.])/).filter((s) => s.trim());
@@ -1769,7 +1803,17 @@ function SessionSummaryBlock({
         <span className="text-xs font-semibold text-sky-800 dark:text-sky-200 flex items-center gap-1.5">
           📊 AI 复盘总结
         </span>
-        <ChevronUp className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${expanded ? "" : "rotate-180"}`} />
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); handleGenerate(); }}
+            disabled={generating}
+            className="text-[10px] text-muted-foreground hover:text-sky-600 dark:hover:text-sky-400"
+          >
+            {generating ? "生成中..." : "重新生成"}
+          </button>
+          <ChevronUp className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${expanded ? "" : "rotate-180"}`} />
+        </div>
       </button>
       {expanded && (
         <div className="px-4 pb-3 space-y-2 border-t border-sky-200/60 dark:border-sky-800/60 pt-2">

@@ -976,6 +976,82 @@ async def create_extension_session(session_id: str, db: AsyncSession = Depends(g
     await db.commit()
     return await _load_session_detail(db, new_session.id)
 
+# ==================== 生成/重新生成复盘总结 ====================
+
+@router.post("/sessions/{session_id}/generate-summary")
+async def generate_session_summary(session_id: str, db: AsyncSession = Depends(get_db)):
+    """为已有 session 生成 AI 复盘总结（基于句子和笔记内容）"""
+    from app.services.llm_service import complete_chat
+    from app.utils.llm_config import get_llm_config
+
+    q = await db.execute(
+        select(ListeningPracticeSession).where(ListeningPracticeSession.id == session_id)
+    )
+    session = q.scalar_one_or_none()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # 收集所有句子和笔记
+    sent_q = await db.execute(
+        select(ListeningPracticeSentence).where(
+            ListeningPracticeSentence.session_id == session_id
+        ).order_by(ListeningPracticeSentence.order_index)
+    )
+    sentences = sent_q.scalars().all()
+
+    if not sentences:
+        raise HTTPException(status_code=400, detail="没有答案句，无法生成总结")
+
+    # 构建上下文
+    context_lines = []
+    for i, s in enumerate(sentences):
+        blockers_text = ""
+        if s.blocker_words:
+            try:
+                blockers = json.loads(s.blocker_words)
+                blockers_text = "、".join([b["word"] for b in blockers])
+            except Exception:
+                pass
+        line = f"{i+1}. 答案句：{s.original_text}"
+        if blockers_text:
+            line += f"\n   障碍词：{blockers_text}"
+        if s.note:
+            line += f"\n   备注：{s.note}"
+        context_lines.append(line)
+
+    context = "\n".join(context_lines)
+
+    model_name, api_key, api_base = await get_llm_config(db)
+    if not api_key:
+        raise HTTPException(status_code=400, detail="未配置 API Key")
+
+    messages = [
+        {"role": "system", "content": """你是雅思听力教练，请分析以下精听复盘记录，生成总结。
+
+要求：
+1. 错误类型分布：如"拼写错误 X 题、连读漏听 X 题"等
+2. 共性问题：具体的发音/辨音薄弱点
+3. 改进建议：1-2 条针对性建议
+
+用中文，100-200 字，实事求是。"""},
+        {"role": "user", "content": f"精听记录标题：{session.title}\n\n{context}"},
+    ]
+
+    try:
+        raw = await complete_chat(
+            model=model_name, api_key=api_key, api_base=api_base,
+            messages=messages, temperature=0.3,
+        )
+        summary = raw.strip()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"生成失败: {e}")
+
+    session.cleanup_summary = summary
+    session.updated_at = datetime.utcnow()
+    await db.commit()
+
+    return {"session_id": session_id, "cleanup_summary": summary}
+
 
 # ==================== AI 分析错词 ====================
 

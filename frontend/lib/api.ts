@@ -137,6 +137,9 @@ export const api = {
   // 按作业查精听练习
   getListeningSessionsByHomework: (homeworkId: string) =>
     request<import("@/types").ListeningSessionSummary[]>(`/api/listening-practice/sessions/by-homework/${homeworkId}`),
+  // 生成/重新生成精听复盘总结
+  generateSessionSummary: (sessionId: string) =>
+    request<{ session_id: string; cleanup_summary: string }>(`/api/listening-practice/sessions/${sessionId}/generate-summary`, { method: "POST" }),
   batchGenerateSummaries: () =>
     request<{ message: string; generated: number; errors: number; total: number }>("/api/homeworks/batch-generate-summaries", { method: "POST" }),
   searchHomeworks: (query: string, category?: string) =>
