@@ -73,7 +73,7 @@ export function FeedbackButton() {
 
   const handleCopyAll = () => {
     const text = items
-      .map((it, i) => `${i + 1}. [${it.done ? "✓" : " "}] ${it.text}`)
+      .map((it, i) => `${i + 1}. [${it.done ? "x" : " "}] ${it.text}`)
       .join("\n");
     try {
       const ta = document.createElement("textarea");
@@ -84,14 +84,12 @@ export function FeedbackButton() {
       ta.select();
       document.execCommand("copy");
       document.body.removeChild(ta);
-      toast({ description: "已复制所有反馈到剪贴板" });
     } catch {
-      navigator.clipboard?.writeText(text).then(() => {
-        toast({ description: "已复制所有反馈到剪贴板" });
-      }).catch(() => {
-        toast({ variant: "destructive", description: "复制失败" });
-      });
+      navigator.clipboard?.writeText(text).catch(() => {});
     }
+    // 关闭面板后再显示 toast，确保 toast 在最顶层
+    setOpen(false);
+    setTimeout(() => toast({ description: "已复制所有反馈到剪贴板" }), 100);
   };
 
   return (
