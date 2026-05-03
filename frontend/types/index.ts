@@ -152,6 +152,8 @@ export interface Homework {
   file_mime_type: string | null;
   files: HomeworkFileInfo[];
   feedbacks: HomeworkFeedback[];
+  summary: string | null;
+  summary_updated_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -300,6 +302,7 @@ export interface VocabularyStats {
   learning_words: number;
   new_words: number;
   due_review_count: number;
+  category_counts: Record<string, number>;
 }
 
 // ========== Reports (学习日报 & 趋势总结) ==========
@@ -407,6 +410,7 @@ export interface ListeningSessionSummary {
   sentence_count: number;
   blocker_count: number;
   homework_id?: string | null;
+  study_duration_seconds: number;
   created_at: string;
   updated_at: string;
   is_demo?: boolean;
@@ -418,6 +422,7 @@ export interface ListeningSessionDetail {
   note: string | null;
   homework_id?: string | null;
   cleanup_summary?: string | null;
+  study_duration_seconds: number;
   created_at: string;
   updated_at: string;
   sentences: ListeningSentence[];
@@ -444,6 +449,7 @@ export interface ListeningSessionUpdate {
   note?: string;
   homework_id?: string;
   cleanup_summary?: string;
+  created_at?: string;
 }
 
 export interface ListeningGenerateResponse {
@@ -573,4 +579,30 @@ export interface DictationDateQuestion {
 export interface DictationDateCheckResult {
   correct: boolean;
   expected: string;
+}
+
+// ========== Schedule 日程计划 ==========
+
+export interface ScheduleTask {
+  id: string;
+  title: string;
+  description: string | null;
+  category: string | null;
+  scheduled_date: string;
+  start_time: string | null;
+  duration_minutes: number | null;
+  done: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ScheduleTaskCreate {
+  title: string;
+  description?: string;
+  category?: string;
+  scheduled_date: string;
+  start_time?: string;
+  duration_minutes?: number;
+  sort_order?: number;
 }

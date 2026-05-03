@@ -24,9 +24,10 @@ export default function ListeningPracticeListPage() {
   const [sessions, setSessions] = useState<ListeningSessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // rename dialog
+  // edit dialog (rename + date)
   const [renamingSession, setRenamingSession] = useState<ListeningSessionSummary | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [editDate, setEditDate] = useState("");
   const [renaming, setRenaming] = useState(false);
 
   // delete confirm
@@ -54,14 +55,19 @@ export default function ListeningPracticeListPage() {
     if (!renamingSession || !renameValue.trim()) return;
     setRenaming(true);
     try {
-      await api.updateListeningSession(renamingSession.id, { title: renameValue.trim() });
-      toast({ description: "重命名成功" });
+      const updateData: { title: string; created_at?: string } = { title: renameValue.trim() };
+      if (editDate) {
+        updateData.created_at = new Date(editDate + "T00:00:00").toISOString();
+      }
+      await api.updateListeningSession(renamingSession.id, updateData);
+      toast({ description: "已保存" });
       setRenamingSession(null);
       setRenameValue("");
+      setEditDate("");
       fetchSessions();
     } catch (err) {
       console.error(err);
-      toast({ variant: "destructive", description: "重命名失败" });
+      toast({ variant: "destructive", description: "保存失败" });
     } finally {
       setRenaming(false);
     }
@@ -111,10 +117,15 @@ export default function ListeningPracticeListPage() {
 
       <main className="container mx-auto px-4 py-6 max-w-5xl">
         {/* 统计条 */}
-        <div className="mb-6 grid grid-cols-3 gap-3">
+        <div className="mb-6 grid grid-cols-4 gap-3">
           <StatBadge icon="🎧" label="练习套数" value={sessions.length} />
           <StatBadge icon="📝" label="答案句数" value={totalSentences} />
           <StatBadge icon="🎯" label="障碍词累计" value={totalBlockers} />
+          <StatBadge icon="⏱" label="总学习时长" value={(() => {
+            const total = sessions.reduce((sum, s) => sum + (s.study_duration_seconds || 0), 0);
+            if (total >= 3600) return `${Math.floor(total / 3600)}h${Math.floor((total % 3600) / 60)}m`;
+            return `${Math.floor(total / 60)}min`;
+          })()} />
         </div>
 
         {loading ? (
@@ -131,6 +142,7 @@ export default function ListeningPracticeListPage() {
                 onRename={() => {
                   setRenamingSession(s);
                   setRenameValue(s.title);
+                  setEditDate(s.created_at.split("T")[0]);
                 }}
                 onDelete={() => setDeletingSession(s)}
               />
@@ -139,23 +151,36 @@ export default function ListeningPracticeListPage() {
         )}
       </main>
 
-      {/* Rename Dialog */}
+      {/* Edit Dialog */}
       <Dialog
         open={!!renamingSession}
         onOpenChange={(open) => !open && setRenamingSession(null)}
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>重命名练习</DialogTitle>
+            <DialogTitle>编辑练习</DialogTitle>
           </DialogHeader>
-          <Input
-            value={renameValue}
-            onChange={(e) => setRenameValue(e.target.value)}
-            placeholder="输入新标题"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.nativeEvent.isComposing) handleRename();
-            }}
-          />
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">标题</label>
+              <Input
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                placeholder="输入标题"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.nativeEvent.isComposing) handleRename();
+                }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">练习日期</label>
+              <Input
+                type="date"
+                value={editDate}
+                onChange={(e) => setEditDate(e.target.value)}
+              />
+            </div>
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRenamingSession(null)}>
               取消
@@ -195,7 +220,7 @@ export default function ListeningPracticeListPage() {
   );
 }
 
-function StatBadge({ icon, label, value }: { icon: string; label: string; value: number }) {
+function StatBadge({ icon, label, value }: { icon: string; label: string; value: number | string }) {
   return (
     <div className="rounded-lg border bg-gradient-to-br from-sky-50/60 to-cyan-50/40 dark:from-sky-950/20 dark:to-cyan-950/10 p-3 flex items-center gap-2">
       <span className="text-xl">{icon}</span>

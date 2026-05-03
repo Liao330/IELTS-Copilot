@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import type {
@@ -87,6 +87,75 @@ export default function ListeningPracticeDetailPage() {
 
   // 删除句子
   const [deletingSentence, setDeletingSentence] = useState<ListeningSentence | null>(null);
+
+  // ====== 智能学习计时 ======
+  const [studySeconds, setStudySeconds] = useState(0);
+  const lastActivityRef = useRef(Date.now());
+  const activeSecondsRef = useRef(0);
+  const IDLE_THRESHOLD = 30_000; // 30s 无操作视为离开
+  const REPORT_INTERVAL = 30; // 每 30 秒上报一次
+
+  // 监听用户活动
+  useEffect(() => {
+    const markActive = () => { lastActivityRef.current = Date.now(); };
+    const events = ["click", "keydown", "scroll", "mousedown", "touchstart"];
+    events.forEach((e) => window.addEventListener(e, markActive, { passive: true }));
+    return () => { events.forEach((e) => window.removeEventListener(e, markActive)); };
+  }, []);
+
+  // 每秒计时 + 定期上报
+  useEffect(() => {
+    if (!sessionId) return;
+    const timer = setInterval(() => {
+      const now = Date.now();
+      const idle = now - lastActivityRef.current;
+      if (idle < IDLE_THRESHOLD) {
+        activeSecondsRef.current += 1;
+        setStudySeconds((prev) => prev + 1);
+      }
+      // 每 REPORT_INTERVAL 秒上报
+      if (activeSecondsRef.current > 0 && activeSecondsRef.current % REPORT_INTERVAL === 0) {
+        api.addStudyTime(sessionId, REPORT_INTERVAL).catch(() => {});
+      }
+    }, 1000);
+
+    // 页面卸载时上报剩余时间
+    const handleUnload = () => {
+      const remaining = activeSecondsRef.current % REPORT_INTERVAL;
+      if (remaining > 0) {
+        navigator.sendBeacon?.(
+          `${process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000"}/api/listening-practice/sessions/${sessionId}/study-time`,
+          JSON.stringify({ seconds: remaining })
+        );
+      }
+    };
+    window.addEventListener("beforeunload", handleUnload);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("beforeunload", handleUnload);
+      // 组件卸载时上报剩余
+      const remaining = activeSecondsRef.current % REPORT_INTERVAL;
+      if (remaining > 0) {
+        api.addStudyTime(sessionId, remaining).catch(() => {});
+      }
+    };
+  }, [sessionId]);
+
+  // 初始化已有时长
+  useEffect(() => {
+    if (session) {
+      setStudySeconds(session.study_duration_seconds || 0);
+      activeSecondsRef.current = 0; // reset local counter
+    }
+  }, [session?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const formatDuration = (secs: number) => {
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    if (h > 0) return `${h}h${m > 0 ? m + "m" : ""}`;
+    return `${m}min`;
+  };
 
   const addDiscoveredWord = useCallback((word: string, note?: string, sourceSentence?: string) => {
     const lower = word.toLowerCase();
@@ -722,6 +791,11 @@ export default function ListeningPracticeDetailPage() {
               <span className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">
                 {practiceProgress.done}/{practiceProgress.total} 已训练
               </span>
+              {studySeconds > 0 && (
+                <span className="text-[11px] text-amber-600 dark:text-amber-400 whitespace-nowrap shrink-0 flex items-center gap-0.5" title="沉浸学习时长">
+                  ⏱ {formatDuration(studySeconds)}
+                </span>
+              )}
               {practiceProgress.done < practiceProgress.total && (
                 <button
                   type="button"
@@ -1791,7 +1865,23 @@ function SessionSummaryBlock({
     );
   }
 
-  const parts = summary.split(/(?<=[。.])/).filter((s) => s.trim());
+  // Strip emoji and clean up, then split by sentence
+  const cleanSummary = Array.from(summary)
+    .filter((ch) => {
+      const code = ch.codePointAt(0) || 0;
+      // Keep CJK, ASCII, common punctuation; filter emoji ranges
+      if (code < 0x2600) return true;
+      if (code >= 0x4E00 && code <= 0x9FFF) return true; // CJK
+      if (code >= 0x3000 && code <= 0x303F) return true; // CJK punctuation
+      if (code >= 0xFF00 && code <= 0xFFEF) return true; // fullwidth
+      return false;
+    })
+    .join("")
+    .trim();
+  const parts = cleanSummary
+    .split(/(?<=[。.])/)
+    .map((s: string) => s.trim())
+    .filter((s: string) => s.length > 2);
 
   return (
     <div className="mb-3 rounded-xl border border-sky-200 dark:border-sky-800 bg-gradient-to-br from-sky-50/80 to-indigo-50/40 dark:from-sky-950/30 dark:to-indigo-950/20 overflow-hidden">

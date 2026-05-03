@@ -249,22 +249,20 @@ export function WordEditor({ open, onOpenChange, word, initialWord, initialData,
               >
                 <Volume2 className={`h-4 w-4 ${playing ? "text-sky-500 animate-pulse" : ""}`} />
               </Button>
-              {!isEdit && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAutoFill}
-                  disabled={translating}
-                  className="flex-shrink-0 gap-1"
-                >
-                  {translating ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-3.5 w-3.5" />
-                  )}
-                  AI 查词
-                </Button>
-              )}
+                            <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAutoFill}
+                disabled={translating || !form.word.trim()}
+                className="flex-shrink-0 gap-1"
+              >
+                {translating ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5" />
+                )}
+                AI 查词
+              </Button>
             </div>
           </div>
 

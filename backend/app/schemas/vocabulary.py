@@ -136,3 +136,4 @@ class VocabularyStats(BaseModel):
     learning_words: int  # mastery_level 1-2
     new_words: int  # mastery_level == 0
     due_review_count: int  # 今日待复习
+    category_counts: dict[str, int] = {}  # 各类别单词数

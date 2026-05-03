@@ -659,68 +659,129 @@ export default function HomeworksPage() {
 
 function ScoreTrendChart({ homeworks, category }: { homeworks: Homework[]; category: string }) {
   const router = useRouter();
-  const [tooltip, setTooltip] = useState<{ x: number; y: number; title: string; date: string; score: number } | null>(null);
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; title: string; date: string; label: string; color: string } | null>(null);
 
-  // 提取该类别下有分数的作业，按日期排序
-  const dataPoints = useMemo(() => {
-    const points: { id: string; date: string; score: number; title: string }[] = [];
+  const isDualAxis = category === "listening" || category === "reading";
+
+  // 提取数据点，听力/阅读区分套题(Band)和部分练习(正确率)
+  const { bandPoints, pctPoints, allPoints } = useMemo(() => {
+    type Pt = { id: string; date: string; score: number; title: string; label: string; kind: "band" | "pct" };
+    const band: Pt[] = [];
+    const pct: Pt[] = [];
+
     for (const hw of homeworks) {
       if (hw.category !== category) continue;
       for (const fb of hw.feedbacks) {
-        if (fb.scores?.overall) {
-          points.push({
-            id: hw.id,
-            date: hw.homework_date,
-            score: fb.scores.overall,
-            title: hw.title,
-          });
-          break;
+        if (!fb.scores) continue;
+        const s = fb.scores as Record<string, unknown>;
+
+        if (isDualAxis) {
+          const raw = s.raw_score as number | undefined;
+          const total = s.raw_total as number | undefined;
+          const overall = s.overall as number | undefined;
+          if (overall != null && total != null && total >= 40) {
+            // 套题：有 Band + 满 40 题
+            band.push({ id: hw.id, date: hw.homework_date, score: overall, title: hw.title, label: `Band ${overall} (${raw}/${total})`, kind: "band" });
+          } else if (raw != null && total != null && total > 0) {
+            // 部分练习：正确率
+            const p = Math.round((raw / total) * 100);
+            pct.push({ id: hw.id, date: hw.homework_date, score: p, title: hw.title, label: `${raw}/${total} (${p}%)`, kind: "pct" });
+          }
+        } else {
+          // 写作/口语：Band Score
+          if (s.overall) {
+            const overall = s.overall as number;
+            band.push({ id: hw.id, date: hw.homework_date, score: overall, title: hw.title, label: `Band ${overall}`, kind: "band" });
+          }
         }
+        break;
       }
     }
-    points.sort((a, b) => a.date.localeCompare(b.date));
-    return points;
-  }, [homeworks, category]);
 
-  if (dataPoints.length < 2) {
-    return null; // 至少 2 个数据点才显示图表
-  }
+    band.sort((a, b) => a.date.localeCompare(b.date));
+    pct.sort((a, b) => a.date.localeCompare(b.date));
+    const all = [...band, ...pct].sort((a, b) => a.date.localeCompare(b.date));
+    return { bandPoints: band, pctPoints: pct, allPoints: all };
+  }, [homeworks, category, isDualAxis]);
 
-  const scores = dataPoints.map((d) => d.score);
-  const minScore = Math.floor(Math.min(...scores) - 0.5);
-  const maxScore = Math.ceil(Math.max(...scores) + 0.5);
-  const range = maxScore - minScore || 1;
-  const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+  if (allPoints.length < 2) return null;
 
-  // SVG 尺寸
+  // 双轴：左侧 Band (4-9)，右侧 正确率 (0-100%)
+  const hasBand = bandPoints.length > 0;
+  const hasPct = pctPoints.length > 0;
+
+  // Band 轴范围
+  const bandScores = bandPoints.map((d) => d.score);
+  const bandMin = bandScores.length ? Math.floor(Math.min(...bandScores) - 0.5) : 4;
+  const bandMax = bandScores.length ? Math.ceil(Math.max(...bandScores) + 0.5) : 9;
+  const bandRange = bandMax - bandMin || 1;
+
+  // 正确率轴范围
+  const pctScores = pctPoints.map((d) => d.score);
+  const pctMin = pctScores.length ? Math.max(0, Math.floor(Math.min(...pctScores) / 10) * 10 - 10) : 0;
+  const pctMax = pctScores.length ? Math.min(100, Math.ceil(Math.max(...pctScores) / 10) * 10 + 10) : 100;
+  const pctRange = pctMax - pctMin || 1;
+
+  // 对于写作/口语，只有 band 轴
+  const singleMin = !isDualAxis ? bandMin : (hasBand && !hasPct ? bandMin : pctMin);
+  const singleMax = !isDualAxis ? bandMax : (hasBand && !hasPct ? bandMax : pctMax);
+  const singleRange = singleMax - singleMin || 1;
+
+  // SVG
   const W = 600;
-  const H = 160;
-  const PAD_L = 35;
-  const PAD_R = 15;
-  const PAD_T = 15;
+  const H = 180;
+  const PAD_L = 40;
+  const PAD_R = isDualAxis && hasBand && hasPct ? 45 : 15;
+  const PAD_T = 20;
   const PAD_B = 30;
   const chartW = W - PAD_L - PAD_R;
   const chartH = H - PAD_T - PAD_B;
 
-  const toX = (i: number) => PAD_L + (i / (dataPoints.length - 1)) * chartW;
-  const toY = (s: number) => PAD_T + chartH - ((s - minScore) / range) * chartH;
+  // X 轴：所有点按时间排列
+  const allDates = allPoints.map((d) => d.date);
+  const toX = (date: string) => {
+    const idx = allDates.indexOf(date);
+    return PAD_L + (idx / Math.max(allDates.length - 1, 1)) * chartW;
+  };
+
+  // Y 轴映射
+  const toYBand = (s: number) => PAD_T + chartH - ((s - bandMin) / bandRange) * chartH;
+  const toYPct = (s: number) => PAD_T + chartH - ((s - pctMin) / pctRange) * chartH;
+  const toYSingle = (s: number) => PAD_T + chartH - ((s - singleMin) / singleRange) * chartH;
+
+  const toY = (s: number, kind: "band" | "pct") => {
+    if (isDualAxis && hasBand && hasPct) {
+      return kind === "band" ? toYBand(s) : toYPct(s);
+    }
+    return hasPct ? toYPct(s) : toYSingle(s);
+  };
+
+  // 颜色
+  const CATEGORY_COLORS_LINE: Record<string, string> = {
+    writing: "#3b82f6", speaking: "#22c55e", reading: "#a855f7", listening: "#f97316",
+  };
+  const bandColor = CATEGORY_COLORS_LINE[category] || "#3b82f6";
+  const pctColor = "#06b6d4"; // cyan for partial
 
   // 折线路径
-  const linePath = dataPoints.map((d, i) => `${i === 0 ? "M" : "L"} ${toX(i).toFixed(1)} ${toY(d.score).toFixed(1)}`).join(" ");
+  const makePath = (pts: typeof bandPoints, yFn: (s: number) => number) =>
+    pts.map((d, i) => `${i === 0 ? "M" : "L"} ${toX(d.date).toFixed(1)} ${yFn(d.score).toFixed(1)}`).join(" ");
+
+  const bandPath = hasBand ? makePath(bandPoints, (s) => toY(s, "band")) : "";
+  const pctPath = hasPct ? makePath(pctPoints, (s) => toY(s, "pct")) : "";
 
   // Y 轴刻度
-  const yTicks: number[] = [];
-  for (let s = minScore; s <= maxScore; s += 0.5) {
-    if (s === Math.round(s) || s === Math.round(s) + 0.5) yTicks.push(s);
+  const bandTicks: number[] = [];
+  for (let s = bandMin; s <= bandMax; s += 0.5) {
+    if (s === Math.round(s) || s === Math.round(s) + 0.5) bandTicks.push(s);
   }
+  const pctTicks: number[] = [];
+  const pctStep = pctRange > 40 ? 20 : 10;
+  for (let s = pctMin; s <= pctMax; s += pctStep) pctTicks.push(s);
 
-  const CATEGORY_COLORS_LINE: Record<string, string> = {
-    writing: "#3b82f6",
-    speaking: "#22c55e",
-    reading: "#a855f7",
-    listening: "#f97316",
-  };
-  const lineColor = CATEGORY_COLORS_LINE[category] || "#3b82f6";
+  // 统计
+  const bandAvg = bandScores.length ? bandScores.reduce((a, b) => a + b, 0) / bandScores.length : 0;
+  const pctAvg = pctScores.length ? pctScores.reduce((a, b) => a + b, 0) / pctScores.length : 0;
 
   return (
     <div className="mb-4 rounded-lg border bg-card p-4">
@@ -728,64 +789,96 @@ function ScoreTrendChart({ homeworks, category }: { homeworks: Homework[]; categ
         <h3 className="text-xs font-semibold text-muted-foreground">
           📈 {CATEGORY_LABELS[category] || category}分数趋势
         </h3>
-        <span className="text-[10px] text-muted-foreground">
-          平均 {avg.toFixed(1)} · {dataPoints.length} 次
-        </span>
+        <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+          {hasBand && (
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-3 h-0.5 rounded" style={{ background: bandColor }} />
+              套题 {bandAvg.toFixed(1)} · {bandPoints.length}次
+            </span>
+          )}
+          {hasPct && (
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-3 h-0.5 rounded" style={{ background: pctColor }} />
+              部分练习 {Math.round(pctAvg)}% · {pctPoints.length}次
+            </span>
+          )}
+          {!isDualAxis && (
+            <span>平均 {bandAvg.toFixed(1)} · {bandPoints.length}次</span>
+          )}
+        </div>
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" style={{ maxHeight: 180 }}>
-        {/* Y 轴刻度线 */}
-        {yTicks.map((s) => (
-          <g key={s}>
-            <line x1={PAD_L} x2={W - PAD_R} y1={toY(s)} y2={toY(s)} stroke="currentColor" strokeOpacity={0.08} />
-            <text x={PAD_L - 5} y={toY(s) + 3} textAnchor="end" fontSize={10} fill="currentColor" opacity={0.4}>
-              {s}
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" style={{ maxHeight: 200 }}>
+        {/* 左 Y 轴刻度（Band 或单一轴） */}
+        {(isDualAxis && hasBand && hasPct ? bandTicks : (!hasPct ? bandTicks : pctTicks)).map((s) => {
+          const yVal = isDualAxis && hasBand && hasPct ? toYBand(s) : (!hasPct ? toYSingle(s) : toYPct(s));
+          const isP = isDualAxis && hasBand && hasPct ? false : hasPct;
+          return (
+            <g key={`l-${s}`}>
+              <line x1={PAD_L} x2={W - PAD_R} y1={yVal} y2={yVal} stroke="currentColor" strokeOpacity={0.08} />
+              <text x={PAD_L - 5} y={yVal + 3} textAnchor="end" fontSize={10} fill={isDualAxis && hasBand && hasPct ? bandColor : "currentColor"} opacity={0.5}>
+                {isP ? `${s}%` : s}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* 右 Y 轴刻度（正确率，仅双轴模式） */}
+        {isDualAxis && hasBand && hasPct && pctTicks.map((s) => (
+          <g key={`r-${s}`}>
+            <text x={W - PAD_R + 5} y={toYPct(s) + 3} textAnchor="start" fontSize={10} fill={pctColor} opacity={0.5}>
+              {s}%
             </text>
           </g>
         ))}
 
-        {/* 平均线 */}
-        <line x1={PAD_L} x2={W - PAD_R} y1={toY(avg)} y2={toY(avg)} stroke={lineColor} strokeOpacity={0.25} strokeDasharray="4 4" />
+        {/* Band 折线 */}
+        {hasBand && (
+          <path d={bandPath} fill="none" stroke={bandColor} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+        )}
 
-        {/* 折线 */}
-        <path d={linePath} fill="none" stroke={lineColor} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+        {/* 正确率折线 */}
+        {hasPct && (
+          <path d={pctPath} fill="none" stroke={pctColor} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" strokeDasharray={isDualAxis && hasBand ? "6 3" : "none"} />
+        )}
 
-        {/* 数据点（可点击 + 悬浮提示） */}
-        {dataPoints.map((d, i) => (
-          <g
-            key={i}
-            className="cursor-pointer"
-            onClick={() => router.push(`/homeworks/${d.id}`)}
-            onMouseEnter={(e) => {
-              const svg = e.currentTarget.closest("svg");
-              if (!svg) return;
-              const rect = svg.getBoundingClientRect();
-              const scaleX = rect.width / W;
-              const scaleY = rect.height / H;
-              setTooltip({
-                x: rect.left + toX(i) * scaleX,
-                y: rect.top + toY(d.score) * scaleY - 10,
-                title: d.title,
-                date: d.date,
-                score: d.score,
-              });
-            }}
-            onMouseLeave={() => setTooltip(null)}
-          >
-            <circle cx={toX(i)} cy={toY(d.score)} r={4} fill={lineColor} />
-            <circle cx={toX(i)} cy={toY(d.score)} r={8} fill={lineColor} fillOpacity={0} className="hover:fill-opacity-15" />
-            {/* 分数标签 */}
-            <text x={toX(i)} y={toY(d.score) - 8} textAnchor="middle" fontSize={9} fontWeight={600} fill={lineColor}>
-              {d.score}
-            </text>
-          </g>
-        ))}
+        {/* 数据点 */}
+        {allPoints.map((d) => {
+          const color = d.kind === "pct" ? pctColor : bandColor;
+          const cy = toY(d.score, d.kind);
+          return (
+            <g
+              key={`${d.id}-${d.kind}`}
+              className="cursor-pointer"
+              onClick={() => router.push(`/homeworks/${d.id}`)}
+              onMouseEnter={(e) => {
+                const svg = e.currentTarget.closest("svg");
+                if (!svg) return;
+                const rect = svg.getBoundingClientRect();
+                const scaleX = rect.width / W;
+                const scaleY = rect.height / H;
+                setTooltip({
+                  x: rect.left + toX(d.date) * scaleX,
+                  y: rect.top + cy * scaleY - 10,
+                  title: d.title, date: d.date, label: d.label, color,
+                });
+              }}
+              onMouseLeave={() => setTooltip(null)}
+            >
+              <circle cx={toX(d.date)} cy={cy} r={4} fill={color} />
+              <circle cx={toX(d.date)} cy={cy} r={8} fill={color} fillOpacity={0} className="hover:fill-opacity-15" />
+              <text x={toX(d.date)} y={cy - 8} textAnchor="middle" fontSize={9} fontWeight={600} fill={color}>
+                {d.kind === "pct" ? `${d.score}%` : d.score}
+              </text>
+            </g>
+          );
+        })}
 
-        {/* X 轴日期（只显示首尾和间隔的） */}
-        {dataPoints.map((d, i) => {
-          if (dataPoints.length <= 6 || i === 0 || i === dataPoints.length - 1 || i % Math.ceil(dataPoints.length / 5) === 0) {
+        {/* X 轴日期 */}
+        {allPoints.map((d, i) => {
+          if (allPoints.length <= 6 || i === 0 || i === allPoints.length - 1 || i % Math.ceil(allPoints.length / 5) === 0) {
             return (
-              <text key={i} x={toX(i)} y={H - 5} textAnchor="middle" fontSize={9} fill="currentColor" opacity={0.4}>
-                {d.date.slice(5)} {/* MM-DD */}
+              <text key={i} x={toX(d.date)} y={H - 5} textAnchor="middle" fontSize={9} fill="currentColor" opacity={0.4}>
+                {d.date.slice(5)}
               </text>
             );
           }
@@ -797,15 +890,11 @@ function ScoreTrendChart({ homeworks, category }: { homeworks: Homework[]; categ
       {tooltip && (
         <div
           className="fixed z-50 pointer-events-none animate-in fade-in-0 duration-100"
-          style={{
-            left: tooltip.x,
-            top: tooltip.y,
-            transform: "translate(-50%, -100%)",
-          }}
+          style={{ left: tooltip.x, top: tooltip.y, transform: "translate(-50%, -100%)" }}
         >
           <div className="bg-popover border rounded-lg shadow-lg px-3 py-2 text-xs whitespace-nowrap">
             <p className="font-semibold">{tooltip.title}</p>
-            <p className="text-muted-foreground">{tooltip.date} · {tooltip.score} 分</p>
+            <p style={{ color: tooltip.color }}>{tooltip.date} · {tooltip.label}</p>
           </div>
         </div>
       )}

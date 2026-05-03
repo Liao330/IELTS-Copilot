@@ -56,7 +56,7 @@ export function SessionCard({ session, onClick, onRename, onDelete }: Props) {
               <>
                 <Calendar className="h-3 w-3" />
                 <span>
-                  {new Date(session.updated_at).toLocaleDateString("zh-CN", {
+                  {new Date(session.created_at).toLocaleDateString("zh-CN", {
                     month: "numeric",
                     day: "numeric",
                   })}
@@ -80,7 +80,7 @@ export function SessionCard({ session, onClick, onRename, onDelete }: Props) {
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={onRename}>
                   <Pencil className="h-4 w-4 mr-2" />
-                  重命名
+                  编辑
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
                   <Trash2 className="h-4 w-4 mr-2" />
@@ -113,6 +113,13 @@ export function SessionCard({ session, onClick, onRename, onDelete }: Props) {
         >
           🎯 {session.blocker_count} 障碍词
         </span>
+        {!isDemo && session.study_duration_seconds > 0 && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-white dark:bg-white/10 px-2.5 py-1 font-medium border border-sky-100 dark:border-sky-900/40 text-sky-600 dark:text-sky-400">
+            ⏱ {session.study_duration_seconds >= 3600
+              ? `${Math.floor(session.study_duration_seconds / 3600)}h${Math.floor((session.study_duration_seconds % 3600) / 60)}m`
+              : `${Math.floor(session.study_duration_seconds / 60)}min`}
+          </span>
+        )}
       </div>
 
       {session.note && (

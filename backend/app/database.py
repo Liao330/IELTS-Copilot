@@ -22,6 +22,7 @@ async def get_db():
 async def init_db():
     from app.models import Agent, Conversation, Message, File, Note, Setting, Homework, HomeworkFile, HomeworkFeedback, VocabularyWord, FavoriteSentence, ContextMaterial, DailyReportCache  # noqa
     from app.models.feedback import FeedbackItem  # noqa
+    from app.models.schedule import ScheduleTask  # noqa
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         # Add new columns if they don't exist (SQLite doesn't support IF NOT EXISTS for columns)
@@ -30,6 +31,8 @@ async def init_db():
     await _backfill_feedback_scores()
     # Backfill scores for listening/reading homeworks from PDF attachments
     await _backfill_listening_reading_scores()
+    # Backfill AI summaries for homeworks that don't have one yet
+    await _backfill_homework_summaries()
 
 
 async def _migrate_add_columns(conn):
@@ -57,6 +60,7 @@ async def _migrate_add_columns(conn):
         ("homeworks", "summary", "TEXT"),
         ("homeworks", "summary_updated_at", "TEXT"),
         ("listening_practice_sessions", "cleanup_summary", "TEXT"),
+        ("listening_practice_sessions", "study_duration_seconds", "INTEGER DEFAULT 0"),
     ]
     for table, column, col_type in new_columns:
         try:
@@ -166,3 +170,38 @@ async def _backfill_listening_reading_scores():
         if updated:
             await db.commit()
             print(f"[backfill] Auto-extracted scores for {updated} listening/reading homeworks.")
+
+
+async def _backfill_homework_summaries():
+    """Background: generate AI summaries for homeworks that don't have one yet."""
+    import asyncio
+    from sqlalchemy import select
+    from app.models.homework import Homework
+
+    async with async_session() as db:
+        result = await db.execute(
+            select(Homework.id).where(Homework.summary.is_(None))
+        )
+        missing_ids = [r[0] for r in result.all()]
+
+    if not missing_ids:
+        return
+
+    print(f"[backfill] {len(missing_ids)} homeworks need AI summary, generating in background...")
+
+    async def _generate_one(hw_id: str):
+        try:
+            from app.services.homework_summary_service import generate_summary_for_homework
+            async with async_session() as db:
+                await generate_summary_for_homework(db, hw_id)
+                await db.commit()
+        except Exception:
+            pass
+
+    # Fire-and-forget: don't block startup
+    async def _run_all():
+        for hw_id in missing_ids:
+            await _generate_one(hw_id)
+        print(f"[backfill] Finished generating summaries for {len(missing_ids)} homeworks.")
+
+    asyncio.create_task(_run_all())

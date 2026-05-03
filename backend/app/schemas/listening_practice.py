@@ -62,6 +62,7 @@ class SessionUpdate(BaseModel):
     note: str | None = None
     homework_id: str | None = None
     cleanup_summary: str | None = None
+    created_at: str | None = None  # ISO format datetime for date editing
 
 
 class SessionSummaryOut(BaseModel):
@@ -72,6 +73,7 @@ class SessionSummaryOut(BaseModel):
     sentence_count: int
     blocker_count: int
     homework_id: str | None = None
+    study_duration_seconds: int = 0
     created_at: datetime
     updated_at: datetime
     is_demo: bool = False  # 内置示例会话标记（只读、置顶、样式差异化）
@@ -95,6 +97,7 @@ class SessionDetailOut(BaseModel):
     note: str | None = None
     homework_id: str | None = None
     cleanup_summary: str | None = None
+    study_duration_seconds: int = 0
     created_at: datetime
     updated_at: datetime
     sentences: list[SentenceOut]

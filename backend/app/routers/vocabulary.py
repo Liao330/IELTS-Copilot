@@ -447,6 +447,14 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
     )
     due_count = due_result.scalar() or 0
 
+    # 各类别单词数
+    category_counts = {}
+    for cat in ["writing", "speaking", "reading", "listening", "general"]:
+        cat_result = await db.execute(
+            select(func.count(VocabularyWord.id)).where(VocabularyWord.category == cat)
+        )
+        category_counts[cat] = cat_result.scalar() or 0
+
     return VocabularyStats(
         total_words=total_words,
         total_sentences=total_sentences,
@@ -454,4 +462,5 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
         learning_words=learning,
         new_words=new_words,
         due_review_count=due_count,
+        category_counts=category_counts,
     )

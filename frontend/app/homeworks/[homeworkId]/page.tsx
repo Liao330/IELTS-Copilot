@@ -395,6 +395,9 @@ export default function HomeworkDetailPage() {
           );
         })()}
 
+        {/* AI 摘要 */}
+        <HomeworkSummaryBlock homework={homework} onRefresh={fetchHomework} />
+
         {/* 精听练习关联（仅听力作业） */}
         {homework.category === "listening" && (
           <ListeningPracticeLink homeworkId={homework.id} homeworkTitle={homework.title} />
@@ -1092,6 +1095,8 @@ function ListeningReadingScoreCard({ scores }: { scores: LRScores }) {
   const isListening = scores.category === "listening";
   const icon = isListening ? "🎧" : "📖";
   const label = isListening ? "听力" : "阅读";
+  const isPartial = scores.overall == null && scores.raw_score != null && scores.raw_total != null;
+  const accuracy = scores.raw_total > 0 ? Math.round((scores.raw_score / scores.raw_total) * 100) : 0;
 
   return (
     <div className="rounded-xl border bg-gradient-to-br from-sky-50/60 to-cyan-50/40 dark:from-sky-950/20 dark:to-cyan-950/10 p-5 space-y-4">
@@ -1099,13 +1104,22 @@ function ListeningReadingScoreCard({ scores }: { scores: LRScores }) {
         <h3 className="font-semibold flex items-center gap-2">
           {icon} {label}成绩
           <span className="text-xs font-normal text-muted-foreground">
-            从 PDF 自动提取
+            {isPartial ? "部分练习" : "从 PDF 自动提取"}
           </span>
         </h3>
-        {scores.overall != null && (
+        {scores.overall != null ? (
           <div className="text-right">
             <div className={`text-2xl font-bold ${getScoreColor(scores.overall)}`}>
               Band {scores.overall}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {scores.raw_score} / {scores.raw_total}
+            </div>
+          </div>
+        ) : scores.raw_score != null && (
+          <div className="text-right">
+            <div className={`text-2xl font-bold ${accuracy >= 80 ? "text-green-600 dark:text-green-400" : accuracy >= 60 ? "text-yellow-600 dark:text-yellow-400" : "text-red-600 dark:text-red-400"}`}>
+              {accuracy}%
             </div>
             <div className="text-xs text-muted-foreground">
               {scores.raw_score} / {scores.raw_total}
@@ -1138,9 +1152,111 @@ function ListeningReadingScoreCard({ scores }: { scores: LRScores }) {
         </div>
       )}
 
-      {scores.overall == null && (
+      {scores.overall == null && scores.raw_score == null && (
         <div className="text-xs text-muted-foreground">
-          未能推算 Band Score（需要完整的 40 题才能换算）
+          未能提取分数信息
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ==================== AI 摘要组件 ====================
+
+function HomeworkSummaryBlock({ homework, onRefresh }: { homework: Homework; onRefresh: () => void }) {
+  const { toast } = useToast();
+  const [generating, setGenerating] = useState(false);
+  const [expanded, setExpanded] = useState(!!homework.summary);
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    try {
+      await api.generateHomeworkSummary(homework.id);
+      toast({ description: "摘要已生成" });
+      onRefresh();
+      setExpanded(true);
+    } catch (err) {
+      toast({ variant: "destructive", description: err instanceof Error ? err.message : "生成摘要失败" });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  // 没有摘要时显示生成按钮
+  if (!homework.summary) {
+    return (
+      <div className="rounded-lg border bg-card p-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-sm flex items-center gap-2">
+            🤖 AI 内容摘要
+          </h3>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            onClick={handleGenerate}
+            disabled={generating}
+          >
+            {generating ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                生成中...
+              </>
+            ) : (
+              <>
+                <Bot className="h-3.5 w-3.5" />
+                生成摘要
+              </>
+            )}
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          AI 将分析作业内容，生成结构化摘要，便于后续搜索和复习
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border bg-card">
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between p-4 text-left hover:bg-accent/50 transition-colors rounded-lg"
+      >
+        <h3 className="font-semibold text-sm flex items-center gap-2">
+          🤖 AI 内容摘要
+          {homework.summary_updated_at && (
+            <span className="text-xs font-normal text-muted-foreground">
+              {new Date(homework.summary_updated_at).toLocaleDateString("zh-CN")} 生成
+            </span>
+          )}
+        </h3>
+        <span className="text-xs text-muted-foreground">{expanded ? "收起 ▲" : "展开 ▼"}</span>
+      </button>
+
+      {expanded && (
+        <div className="px-4 pb-4 space-y-3">
+          <div className="prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed whitespace-pre-wrap">
+            {homework.summary}
+          </div>
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="gap-1.5 text-xs h-7"
+              onClick={handleGenerate}
+              disabled={generating}
+            >
+              {generating ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3 w-3" />
+              )}
+              刷新摘要
+            </Button>
+          </div>
         </div>
       )}
     </div>

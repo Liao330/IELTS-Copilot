@@ -29,6 +29,8 @@ import {
   Trophy,
   Clock,
   Headphones,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -72,6 +74,11 @@ export default function VocabularyPage() {
   const [reviewIndex, setReviewIndex] = useState(0);
   const [reviewComplete, setReviewComplete] = useState(false);
 
+  // 分页
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const PAGE_SIZE = 50;
+
   // 加载数据
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -80,11 +87,12 @@ export default function VocabularyPage() {
       setStats(statsData);
 
       if (tab === "words") {
-        const params: Record<string, string | number | boolean> = {};
+        const params: Record<string, string | number | boolean> = { page, page_size: PAGE_SIZE };
         if (category) params.category = category;
         if (search) params.search = search;
-        const wordsData = await api.getWords(params as { category?: string; search?: string });
+        const wordsData = await api.getWords(params as { category?: string; search?: string; page?: number; page_size?: number });
         setWords(wordsData);
+        setHasMore(wordsData.length >= PAGE_SIZE);
       } else if (tab === "sentences") {
         const params: Record<string, string> = {};
         if (category) params.category = category;
@@ -103,7 +111,12 @@ export default function VocabularyPage() {
     } finally {
       setLoading(false);
     }
-  }, [tab, category, search, toast]);
+  }, [tab, category, search, page, toast]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [tab, category, search]);
 
   useEffect(() => {
     fetchData();
@@ -296,7 +309,9 @@ export default function VocabularyPage() {
           <>
             {/* 分类标签 */}
             <div className="flex flex-wrap gap-2 mb-4">
-              {CATEGORIES.map((c) => (
+              {CATEGORIES.map((c) => {
+                const count = c.value === "" ? stats?.total_words : stats?.category_counts?.[c.value];
+                return (
                 <button
                   key={c.value}
                   onClick={() => setCategory(c.value)}
@@ -307,8 +322,14 @@ export default function VocabularyPage() {
                   }`}
                 >
                   {c.label}
+                  {count != null && count > 0 && (
+                    <span className={`ml-1.5 text-xs ${category === c.value ? "opacity-80" : "opacity-60"}`}>
+                      {count}
+                    </span>
+                  )}
                 </button>
-              ))}
+                );
+              })}
             </div>
 
             {/* 搜索 */}
@@ -349,6 +370,7 @@ export default function VocabularyPage() {
               </Button>
             </div>
           ) : (
+            <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {words.map((w) => (
                 <WordCard
@@ -359,6 +381,36 @@ export default function VocabularyPage() {
                 />
               ))}
             </div>
+            {/* 分页 */}
+            {(page > 1 || hasMore) && (
+              <div className="flex items-center justify-center gap-4 pt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className="gap-1"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  上一页
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  第 {page} 页
+                  {words.length > 0 && ` · ${words.length} 个`}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={!hasMore}
+                  className="gap-1"
+                >
+                  下一页
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+            </>
           )
         ) : tab === "sentences" ? (
           sentences.length === 0 ? (

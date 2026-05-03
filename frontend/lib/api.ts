@@ -140,6 +140,10 @@ export const api = {
   // 生成/重新生成精听复盘总结
   generateSessionSummary: (sessionId: string) =>
     request<{ session_id: string; cleanup_summary: string }>(`/api/listening-practice/sessions/${sessionId}/generate-summary`, { method: "POST" }),
+  addStudyTime: (sessionId: string, seconds: number) =>
+    request<{ ok: boolean; total_seconds: number }>(`/api/listening-practice/sessions/${sessionId}/study-time`, {
+      method: "POST", body: JSON.stringify({ seconds }),
+    }),
   batchGenerateSummaries: () =>
     request<{ message: string; generated: number; errors: number; total: number }>("/api/homeworks/batch-generate-summaries", { method: "POST" }),
   searchHomeworks: (query: string, category?: string) =>
@@ -366,6 +370,24 @@ export const api = {
       `/api/dictation/listening-words/${wordId}/check`,
       { method: "POST", body: JSON.stringify({ answer }) },
     ),
+
+  // Schedule (日程计划)
+  getScheduleTasks: (dateFrom?: string, dateTo?: string) => {
+    const params = new URLSearchParams();
+    if (dateFrom) params.set("date_from", dateFrom);
+    if (dateTo) params.set("date_to", dateTo);
+    return request<import("@/types").ScheduleTask[]>(`/api/schedule/?${params}`);
+  },
+  createScheduleTask: (data: import("@/types").ScheduleTaskCreate) =>
+    request<import("@/types").ScheduleTask>("/api/schedule/", {
+      method: "POST", body: JSON.stringify(data),
+    }),
+  updateScheduleTask: (id: string, data: Partial<import("@/types").ScheduleTaskCreate> & { done?: boolean }) =>
+    request<import("@/types").ScheduleTask>(`/api/schedule/${id}`, {
+      method: "PATCH", body: JSON.stringify(data),
+    }),
+  deleteScheduleTask: (id: string) =>
+    request<{ ok: boolean }>(`/api/schedule/${id}`, { method: "DELETE" }),
 
 };
 

@@ -4,7 +4,7 @@ import json
 import os
 import uuid
 from collections import defaultdict
-from datetime import date
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, func, desc
@@ -166,12 +166,70 @@ async def _resolve_homework_out(hw: Homework, db: AsyncSession) -> HomeworkOut:
         homework_date=hw.homework_date, description=hw.description,
         file_id=hw.file_id, file_name=file_name, file_mime_type=file_mime_type,
         files=files, feedbacks=feedbacks,
+        summary=hw.summary, summary_updated_at=hw.summary_updated_at,
         created_at=hw.created_at, updated_at=hw.updated_at,
     )
 
 
 def _load_options():
     return [selectinload(Homework.feedbacks), selectinload(Homework.homework_files)]
+
+
+async def _auto_generate_summary(homework_id: str):
+    """Fire-and-forget: 自动为作业生成 AI 摘要 + 复盘笔记 + 生词提取"""
+    import asyncio
+    import logging
+    from app.database import async_session
+    from app.services.homework_summary_service import generate_summary_for_homework
+
+    logger = logging.getLogger(__name__)
+
+    # 延迟确保主事务已提交
+    await asyncio.sleep(2)
+
+    # 1. 生成摘要
+    try:
+        async with async_session() as db:
+            await generate_summary_for_homework(db, homework_id)
+            await db.commit()
+    except Exception as e:
+        logger.warning(f"Auto summary failed for {homework_id}: {e}")
+
+    # 2. 生成复盘笔记
+    try:
+        from app.services.review_note_service import generate_review_note as gen_review
+        async with async_session() as db:
+            hw = await db.get(Homework, homework_id)
+            if not hw:
+                return
+            content = await gen_review(db, homework_id)
+
+            # 删除旧的 review_note
+            stmt = select(HomeworkFeedback).where(
+                HomeworkFeedback.homework_id == homework_id,
+                HomeworkFeedback.feedback_type == "review_note",
+            )
+            result = await db.execute(stmt)
+            for old in result.scalars().all():
+                await db.delete(old)
+
+            fb = HomeworkFeedback(
+                id=str(uuid.uuid4()),
+                homework_id=homework_id,
+                feedback_type="review_note",
+                content=content,
+            )
+            db.add(fb)
+            await db.commit()
+            logger.info(f"Auto review note generated for {homework_id}")
+
+            # 3. 提取生词（仅阅读/口语）
+            if hw.category in ("reading", "speaking"):
+                await _extract_vocab_from_review(db, hw, content)
+
+    except Exception as e:
+        # 复盘笔记生成失败不影响（可能没有反馈内容）
+        logger.debug(f"Auto review note skipped for {homework_id}: {e}")
 
 
 @router.get("", response_model=list[HomeworkOut])
@@ -283,6 +341,11 @@ async def create_homework(data: HomeworkCreate, db: AsyncSession = Depends(get_d
     stmt = select(Homework).options(*_load_options()).where(Homework.id == hw.id)
     result = await db.execute(stmt)
     hw = result.scalar_one()
+
+    # Fire-and-forget: 自动生成 AI 摘要
+    import asyncio
+    asyncio.create_task(_auto_generate_summary(hw.id))
+
     return await _resolve_homework_out(hw, db)
 
 
@@ -324,6 +387,11 @@ async def update_homework(homework_id: str, data: HomeworkUpdate, db: AsyncSessi
     stmt = select(Homework).options(*_load_options()).where(Homework.id == homework_id)
     result = await db.execute(stmt)
     hw = result.scalar_one()
+
+    # Fire-and-forget: 更新后重新生成摘要
+    import asyncio
+    asyncio.create_task(_auto_generate_summary(hw.id))
+
     return await _resolve_homework_out(hw, db)
 
 
@@ -471,6 +539,11 @@ async def add_feedback(homework_id: str, data: FeedbackCreate, db: AsyncSession 
         if f:
             out["file_name"] = f.filename
             out["file_mime_type"] = f.mime_type
+
+    # 新反馈添加后，自动刷新摘要和复盘笔记
+    import asyncio as _asyncio
+    _asyncio.create_task(_auto_generate_summary(homework_id))
+
     return HomeworkFeedbackOut(**out)
 
 
@@ -529,6 +602,142 @@ async def delete_feedback(homework_id: str, feedback_id: str, db: AsyncSession =
     await db.commit()
 
 
+# ==================== 复盘笔记生词提取 ====================
+
+EXTRACT_VOCAB_PROMPT = """\
+你是一位雅思词汇整理专家。以下是一份作业的内容（包括学生的做题笔记和AI复盘笔记），请从中提取学生需要记住的英语生词/词组。
+
+严格提取规则：
+1. 重点提取**学生在做题笔记中标注的生词、不认识的词、同义替换词**
+2. 提取复盘笔记中标注为"好表达""可复用"的词汇
+3. 提取学生明确表示不认识或困惑的词汇（如"不知道xxx是什么意思"）
+4. 提取阅读文章中出现的**同义替换对**（如题目和原文的替换词）
+5. **不要提取过于简单的基础词**（如 the, is, have, some, all, most, every, never, only, few, many, good, bad, big, small, people, way, thing, while, like, just 等初中水平以下的词）
+6. **不要提取题型术语**（如 True/False/NG, matching, passage, question 等）
+7. **不要提取题目编号、时间数字**等非词汇内容
+8. 如果遇到**变体形式**（复数、过去式、进行时等如 declined, studies, keeping），请提取**原形**（decline, study, keep），并在 meaning 末尾用括号标注原始形态，如"下降（原文: declined）"
+9. 如果笔记指出学生**拼写错误的单词**，提取**正确拼写**，释义中标注"⚠️常拼错"
+10. 只提取雅思6分以上水平的词汇
+11. 最多提取 15 个
+
+输出 JSON 数组，格式：
+[{"word": "decline", "meaning": "下降；减少（原文: declined）"}, {"word": "fraction", "meaning": "一小部分；分数"}]
+
+只输出 JSON，不要其他内容。没有合适的词就输出 []
+"""
+
+
+async def _extract_vocab_from_review(db_session: AsyncSession, hw: Homework, review_content: str):
+    """从复盘笔记+作业原始内容中提取生词并加入单词本，fire-and-forget。"""
+    import json as _json
+    import logging
+    from app.database import async_session
+    from app.models.vocabulary import VocabularyWord
+    from app.services.llm_service import complete_chat
+    from app.services.review_note_service import _resolve_llm_config
+
+    logger = logging.getLogger(__name__)
+
+    try:
+        # Use a fresh session since the caller's session may be closed
+        async with async_session() as db:
+            model, api_key, api_base = await _resolve_llm_config(db)
+
+            # 收集作业原始文件内容
+            from app.models.homework import HomeworkFile
+            file_texts: list[str] = []
+            hf_q = await db.execute(
+                select(HomeworkFile).where(HomeworkFile.homework_id == hw.id)
+            )
+            for hf in hf_q.scalars().all():
+                f = await db.get(File, hf.file_id)
+                if f and f.text_content:
+                    file_texts.append(f.text_content[:2000])
+
+            # 拼接：原始做题笔记 + 复盘笔记
+            parts = []
+            if file_texts:
+                parts.append("## 学生做题笔记\n" + "\n---\n".join(file_texts))
+            parts.append("## AI 复盘笔记\n" + review_content)
+            combined = "\n\n".join(parts)
+
+            result = await complete_chat(
+                model=model,
+                api_key=api_key,
+                api_base=api_base,
+                messages=[
+                    {"role": "system", "content": EXTRACT_VOCAB_PROMPT},
+                    {"role": "user", "content": combined},
+                ],
+                temperature=0.1,
+            )
+
+            # Parse JSON
+            text = result.strip()
+            if text.startswith("```"):
+                text = text.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+            words = _json.loads(text)
+            if not isinstance(words, list):
+                return
+
+            added = 0
+            category = hw.category or "reading"
+            for item in words:
+                word_str = (item.get("word") or "").strip()
+                meaning = (item.get("meaning") or "").strip()
+                if not word_str or not meaning:
+                    continue
+
+                # Check duplicate
+                from sqlalchemy import func as sa_func
+                existing = await db.execute(
+                    select(VocabularyWord).where(
+                        sa_func.lower(VocabularyWord.word) == word_str.lower()
+                    )
+                )
+                if existing.scalar_one_or_none():
+                    continue
+
+                # AI 查词获取完整单词信息
+                from app.services.listening_practice_service import _full_translate_word
+                full_info = await _full_translate_word(db, word_str)
+
+                if full_info and full_info.get("type") == "word":
+                    syns = full_info.get("synonyms")
+                    vocab = VocabularyWord(
+                        id=str(uuid.uuid4()),
+                        word=full_info.get("word") or word_str,
+                        phonetic=full_info.get("phonetic"),
+                        pos=full_info.get("pos"),
+                        meaning=full_info.get("meaning") or meaning,
+                        example=full_info.get("example"),
+                        example_cn=full_info.get("example_cn"),
+                        synonyms=_json.dumps(syns, ensure_ascii=False) if syns else None,
+                        category=category,
+                        note=f"来自作业「{hw.title}」复盘笔记",
+                        next_review_at=datetime.utcnow(),
+                    )
+                else:
+                    # Fallback: use extracted meaning only
+                    vocab = VocabularyWord(
+                        id=str(uuid.uuid4()),
+                        word=word_str,
+                        meaning=meaning,
+                        category=category,
+                        note=f"来自作业「{hw.title}」复盘笔记",
+                        next_review_at=datetime.utcnow(),
+                    )
+                db.add(vocab)
+                added += 1
+
+            if added > 0:
+                await db.commit()
+                logger.info(f"Extracted {added} vocab words from review note of homework {hw.id}")
+
+    except Exception as e:
+        logging.getLogger(__name__).warning(f"Failed to extract vocab from review: {e}")
+
+
 @router.post("/{homework_id}/generate-review-note", response_model=HomeworkFeedbackOut, status_code=201)
 async def generate_review_note(homework_id: str, db: AsyncSession = Depends(get_db)):
     """根据作业内容和已有反馈，自动生成复盘笔记并保存为 review_note 类型的反馈。"""
@@ -561,6 +770,12 @@ async def generate_review_note(homework_id: str, db: AsyncSession = Depends(get_
     db.add(fb)
     await db.commit()
     await db.refresh(fb)
+
+    # Fire-and-forget: extract vocabulary from review note and add to wordbook
+    # Only for reading/speaking (writing review notes are AI-generated corrections, not user vocab)
+    if hw.category in ("reading", "speaking"):
+        import asyncio
+        asyncio.create_task(_extract_vocab_from_review(db, hw, content))
 
     return HomeworkFeedbackOut(
         id=fb.id, homework_id=fb.homework_id, feedback_type=fb.feedback_type,

@@ -84,10 +84,13 @@ async def search_homeworks_by_query(
     query: str,
     category: str | None = None,
 ) -> list[dict]:
-    """用 AI 语义搜索作业。返回 [{homework_id, title, category, homework_date, relevance_reason}]"""
+    """用 AI 语义搜索作业。使用复盘笔记作为上下文（信息量更大、搜索更准确）。
+    返回 [{homework_id, title, category, homework_date, relevance_reason}]"""
 
-    # 加载所有作业的摘要
-    stmt = select(Homework)
+    from sqlalchemy.orm import selectinload
+
+    # 加载所有作业（含 feedbacks）
+    stmt = select(Homework).options(selectinload(Homework.feedbacks))
     if category:
         stmt = stmt.where(Homework.category == category)
     stmt = stmt.order_by(Homework.homework_date.desc())
@@ -98,23 +101,30 @@ async def search_homeworks_by_query(
     if not homeworks:
         return []
 
-    # 构建上下文
+    # 构建上下文：优先使用复盘笔记，其次摘要，最后描述
     context_items: list[str] = []
     hw_map: dict[str, Homework] = {}
     for hw in homeworks:
         hw_map[hw.id] = hw
-        summary_text = hw.summary or hw.description or "(无摘要)"
+        # 获取复盘笔记
+        review_note = ""
+        for fb in (hw.feedbacks or []):
+            if fb.feedback_type == "review_note" and fb.content:
+                review_note = fb.content[:1500]  # 每份限制 1500 字
+                break
+        # Fallback: 用摘要或描述
+        context_text = review_note or hw.summary or hw.description or "(无内容)"
         context_items.append(
-            f"[{hw.id}] 《{hw.title}》 | {hw.category} | {hw.homework_date} | {summary_text}"
+            f"[{hw.id}] 《{hw.title}》 | {hw.category} | {hw.homework_date}\n{context_text}"
         )
 
     # 如果作业数太多，分批处理
-    BATCH_SIZE = 80
+    BATCH_SIZE = 40  # 复盘笔记更长，每批少一些
     all_results: list[dict] = []
 
     for i in range(0, len(context_items), BATCH_SIZE):
         batch = context_items[i:i + BATCH_SIZE]
-        context_text = "\n".join(batch)
+        context_text = "\n---\n".join(batch)
 
         user_msg = f"用户查询：{query}\n\n作业列表（共 {len(batch)} 份）：\n{context_text}"
 

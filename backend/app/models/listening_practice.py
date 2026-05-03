@@ -18,6 +18,7 @@ class ListeningPracticeSession(Base):
     title: Mapped[str] = mapped_column(String, nullable=False)
     note: Mapped[Optional[str]] = mapped_column(Text)
     cleanup_summary: Mapped[Optional[str]] = mapped_column(Text)  # AI 复盘总结
+    study_duration_seconds: Mapped[int] = mapped_column(Integer, default=0)  # 累计学习时长（秒）
 
     homework_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("homeworks.id", ondelete="SET NULL"), nullable=True)
 

@@ -158,7 +158,7 @@ def _reject_if_demo(session_id: str, action: str = "修改") -> None:
 @router.get("/sessions", response_model=list[SessionSummaryOut])
 async def list_sessions(db: AsyncSession = Depends(get_db)):
     q = await db.execute(
-        select(ListeningPracticeSession).order_by(desc(ListeningPracticeSession.updated_at))
+        select(ListeningPracticeSession).order_by(desc(ListeningPracticeSession.created_at))
     )
     sessions = list(q.scalars().all())
 
@@ -189,6 +189,7 @@ async def list_sessions(db: AsyncSession = Depends(get_db)):
             sentence_count=sentence_count,
             blocker_count=blocker_count,
             homework_id=s.homework_id,
+            study_duration_seconds=s.study_duration_seconds or 0,
             created_at=s.created_at,
             updated_at=s.updated_at,
             is_demo=is_demo_session(s.id),
@@ -343,10 +344,33 @@ async def update_session(session_id: str, data: SessionUpdate, db: AsyncSession 
         session.homework_id = data.homework_id or None
     if data.cleanup_summary is not None:
         session.cleanup_summary = data.cleanup_summary
+    if data.created_at is not None:
+        from datetime import datetime as dt
+        try:
+            session.created_at = dt.fromisoformat(data.created_at.replace("Z", "+00:00"))
+        except (ValueError, TypeError):
+            pass
     session.updated_at = datetime.utcnow()
 
     await db.commit()
     return await _load_session_detail(db, session_id)
+
+
+@router.post("/sessions/{session_id}/study-time")
+async def add_study_time(session_id: str, body: dict, db: AsyncSession = Depends(get_db)):
+    """累加学习时长（秒）。前端定期调用上报活跃时间。"""
+    seconds = body.get("seconds", 0)
+    if not isinstance(seconds, int) or seconds <= 0 or seconds > 600:
+        return {"ok": True}  # ignore invalid
+    q = await db.execute(
+        select(ListeningPracticeSession).where(ListeningPracticeSession.id == session_id)
+    )
+    session = q.scalar_one_or_none()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    session.study_duration_seconds = (session.study_duration_seconds or 0) + seconds
+    await db.commit()
+    return {"ok": True, "total_seconds": session.study_duration_seconds}
 
 
 @router.delete("/sessions/{session_id}")

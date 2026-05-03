@@ -68,6 +68,32 @@ async def _auto_translate_word(db: AsyncSession, word: str) -> str | None:
         return None
 
 
+async def _full_translate_word(db: AsyncSession, word: str) -> dict | None:
+    """调用 AI 查词获取完整单词信息（音标、词性、释义、例句、同义词），失败返回 None"""
+    import json as _json
+    from app.prompts.translate_prompt import TRANSLATE_SYSTEM_PROMPT
+    try:
+        model_name, api_key, api_base = await get_llm_config(db)
+        if not api_key:
+            return None
+        messages = [
+            {"role": "system", "content": TRANSLATE_SYSTEM_PROMPT},
+            {"role": "user", "content": word},
+        ]
+        raw = await complete_chat(
+            model=model_name, api_key=api_key, api_base=api_base,
+            messages=messages, temperature=0.1,
+        )
+        cleaned = raw.strip()
+        if cleaned.startswith("```"):
+            lines = cleaned.split("\n")
+            lines = [l for l in lines if not l.strip().startswith("```")]
+            cleaned = "\n".join(lines).strip()
+        return _json.loads(cleaned)
+    except Exception:
+        return None
+
+
 def _clean_json_response(raw: str) -> str:
     """剥离 LLM 返回中可能的 markdown 代码块包裹"""
     cleaned = raw.strip()
@@ -147,17 +173,38 @@ async def sync_blockers_to_vocabulary(
                         existing.meaning = meaning
                 word_id_map[w] = existing.id
             else:
-                # 自动翻译获取释义
-                meaning = await _auto_translate_word(db, w) or f"({w})"
-                new_id = str(uuid.uuid4())
-                db.add(VocabularyWord(
-                    id=new_id,
-                    word=w,
-                    meaning=meaning,
-                    category="listening",
-                    source_conversation_id=source_id,
-                    next_review_at=datetime.utcnow(),
-                ))
+                # AI 查词获取完整信息
+                full_info = await _full_translate_word(db, w)
+                if full_info and full_info.get("type") == "word":
+                    import json as _json
+                    meaning = full_info.get("meaning") or f"({w})"
+                    syns = full_info.get("synonyms")
+                    new_id = str(uuid.uuid4())
+                    db.add(VocabularyWord(
+                        id=new_id,
+                        word=full_info.get("word") or w,
+                        phonetic=full_info.get("phonetic"),
+                        pos=full_info.get("pos"),
+                        meaning=meaning,
+                        example=full_info.get("example"),
+                        example_cn=full_info.get("example_cn"),
+                        synonyms=_json.dumps(syns, ensure_ascii=False) if syns else None,
+                        category="listening",
+                        source_conversation_id=source_id,
+                        next_review_at=datetime.utcnow(),
+                    ))
+                else:
+                    # Fallback to simple translation
+                    meaning = await _auto_translate_word(db, w) or f"({w})"
+                    new_id = str(uuid.uuid4())
+                    db.add(VocabularyWord(
+                        id=new_id,
+                        word=w,
+                        meaning=meaning,
+                        category="listening",
+                        source_conversation_id=source_id,
+                        next_review_at=datetime.utcnow(),
+                    ))
                 word_id_map[w] = new_id
 
     # 构建增强后的 new_blockers

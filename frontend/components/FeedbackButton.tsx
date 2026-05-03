@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { MessageCircle, Plus, Copy, X, Check } from "lucide-react";
+import { MessageCircle, Plus, Copy, X, Check, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +20,7 @@ export function FeedbackButton() {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<FeedbackItem[]>([]);
   const [newText, setNewText] = useState("");
+  const [showHistory, setShowHistory] = useState(false);
 
   const fetchItems = useCallback(async () => {
     try {
@@ -72,9 +73,14 @@ export function FeedbackButton() {
   };
 
   const handleCopyAll = () => {
-    const text = items
-      .map((it, i) => `${i + 1}. [${it.done ? "x" : " "}] ${it.text}`)
+    // 只复制未完成的反馈
+    const text = activeItems
+      .map((it, i) => `${i + 1}. ${it.text}`)
       .join("\n");
+    if (!text) {
+      toast({ description: "没有未完成的反馈" });
+      return;
+    }
     try {
       const ta = document.createElement("textarea");
       ta.value = text;
@@ -87,10 +93,11 @@ export function FeedbackButton() {
     } catch {
       navigator.clipboard?.writeText(text).catch(() => {});
     }
-    // 关闭面板后再显示 toast，确保 toast 在最顶层
-    setOpen(false);
-    setTimeout(() => toast({ description: "已复制所有反馈到剪贴板" }), 100);
+    setTimeout(() => toast({ description: "已复制待办反馈到剪贴板" }), 50);
   };
+
+  const activeItems = items.filter((it) => !it.done);
+  const doneItems = items.filter((it) => it.done);
 
   return (
     <>
@@ -102,9 +109,9 @@ export function FeedbackButton() {
         title="反馈建议"
       >
         <MessageCircle className="h-4 w-4" />
-        {items.filter((it) => !it.done).length > 0 && (
+        {activeItems.length > 0 && (
           <span className="absolute -top-1 -right-1 h-4 min-w-[16px] rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center px-1">
-            {items.filter((it) => !it.done).length}
+            {activeItems.length}
           </span>
         )}
       </button>
@@ -130,25 +137,22 @@ export function FeedbackButton() {
               </div>
             </div>
 
-            {/* 列表 */}
+            {/* 列表 — 仅显示未完成 */}
             <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
-              {items.length === 0 && (
+              {activeItems.length === 0 && doneItems.length === 0 && (
                 <p className="text-xs text-muted-foreground text-center py-6">暂无反馈，在下方输入你的问题或建议</p>
               )}
-              {items.map((it) => (
+              {activeItems.length === 0 && doneItems.length > 0 && (
+                <p className="text-xs text-muted-foreground text-center py-4">所有反馈已完成 🎉</p>
+              )}
+              {activeItems.map((it) => (
                 <div key={it.id} className="flex items-start gap-2 group">
                   <button
                     type="button"
                     onClick={() => handleToggle(it.id)}
-                    className={`mt-0.5 h-4 w-4 rounded border shrink-0 flex items-center justify-center transition-colors ${
-                      it.done ? "bg-emerald-500 border-emerald-500 text-white" : "border-muted-foreground/40 hover:border-emerald-500"
-                    }`}
-                  >
-                    {it.done && <Check className="h-2.5 w-2.5" />}
-                  </button>
-                  <p className={`text-sm flex-1 leading-relaxed ${it.done ? "line-through text-muted-foreground/60" : ""}`}>
-                    {it.text}
-                  </p>
+                    className="mt-0.5 h-4 w-4 rounded border shrink-0 flex items-center justify-center transition-colors border-muted-foreground/40 hover:border-emerald-500"
+                  />
+                  <p className="text-sm flex-1 leading-relaxed">{it.text}</p>
                   <button
                     type="button"
                     onClick={() => handleDelete(it.id)}
@@ -158,6 +162,48 @@ export function FeedbackButton() {
                   </button>
                 </div>
               ))}
+
+              {/* 历史记录折叠 */}
+              {doneItems.length > 0 && (
+                <div className="pt-2 border-t mt-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowHistory(!showHistory)}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                  >
+                    <ChevronRight className={`h-3 w-3 transition-transform ${showHistory ? "rotate-90" : ""}`} />
+                    历史记录（{doneItems.length} 项已完成）
+                  </button>
+                  {showHistory && (
+                    <div className="mt-2 space-y-1.5 max-h-48 overflow-y-auto">
+                      {doneItems.map((it) => (
+                        <div key={it.id} className="flex items-start gap-2 group">
+                          <button
+                            type="button"
+                            onClick={() => handleToggle(it.id)}
+                            className="mt-0.5 h-4 w-4 rounded border shrink-0 flex items-center justify-center bg-emerald-500 border-emerald-500 text-white"
+                          >
+                            <Check className="h-2.5 w-2.5" />
+                          </button>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm leading-relaxed line-through text-muted-foreground/60">{it.text}</p>
+                            <p className="text-[10px] text-muted-foreground/40">
+                              {new Date(it.created_at).toLocaleDateString("zh-CN", { month: "short", day: "numeric" })}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(it.id)}
+                            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-rose-500 transition-opacity shrink-0"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* 输入区 */}
