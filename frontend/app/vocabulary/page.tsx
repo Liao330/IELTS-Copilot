@@ -31,6 +31,7 @@ import {
   Headphones,
   ChevronLeft,
   ChevronRight,
+  Flame,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -57,6 +58,7 @@ export default function VocabularyPage() {
   const [category, setCategory] = useState("");
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
+  const [sortBy, setSortBy] = useState<"" | "encounter">("");
 
   // 编辑/添加状态
   const [editingWord, setEditingWord] = useState<VocabularyWord | null>(null);
@@ -90,7 +92,8 @@ export default function VocabularyPage() {
         const params: Record<string, string | number | boolean> = { page, page_size: PAGE_SIZE };
         if (category) params.category = category;
         if (search) params.search = search;
-        const wordsData = await api.getWords(params as { category?: string; search?: string; page?: number; page_size?: number });
+        if (sortBy) params.sort = sortBy;
+        const wordsData = await api.getWords(params as { category?: string; search?: string; sort?: string; page?: number; page_size?: number });
         setWords(wordsData);
         setHasMore(wordsData.length >= PAGE_SIZE);
       } else if (tab === "sentences") {
@@ -111,12 +114,12 @@ export default function VocabularyPage() {
     } finally {
       setLoading(false);
     }
-  }, [tab, category, search, page, toast]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tab, category, search, page, sortBy, toast]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
-  }, [tab, category, search]);
+  }, [tab, category, search, sortBy]);
 
   useEffect(() => {
     fetchData();
@@ -332,7 +335,7 @@ export default function VocabularyPage() {
               })}
             </div>
 
-            {/* 搜索 */}
+            {/* 搜索 + 排序 */}
             <div className="flex gap-2 mb-6">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -347,6 +350,17 @@ export default function VocabularyPage() {
               <Button onClick={handleSearch} variant="secondary">
                 搜索
               </Button>
+              {tab === "words" && (
+                <Button
+                  variant={sortBy === "encounter" ? "default" : "outline"}
+                  size="icon"
+                  className="flex-shrink-0"
+                  title={sortBy === "encounter" ? "按遇到次数排序（点击取消）" : "按遇到次数排序"}
+                  onClick={() => setSortBy(sortBy === "encounter" ? "" : "encounter")}
+                >
+                  <Flame className={`h-4 w-4 ${sortBy === "encounter" ? "text-primary-foreground" : "text-orange-500"}`} />
+                </Button>
+              )}
             </div>
           </>
         )}

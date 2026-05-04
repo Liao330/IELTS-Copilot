@@ -374,7 +374,7 @@ function AddTaskForm({
         ref={titleRef}
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        onKeyDown={(e) => { if (e.key === "Enter" && title.trim()) handleSubmit(); }}
+        onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && title.trim()) handleSubmit(); }}
         placeholder='任务名称，如"完成口语 Part 2 练习"'
         className="text-sm"
       />

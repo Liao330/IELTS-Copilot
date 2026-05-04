@@ -48,6 +48,7 @@ class WordOut(BaseModel):
     tags: str | None = None  # JSON string
     source_conversation_id: str | None = None
     source_message_id: str | None = None
+    encounter_count: int = 1
     mastery_level: int
     review_count: int
     correct_count: int

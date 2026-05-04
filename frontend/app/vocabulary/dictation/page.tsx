@@ -597,7 +597,7 @@ function QuestionCard({
         value={input}
         onChange={(e) => { if (!revealed) setInput(e.target.value); }}
         onKeyDown={(e) => {
-          if (e.key === "Enter") {
+          if (e.key === "Enter" && !e.nativeEvent.isComposing) {
             if (!revealed) onSubmit();
             else onNext();
           }

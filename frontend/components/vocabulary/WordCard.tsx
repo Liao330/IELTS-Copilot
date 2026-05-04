@@ -103,6 +103,11 @@ export function WordCard({ word, onEdit, onDelete }: WordCardProps) {
         <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${mastery.color}`}>
           {mastery.label}
         </span>
+        {word.encounter_count > 1 && (
+          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-200">
+            遇到{word.encounter_count}次
+          </span>
+        )}
         {word.review_count > 0 && (
           <span className="text-xs text-muted-foreground">
             复习{word.review_count}次

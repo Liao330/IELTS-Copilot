@@ -72,11 +72,13 @@ class SessionSummaryOut(BaseModel):
     note: str | None = None
     sentence_count: int
     blocker_count: int
+    generated_count: int = 0       # AI 已生成的练习块数
+    practiced_count: int = 0       # 已做过听写的练习块数
     homework_id: str | None = None
     study_duration_seconds: int = 0
     created_at: datetime
     updated_at: datetime
-    is_demo: bool = False  # 内置示例会话标记（只读、置顶、样式差异化）
+    is_demo: bool = False
 
 
 class SentenceOut(BaseModel):

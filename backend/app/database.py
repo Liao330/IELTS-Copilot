@@ -20,9 +20,10 @@ async def get_db():
 
 
 async def init_db():
-    from app.models import Agent, Conversation, Message, File, Note, Setting, Homework, HomeworkFile, HomeworkFeedback, VocabularyWord, FavoriteSentence, ContextMaterial, DailyReportCache  # noqa
+    from app.models import Agent, Conversation, Message, File, Note, Setting, Homework, HomeworkFile, HomeworkFeedback, VocabularyWord, FavoriteSentence, ContextMaterial  # noqa
     from app.models.feedback import FeedbackItem  # noqa
     from app.models.schedule import ScheduleTask  # noqa
+    from app.models.writing_template import WritingTemplate  # noqa
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         # Add new columns if they don't exist (SQLite doesn't support IF NOT EXISTS for columns)
@@ -33,34 +34,19 @@ async def init_db():
     await _backfill_listening_reading_scores()
     # Backfill AI summaries for homeworks that don't have one yet
     await _backfill_homework_summaries()
+    # Import writing template seed data if table is empty
+    await _seed_writing_templates()
 
 
 async def _migrate_add_columns(conn):
     """Add new columns to existing tables if they don't exist yet."""
-    # Recreate daily_report_cache if it has the old unique constraint on report_date
-    # (it's just a cache table, so dropping it is safe)
-    try:
-        await conn.execute(text(
-            "SELECT include_notes FROM daily_report_cache LIMIT 1"
-        ))
-    except Exception:
-        # Column doesn't exist — old schema. Drop and let create_all rebuild it.
-        try:
-            await conn.execute(text("DROP TABLE IF EXISTS daily_report_cache"))
-            # Re-run create_all for just this table
-            from app.models.daily_report_cache import DailyReportCache
-            await conn.run_sync(DailyReportCache.__table__.create, checkfirst=True)
-        except Exception:
-            pass
-
     new_columns = [
-        ("daily_report_cache", "include_notes", "BOOLEAN DEFAULT 0"),
-        ("homework_feedbacks", "scores", "TEXT"),
         ("listening_practice_sentences", "note", "TEXT"),
         ("homeworks", "summary", "TEXT"),
         ("homeworks", "summary_updated_at", "TEXT"),
         ("listening_practice_sessions", "cleanup_summary", "TEXT"),
         ("listening_practice_sessions", "study_duration_seconds", "INTEGER DEFAULT 0"),
+        ("vocabulary_words", "encounter_count", "INTEGER DEFAULT 1"),
     ]
     for table, column, col_type in new_columns:
         try:
@@ -205,3 +191,40 @@ async def _backfill_homework_summaries():
         print(f"[backfill] Finished generating summaries for {len(missing_ids)} homeworks.")
 
     asyncio.create_task(_run_all())
+
+
+async def _seed_writing_templates():
+    """Import writing template seed data if the table is empty."""
+    import json as _json
+    import os
+    from sqlalchemy import select, func
+    from app.models.writing_template import WritingTemplate
+
+    async with async_session() as db:
+        count = (await db.execute(select(func.count()).select_from(WritingTemplate))).scalar() or 0
+        if count > 0:
+            return  # Already has data
+
+        seed_path = os.path.join(os.path.dirname(__file__), "data", "writing_templates_seed.json")
+        if not os.path.exists(seed_path):
+            return
+
+        with open(seed_path, "r", encoding="utf-8") as f:
+            items = _json.load(f)
+
+        import uuid as _uuid
+        for i, item in enumerate(items):
+            db.add(WritingTemplate(
+                id=str(_uuid.uuid4()),
+                category=item["category"],
+                sub_category=item["sub_category"],
+                scene_cn=item["scene_cn"],
+                template_en=item["template_en"],
+                example_en=item.get("example_en"),
+                note=item.get("note"),
+                difficulty=item.get("difficulty", 1),
+                sort_order=i,
+            ))
+
+        await db.commit()
+        print(f"[seed] Imported {len(items)} writing templates.")

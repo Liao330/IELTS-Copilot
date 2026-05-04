@@ -100,7 +100,7 @@ export function QuickTranslate() {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleTranslate(); }}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) handleTranslate(); }}
                 placeholder="输入单词或中文，回车翻译..."
                 className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground"
                 autoComplete="off"

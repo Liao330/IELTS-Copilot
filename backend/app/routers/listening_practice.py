@@ -184,12 +184,43 @@ async def list_sessions(db: AsyncSession = Depends(get_db)):
         )
         sentence_count = cnt_q.scalar() or 0
         blocker_count = await _count_blockers_for_session(db, s.id)
+
+        # 已生成的练习块数
+        gen_q = await db.execute(
+            select(func.count(ListeningPracticeGenerated.id)).where(
+                ListeningPracticeGenerated.sentence_id.in_(
+                    select(ListeningPracticeSentence.id).where(
+                        ListeningPracticeSentence.session_id == s.id
+                    )
+                )
+            )
+        )
+        generated_count = gen_q.scalar() or 0
+
+        # 已做过听写的练习块数（至少有一条 dictation_attempt）
+        practiced_q = await db.execute(
+            select(func.count(func.distinct(ListeningDictationAttempt.generated_block_id))).where(
+                ListeningDictationAttempt.generated_block_id.in_(
+                    select(ListeningPracticeGenerated.id).where(
+                        ListeningPracticeGenerated.sentence_id.in_(
+                            select(ListeningPracticeSentence.id).where(
+                                ListeningPracticeSentence.session_id == s.id
+                            )
+                        )
+                    )
+                )
+            )
+        )
+        practiced_count = practiced_q.scalar() or 0
+
         results.append(SessionSummaryOut(
             id=s.id,
             title=s.title,
             note=s.note,
             sentence_count=sentence_count,
             blocker_count=blocker_count,
+            generated_count=generated_count,
+            practiced_count=practiced_count,
             homework_id=s.homework_id,
             study_duration_seconds=s.study_duration_seconds or 0,
             created_at=s.created_at,

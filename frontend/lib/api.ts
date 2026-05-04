@@ -155,12 +155,13 @@ export const api = {
   getFilePreviewUrl: (fileId: string) => `${API_BASE}/api/homeworks/files/${fileId}/preview`,
 
   // Vocabulary - Words
-  getWords: (params?: { category?: string; search?: string; mastery_level?: number; due_only?: boolean; page?: number; page_size?: number }) => {
+  getWords: (params?: { category?: string; search?: string; mastery_level?: number; due_only?: boolean; sort?: string; page?: number; page_size?: number }) => {
     const searchParams = new URLSearchParams();
     if (params?.category) searchParams.set("category", params.category);
     if (params?.search) searchParams.set("search", params.search);
     if (params?.mastery_level !== undefined) searchParams.set("mastery_level", String(params.mastery_level));
     if (params?.due_only) searchParams.set("due_only", "true");
+    if (params?.sort) searchParams.set("sort", params.sort);
     if (params?.page) searchParams.set("page", String(params.page));
     if (params?.page_size) searchParams.set("page_size", String(params.page_size));
     return request<import("@/types").VocabularyWord[]>(`/api/vocabulary/words?${searchParams}`);
@@ -207,21 +208,6 @@ export const api = {
   // Vocabulary - Stats
   getVocabularyStats: () =>
     request<import("@/types").VocabularyStats>("/api/vocabulary/stats"),
-
-  // Reports
-  getHomeworkSummary: (params?: { limit?: number; category?: string }) => {
-    const searchParams = new URLSearchParams();
-    if (params?.limit) searchParams.set("limit", String(params.limit));
-    if (params?.category) searchParams.set("category", params.category);
-    return request<import("@/types").HomeworkSummaryResponse>(`/api/reports/homework-summary?${searchParams}`);
-  },
-  getDailyReport: (params?: { date?: string; include_notes?: boolean; force?: boolean }) => {
-    const searchParams = new URLSearchParams();
-    if (params?.date) searchParams.set("date", params.date);
-    if (params?.include_notes) searchParams.set("include_notes", "true");
-    if (params?.force) searchParams.set("force", "true");
-    return request<import("@/types").DailyReportResponse>(`/api/reports/daily?${searchParams}`);
-  },
 
   // Listening Practice (精听复盘)
   listListeningSessions: () =>
@@ -388,6 +374,29 @@ export const api = {
     }),
   deleteScheduleTask: (id: string) =>
     request<{ ok: boolean }>(`/api/schedule/${id}`, { method: "DELETE" }),
+
+  // Writing Templates (写作句型背诵)
+  getWritingTemplates: (category?: string) => {
+    const params = new URLSearchParams();
+    if (category) params.set("category", category);
+    return request<import("@/types").WritingTemplate[]>(`/api/writing-templates/?${params}`);
+  },
+  getWritingTemplatesDue: (limit = 20) =>
+    request<import("@/types").WritingTemplate[]>(`/api/writing-templates/due?limit=${limit}`),
+  getWritingTemplatesNew: (limit = 5) =>
+    request<import("@/types").WritingTemplate[]>(`/api/writing-templates/new-today?limit=${limit}`),
+  getWritingTemplatesLearned: () =>
+    request<import("@/types").WritingTemplate[]>("/api/writing-templates/learned-today"),
+  checkWritingTemplate: (id: string, answer: string) =>
+    request<import("@/types").WritingTemplateCheckResult>(`/api/writing-templates/${id}/check`, {
+      method: "POST", body: JSON.stringify({ answer }),
+    }),
+  reviewWritingTemplate: (id: string, quality: number) =>
+    request<import("@/types").WritingTemplate>(`/api/writing-templates/${id}/review`, {
+      method: "POST", body: JSON.stringify({ quality }),
+    }),
+  getWritingTemplateStats: () =>
+    request<import("@/types").WritingTemplateStats>("/api/writing-templates/stats"),
 
 };
 

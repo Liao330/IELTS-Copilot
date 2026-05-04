@@ -212,7 +212,7 @@ export function FeedbackButton() {
                 <Textarea
                   value={newText}
                   onChange={(e) => setNewText(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleAdd(); } }}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); handleAdd(); } }}
                   placeholder="输入反馈或遇到的问题..."
                   rows={2}
                   className="text-sm resize-none"

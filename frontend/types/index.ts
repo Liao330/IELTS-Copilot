@@ -306,56 +306,6 @@ export interface VocabularyStats {
   category_counts: Record<string, number>;
 }
 
-// ========== Reports (学习日报 & 趋势总结) ==========
-
-export interface HomeworkSummaryAI {
-  overview: string;
-  strengths: string[];
-  weaknesses: string[];
-  repeated_issues: string[];
-  next_actions: string[];
-  trend: string;
-  parse_error?: boolean;
-}
-
-export interface HomeworkSummaryStats {
-  total_homeworks: number;
-  categories: Record<string, number>;
-  total_feedbacks: number;
-  date_range: { start: string; end: string } | null;
-}
-
-export interface HomeworkSummaryResponse {
-  ai_summary: HomeworkSummaryAI;
-  stats: HomeworkSummaryStats;
-  source_homework_ids: string[];
-  source_count: number;
-}
-
-export interface DailyReportAI {
-  overview: string;
-  today_focus: string[];
-  today_issues: string[];
-  comparison_to_recent: string;
-  tomorrow_actions: string[];
-  parse_error?: boolean;
-}
-
-export interface DailyReportStats {
-  date: string;
-  homework_count: number;
-  categories: string[];
-  feedback_count: number;
-  has_data: boolean;
-}
-
-export interface DailyReportResponse {
-  ai_report: DailyReportAI;
-  stats: DailyReportStats;
-  date: string;
-}
-
-
 // ========== Listening Practice (听力精听复盘) ==========
 
 export type ListeningDifficultyType =
@@ -410,6 +360,8 @@ export interface ListeningSessionSummary {
   note: string | null;
   sentence_count: number;
   blocker_count: number;
+  generated_count: number;
+  practiced_count: number;
   homework_id?: string | null;
   study_duration_seconds: number;
   created_at: string;

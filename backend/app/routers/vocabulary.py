@@ -92,7 +92,18 @@ def _calculate_next_review(quality: int, review_count: int, ease_factor: float, 
 
 @router.post("/translate")
 async def translate_text(data: TranslateRequest, db: AsyncSession = Depends(get_db)):
-    """调用 LLM 翻译/查词，返回结构化结果"""
+    """调用 LLM 翻译/查词，返回结构化结果。如果该词已在单词本中，自动累加 encounter_count。"""
+    # 自动累加 encounter_count
+    word_text = data.text.strip().lower()
+    if len(word_text.split()) <= 4:  # 只对单词/短语累加，不对句子
+        existing_q = await db.execute(
+            select(VocabularyWord).where(func.lower(VocabularyWord.word) == word_text)
+        )
+        existing = existing_q.scalar_one_or_none()
+        if existing:
+            existing.encounter_count = (existing.encounter_count or 1) + 1
+            await db.commit()
+
     model_name, api_key, api_base = await _get_llm_config(db)
 
     if not api_key:
@@ -142,6 +153,7 @@ async def list_words(
     search: str | None = None,
     mastery_level: int | None = None,
     due_only: bool = False,
+    sort: str | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
@@ -168,7 +180,10 @@ async def list_words(
             )
         )
 
-    query = query.order_by(desc(VocabularyWord.created_at))
+    if sort == "encounter":
+        query = query.order_by(desc(VocabularyWord.encounter_count), desc(VocabularyWord.created_at))
+    else:
+        query = query.order_by(desc(VocabularyWord.created_at))
     query = query.offset((page - 1) * page_size).limit(page_size)
 
     result = await db.execute(query)
@@ -178,13 +193,21 @@ async def list_words(
 @router.post("/words", response_model=WordOut, status_code=201)
 async def create_word(data: WordCreate, db: AsyncSession = Depends(get_db)):
     # 检查是否已存在相同单词
-    existing = await db.execute(
+    existing_q = await db.execute(
         select(VocabularyWord).where(
             func.lower(VocabularyWord.word) == data.word.lower().strip()
         )
     )
-    if existing.scalar_one_or_none():
-        raise HTTPException(status_code=409, detail="该单词已存在于单词本中")
+    existing = existing_q.scalar_one_or_none()
+    if existing:
+        # 已存在：累加 encounter_count，返回更新后的单词
+        existing.encounter_count = (existing.encounter_count or 1) + 1
+        await db.commit()
+        await db.refresh(existing)
+        raise HTTPException(
+            status_code=409,
+            detail=f"该单词已存在于单词本中（第 {existing.encounter_count} 次遇到）"
+        )
 
     word = VocabularyWord(
         id=str(uuid.uuid4()),

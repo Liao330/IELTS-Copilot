@@ -379,7 +379,7 @@ export default function ListeningPracticeDetailPage() {
       console.error(err);
       // 改进的错误分类和消息
       let msg = "生成失败";
-      let variant: "default" | "destructive" = "destructive";
+      const variant: "default" | "destructive" = "destructive";
       
       if (err instanceof Error) {
         const errorMsg = err.message.toLowerCase();
@@ -1836,7 +1836,7 @@ function SentenceNoteEditor({ value, onCommit, readOnly = false }: SentenceNoteE
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !e.nativeEvent.isComposing) {
                 e.preventDefault();
                 onCommit(draft);
                 setEditing(false);

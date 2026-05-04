@@ -122,6 +122,37 @@ export function SessionCard({ session, onClick, onRename, onDelete }: Props) {
         )}
       </div>
 
+      {/* 练习进度条 */}
+      {!isDemo && session.generated_count > 0 && (
+        <div className="mt-3">
+          <div className="flex items-center justify-between text-xs mb-1.5">
+            <span className="text-muted-foreground">
+              听写进度
+            </span>
+            <span className={cn(
+              "font-medium",
+              session.practiced_count >= session.generated_count
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "text-sky-600 dark:text-sky-400",
+            )}>
+              {session.practiced_count}/{session.generated_count}
+              {session.practiced_count >= session.generated_count && session.generated_count > 0 && " ✓"}
+            </span>
+          </div>
+          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all duration-500",
+                session.practiced_count >= session.generated_count
+                  ? "bg-gradient-to-r from-emerald-400 to-emerald-500"
+                  : "bg-gradient-to-r from-sky-400 to-cyan-500",
+              )}
+              style={{ width: `${Math.min(100, (session.practiced_count / session.generated_count) * 100)}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       {session.note && (
         <p className="mt-3 text-xs text-muted-foreground line-clamp-2">{session.note}</p>
       )}

@@ -258,7 +258,7 @@ export default function HomeworksPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) handleSearch(); }}
                 placeholder="AI 搜索：描述你想找的内容，如「口语中道歉相关的练习」「听力 Section 3 学术讨论」"
                 className="w-full rounded-md border bg-background px-9 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />

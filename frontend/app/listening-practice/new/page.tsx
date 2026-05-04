@@ -595,7 +595,7 @@ function CleanupItemRow({
               value={newWord}
               onChange={(e) => setNewWord(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") {
+                if (e.key === "Enter" && !e.nativeEvent.isComposing) {
                   e.preventDefault();
                   addWord();
                 }

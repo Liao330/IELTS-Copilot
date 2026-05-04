@@ -30,6 +30,9 @@ class VocabularyWord(Base):
     source_conversation_id: Mapped[Optional[str]] = mapped_column(String)
     source_message_id: Mapped[Optional[str]] = mapped_column(String)
 
+    # 遇到次数（每次查询/重复添加 +1，越高说明越需要重点学习）
+    encounter_count: Mapped[int] = mapped_column(Integer, default=1)
+
     # 记忆/复习相关
     mastery_level: Mapped[int] = mapped_column(Integer, default=0)  # 掌握等级: 0=新词, 1=模糊, 2=认识, 3=熟练
     review_count: Mapped[int] = mapped_column(Integer, default=0)  # 复习次数
