@@ -354,7 +354,27 @@ export default function ListeningPracticeDetailPage() {
             }
           : prev,
       );
-      toast({ description: `已生成 ${res.blocks.length} 组精听练习` });
+      
+      // 改进的反馈信息：显示完整性和失败详情
+      if (res.is_complete) {
+        toast({ description: `已生成 ${res.blocks.length} 组精听练习 ✓` });
+      } else if (res.message) {
+        // 显示用户友好的状态消息
+        toast({ 
+          variant: res.blocks.length > 0 ? "default" : "destructive",
+          description: res.message,
+        });
+      } else {
+        // 备用消息
+        const generated = res.generated_words.length;
+        const requested = res.requested_words.length;
+        toast({
+          variant: generated > 0 ? "default" : "destructive",
+          description: generated > 0 
+            ? `已生成 ${generated}/${requested} 个词的练习` 
+            : "生成失败，请重试",
+        });
+      }
     } catch (err) {
       console.error(err);
       const msg = err instanceof Error ? err.message : "生成失败";
@@ -419,6 +439,10 @@ export default function ListeningPracticeDetailPage() {
     }
 
     // 第二步：根据分级结果决定每个词生成几句
+    // 跟踪失败的句子以便最后汇报
+    const failedSentences: Array<{ text: string; reason: string }> = [];
+    const partialSentences: Array<{ text: string; failedWords: string[] }> = [];
+    
     for (let i = 0; i < needGen.length; i++) {
       const s = needGen[i];
       // 确定该句中各障碍词的 max_examples
@@ -444,6 +468,7 @@ export default function ListeningPracticeDetailPage() {
           force_refresh: forceRefresh,
           max_examples: maxExamples,
         });
+        
         setSession((prev) =>
           prev
             ? {
@@ -454,13 +479,44 @@ export default function ListeningPracticeDetailPage() {
               }
             : prev,
         );
+
+        // 跟踪部分生成的情况
+        if (!res.is_complete && res.failed_words.length > 0) {
+          partialSentences.push({
+            text: s.original_text.substring(0, 30) + (s.original_text.length > 30 ? "..." : ""),
+            failedWords: res.failed_words.map((f) => f.word),
+          });
+        }
       } catch (err) {
-        console.error(err);
+        console.error(`生成句子 ${s.id} 失败:`, err);
+        failedSentences.push({
+          text: s.original_text.substring(0, 30) + (s.original_text.length > 30 ? "..." : ""),
+          reason: err instanceof Error ? err.message : "未知错误",
+        });
       }
       setBatchProgress({ done: i + 1, total: needGen.length });
     }
+    
     setBatchGenerating(false);
-    toast({ description: `一键生成完成 🎉 共 ${needGen.length} 句` });
+
+    // 汇总反馈
+    if (failedSentences.length === 0 && partialSentences.length === 0) {
+      // 完全成功
+      toast({ description: `一键生成完成 🎉 共 ${needGen.length} 句` });
+    } else if (failedSentences.length === 0 && partialSentences.length > 0) {
+      // 部分生成失败
+      const failedCount = partialSentences.reduce((sum, s) => sum + s.failedWords.length, 0);
+      toast({
+        variant: "default",
+        description: `已生成 ${needGen.length - partialSentences.length}/${needGen.length} 句。${failedCount} 个词生成失败，请稍后重试。`,
+      });
+    } else if (failedSentences.length > 0) {
+      // 有句子完全失败
+      toast({
+        variant: "destructive",
+        description: `${failedSentences.length} 句生成失败，请检查网络或重试。`,
+      });
+    }
   };
 
   // 创建延伸障碍词 session（跳转到预览页）

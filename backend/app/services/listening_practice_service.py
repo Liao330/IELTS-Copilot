@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import datetime, timedelta
+from typing import NamedTuple
 
 from fastapi import HTTPException
 from sqlalchemy import select, and_
@@ -23,6 +24,15 @@ from app.utils.llm_config import get_llm_config
 # ==================== 常量 ====================
 
 VOCAB_SOURCE_PREFIX = "listening-practice:"  # 写入 source_conversation_id 的前缀，用于反查
+
+
+# ==================== 类型定义 ====================
+
+class GenerationResult(NamedTuple):
+    """生成结果容器，包含成功块、失败词列表及原始请求词列表"""
+    blocks: list  # ListeningPracticeGenerated instances
+    failed_words: list[dict]  # [{"word": "foo", "reason": "validation_error"}, ...]
+    requested_words: list[str]  # 原始请求的词
 
 
 # ==================== 工具 ====================
@@ -232,10 +242,26 @@ async def generate_for_sentence(
     words: list[str],
     force_refresh: bool = False,
     max_examples: int | None = None,
-) -> list[ListeningPracticeGenerated]:
-    """为指定句子的障碍词批量生成/返回缓存练习块。"""
+) -> GenerationResult:
+    """为指定句子的障碍词批量生成/返回缓存练习块。
+    
+    返回：
+      - blocks: 成功生成的 ListeningPracticeGenerated 对象列表
+      - failed_words: 失败的词及失败原因 [{"word": "...", "reason": "..."}, ...]
+      - requested_words: 原始请求的词列表
+    
+    失败原因类型：
+      - "validation_error": LLM 返回的数据验证失败
+      - "llm_error": AI 调用失败或返回格式异常
+      - "config_error": 未配置 API key
+      - "unexpected_word": LLM 返回了不在请求列表中的词
+      - "unknown_error": 其他不可预期的错误
+    """
     if not words:
-        return []
+        return GenerationResult(blocks=[], failed_words=[], requested_words=[])
+
+    # 保留原始请求词用于最后的返回
+    requested_words_original = words.copy()
 
     # 归一化 + 去重，保留原大小写作为展示
     seen: set[str] = set()
@@ -254,6 +280,10 @@ async def generate_for_sentence(
     )
     cached_list = list(cached_q.scalars().all())
     cached_map = {g.blocker_word: g for g in cached_list}
+
+    # 跟踪失败的词和生成成功的词
+    failed_words: list[dict] = []
+    generated_words: set[str] = set()
 
     if force_refresh:
         # 只删除没有听写记录的 block（保留有练习历史的）
@@ -276,7 +306,19 @@ async def generate_for_sentence(
     if missing:
         model_name, api_key, api_base = await get_llm_config(db)
         if not api_key:
-            raise HTTPException(status_code=400, detail="未配置 API Key，请前往设置页面配置")
+            # API Key 未配置，标记所有 missing 词为配置错误
+            for w in missing:
+                failed_words.append({"word": w, "reason": "config_error"})
+            # 返回缓存的结果
+            for w in unique_words:
+                if w in cached_map:
+                    generated_words.add(w)
+            result_blocks = [cached_map[w] for w in unique_words if w in cached_map]
+            return GenerationResult(
+                blocks=result_blocks,
+                failed_words=failed_words,
+                requested_words=requested_words_original,
+            )
 
         payload: dict = {
             "original_sentence": sentence.original_text,
@@ -340,44 +382,133 @@ async def generate_for_sentence(
                 temperature=0.6,
             )
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"AI 调用失败: {e}")
+            # LLM 调用失败，标记所有 missing 词为 llm_error
+            import logging
+            logging.getLogger(__name__).error(f"LLM 调用失败: {e}")
+            for w in missing:
+                failed_words.append({"word": w, "reason": "llm_error"})
+            # 返回缓存的结果
+            for w in unique_words:
+                if w in cached_map:
+                    generated_words.add(w)
+            result_blocks = [cached_map[w] for w in unique_words if w in cached_map]
+            return GenerationResult(
+                blocks=result_blocks,
+                failed_words=failed_words,
+                requested_words=requested_words_original,
+            )
 
         cleaned = _clean_json_response(raw)
         try:
             parsed = json.loads(cleaned)
-        except json.JSONDecodeError:
-            raise HTTPException(status_code=500, detail="AI 返回格式异常，请重试")
+        except json.JSONDecodeError as e:
+            # JSON 格式错误，标记所有 missing 词为 llm_error
+            import logging
+            logging.getLogger(__name__).error(f"AI 返回格式异常: {e}")
+            for w in missing:
+                failed_words.append({"word": w, "reason": "llm_error"})
+            # 返回缓存的结果
+            for w in unique_words:
+                if w in cached_map:
+                    generated_words.add(w)
+            result_blocks = [cached_map[w] for w in unique_words if w in cached_map]
+            return GenerationResult(
+                blocks=result_blocks,
+                failed_words=failed_words,
+                requested_words=requested_words_original,
+            )
 
         if not isinstance(parsed, list):
-            raise HTTPException(status_code=500, detail="AI 返回非数组格式")
+            # 返回非数组，标记所有 missing 词为 llm_error
+            import logging
+            logging.getLogger(__name__).error("AI 返回非数组格式")
+            for w in missing:
+                failed_words.append({"word": w, "reason": "llm_error"})
+            # 返回缓存的结果
+            for w in unique_words:
+                if w in cached_map:
+                    generated_words.add(w)
+            result_blocks = [cached_map[w] for w in unique_words if w in cached_map]
+            return GenerationResult(
+                blocks=result_blocks,
+                failed_words=failed_words,
+                requested_words=requested_words_original,
+            )
 
-        # 落库
+        # 第一阶段：验证和收集要插入的项（不落库）
+        items_to_insert = []
         for item in parsed:
             try:
                 _validate_generated_item(item)
             except ValueError as e:
-                # 单条失败跳过，不中断全部
-                print(f"[listening_practice] 跳过非法项: {e}")
+                # 验证失败，记录失败原因
+                norm = _normalize_word(item.get("blocker_word", ""))
+                if norm in seen and norm not in cached_map:
+                    failed_words.append({
+                        "word": norm,
+                        "reason": "validation_error",
+                    })
+                import logging
+                logging.getLogger(__name__).warning(f"LLM 生成项验证失败: {e}, item={item}")
                 continue
 
             norm = _normalize_word(item["blocker_word"])
+            
+            # 检查该词是否在请求列表中
             if norm not in seen:
+                # LLM 返回了不在请求列表中的词，记录为 unexpected_word
+                failed_words.append({
+                    "word": norm,
+                    "reason": "unexpected_word",
+                })
                 continue
+            
+            # 检查缓存冲突
             if norm in cached_map:
+                # 该词已在缓存中，不需要重新生成（但不算失败）
+                generated_words.add(norm)
                 continue
 
-            block = ListeningPracticeGenerated(
-                id=str(uuid.uuid4()),
-                sentence_id=sentence.id,
-                blocker_word=norm,
-                difficulty_type=item["difficulty_type"],
-                explanation=item["explanation"],
-                examples=json.dumps(item["examples"], ensure_ascii=False),
-            )
-            db.add(block)
-            cached_map[norm] = block
+            # 该项有效，加入待插入列表
+            items_to_insert.append((norm, item))
 
-        await db.flush()
+        # 第二阶段：批量插入所有有效项
+        if items_to_insert:
+            for norm, item in items_to_insert:
+                block = ListeningPracticeGenerated(
+                    id=str(uuid.uuid4()),
+                    sentence_id=sentence.id,
+                    blocker_word=norm,
+                    difficulty_type=item["difficulty_type"],
+                    explanation=item["explanation"],
+                    examples=json.dumps(item["examples"], ensure_ascii=False),
+                )
+                db.add(block)
+                cached_map[norm] = block
+                generated_words.add(norm)
+
+            await db.flush()
+
+    # 收集最终生成的词
+    for w in unique_words:
+        if w in cached_map:
+            generated_words.add(w)
+
+    # 找出没有生成的词（不是配置/LLM 错误）
+    for w in unique_words:
+        if w not in generated_words and not any(f["word"] == w for f in failed_words):
+            # 这个词既不在生成集合中，也不在已记录的失败词中
+            # 这不应该发生（调试用）
+            failed_words.append({
+                "word": w,
+                "reason": "unknown_error",
+            })
 
     # 按 unique_words 顺序返回最终结果
-    return [cached_map[w] for w in unique_words if w in cached_map]
+    result_blocks = [cached_map[w] for w in unique_words if w in cached_map]
+
+    return GenerationResult(
+        blocks=result_blocks,
+        failed_words=failed_words,
+        requested_words=requested_words_original,
+    )

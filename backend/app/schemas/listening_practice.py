@@ -132,9 +132,22 @@ class GenerateResultItem(BaseModel):
     examples: list[GeneratedExample]
 
 
+
+class GenerationFailureInfo(BaseModel):
+    """生成失败的单词及原因"""
+    word: str
+    reason: str  # validation_error, llm_error, cache_conflict, unexpected_word, etc.
+
+
 class GenerateForSentenceResponse(BaseModel):
     sentence_id: str
     blocks: list[GeneratedBlockOut]
+    # 新增字段：生成统计和失败信息，用于前端感知生成状态
+    requested_words: list[str]  # 原始请求的词列表
+    generated_words: list[str]  # 成功生成的词列表
+    failed_words: list[GenerationFailureInfo] = []  # 失败的词及原因
+    is_complete: bool  # True 表示所有请求的词都成功生成
+    message: str = ""  # 用户友好的状态消息，如 "已生成 2/3 词。单词 'X' 生成失败，请重试。"
 
 
 # ========== AI 笔记整理 ==========

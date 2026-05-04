@@ -209,6 +209,7 @@ export interface VocabularyWord {
   tags: string | null; // JSON string
   source_conversation_id: string | null;
   source_message_id: string | null;
+  encounter_count: number;
   mastery_level: number; // 0=新词, 1=模糊, 2=认识, 3=熟练
   review_count: number;
   correct_count: number;
@@ -452,9 +453,19 @@ export interface ListeningSessionUpdate {
   created_at?: string;
 }
 
+export interface GenerationFailureInfo {
+  word: string;
+  reason: "validation_error" | "llm_error" | "config_error" | "unexpected_word" | "unknown_error";
+}
+
 export interface ListeningGenerateResponse {
   sentence_id: string;
   blocks: ListeningGeneratedBlock[];
+  requested_words: string[];
+  generated_words: string[];
+  failed_words: GenerationFailureInfo[];
+  is_complete: boolean;
+  message: string;
 }
 
 // AI 整理笔记
@@ -605,4 +616,44 @@ export interface ScheduleTaskCreate {
   start_time?: string;
   duration_minutes?: number;
   sort_order?: number;
+}
+
+// ========== Writing Templates 写作句型背诵 ==========
+
+export interface WritingTemplate {
+  id: string;
+  category: string;
+  sub_category: string;
+  scene_cn: string;
+  template_en: string;
+  example_en: string | null;
+  note: string | null;
+  difficulty: number;
+  sort_order: number;
+  mastery_level: number;
+  review_count: number;
+  correct_count: number;
+  interval_days: number;
+  next_review_at: string | null;
+  last_reviewed_at: string | null;
+  created_at: string;
+}
+
+export interface WritingTemplateCheckResult {
+  correct: boolean;
+  score: number;
+  expected: string;
+  feedback: string;
+  mastery_level: number;
+  interval_days: number;
+}
+
+export interface WritingTemplateStats {
+  total: number;
+  mastered: number;
+  learning: number;
+  new_count: number;
+  due_today: number;
+  learned_today: number;
+  category_stats: Record<string, { total: number; mastered: number; due: number; remaining_new: number }>;
 }

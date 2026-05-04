@@ -31,6 +31,7 @@ from app.schemas.listening_practice import (
     GeneratedExample,
     GenerateForSentenceRequest,
     GenerateForSentenceResponse,
+    GenerationFailureInfo,
     CleanupRequest,
     CleanupResponse,
     SentenceNoteUpdate,
@@ -51,6 +52,7 @@ from app.schemas.listening_practice import (
 from app.services.listening_practice_service import (
     sync_blockers_to_vocabulary,
     generate_for_sentence,
+    GenerationResult,
     VOCAB_SOURCE_PREFIX,
     _normalize_word,
 )
@@ -541,6 +543,7 @@ async def update_sentence_blockers(
 # ==================== AI 生成 ====================
 
 @router.post("/sentences/{sentence_id}/generate", response_model=GenerateForSentenceResponse)
+@router.post("/sentences/{sentence_id}/generate", response_model=GenerateForSentenceResponse)
 async def generate_practice(
     sentence_id: str,
     data: GenerateForSentenceRequest,
@@ -571,7 +574,8 @@ async def generate_practice(
     if not words:
         raise HTTPException(status_code=400, detail="请先标记障碍词再生成练习")
 
-    blocks = await generate_for_sentence(
+    # 调用生成服务，现在返回 GenerationResult
+    generation_result = await generate_for_sentence(
         db,
         sentence=sentence,
         words=words,
@@ -580,10 +584,33 @@ async def generate_practice(
     )
     await db.commit()
 
+    # 构建 failed_words 列表
+    failed_words_out = [
+        {"word": f["word"], "reason": f["reason"]}
+        for f in generation_result.failed_words
+    ]
+
+    # 确定生成完整性和消息
+    is_complete = len(generation_result.failed_words) == 0
+    message = ""
+    if generation_result.failed_words:
+        failed_count = len(generation_result.failed_words)
+        total_count = len(generation_result.requested_words)
+        failed_list = ", ".join(f["word"] for f in generation_result.failed_words[:3])
+        if failed_count > 3:
+            failed_list += f" 等 {failed_count - 3} 个词"
+        message = f"已生成 {total_count - failed_count}/{total_count} 个词。{failed_list}生成失败，请检查设置或重试。"
+
     return GenerateForSentenceResponse(
         sentence_id=sentence.id,
-        blocks=[_serialize_generated(g) for g in blocks],
+        blocks=[_serialize_generated(g) for g in generation_result.blocks],
+        requested_words=generation_result.requested_words,
+        generated_words=[g.blocker_word for g in generation_result.blocks],
+        failed_words=failed_words_out,
+        is_complete=is_complete,
+        message=message,
     )
+
 
 
 # ==================== AI 笔记整理 ====================
