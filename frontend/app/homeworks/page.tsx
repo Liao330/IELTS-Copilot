@@ -665,7 +665,7 @@ function ScoreTrendChart({ homeworks, category }: { homeworks: Homework[]; categ
 
   // 提取数据点，听力/阅读区分套题(Band)和部分练习(正确率)
   const { bandPoints, pctPoints, allPoints } = useMemo(() => {
-    type Pt = { id: string; date: string; score: number; title: string; label: string; kind: "band" | "pct" };
+    type Pt = { id: string; date: string; createdAt: string; score: number; title: string; label: string; kind: "band" | "pct" };
     const band: Pt[] = [];
     const pct: Pt[] = [];
 
@@ -681,26 +681,27 @@ function ScoreTrendChart({ homeworks, category }: { homeworks: Homework[]; categ
           const overall = s.overall as number | undefined;
           if (overall != null && total != null && total >= 40) {
             // 套题：有 Band + 满 40 题
-            band.push({ id: hw.id, date: hw.homework_date, score: overall, title: hw.title, label: `Band ${overall} (${raw}/${total})`, kind: "band" });
+            band.push({ id: hw.id, date: hw.homework_date, createdAt: hw.created_at, score: overall, title: hw.title, label: `Band ${overall} (${raw}/${total})`, kind: "band" });
           } else if (raw != null && total != null && total > 0) {
             // 部分练习：正确率
             const p = Math.round((raw / total) * 100);
-            pct.push({ id: hw.id, date: hw.homework_date, score: p, title: hw.title, label: `${raw}/${total} (${p}%)`, kind: "pct" });
+            pct.push({ id: hw.id, date: hw.homework_date, createdAt: hw.created_at, score: p, title: hw.title, label: `${raw}/${total} (${p}%)`, kind: "pct" });
           }
         } else {
           // 写作/口语：Band Score
           if (s.overall) {
             const overall = s.overall as number;
-            band.push({ id: hw.id, date: hw.homework_date, score: overall, title: hw.title, label: `Band ${overall}`, kind: "band" });
+            band.push({ id: hw.id, date: hw.homework_date, createdAt: hw.created_at, score: overall, title: hw.title, label: `Band ${overall}`, kind: "band" });
           }
         }
         break;
       }
     }
 
-    band.sort((a, b) => a.date.localeCompare(b.date));
-    pct.sort((a, b) => a.date.localeCompare(b.date));
-    const all = [...band, ...pct].sort((a, b) => a.date.localeCompare(b.date));
+    const sortByTime = (a: Pt, b: Pt) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt);
+    band.sort(sortByTime);
+    pct.sort(sortByTime);
+    const all = [...band, ...pct].sort(sortByTime);
     return { bandPoints: band, pctPoints: pct, allPoints: all };
   }, [homeworks, category, isDualAxis]);
 

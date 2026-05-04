@@ -306,6 +306,31 @@ export interface VocabularyStats {
   category_counts: Record<string, number>;
 }
 
+// ========== Reports (学习日报 & 趋势总结) ==========
+
+export interface DailyReportAI {
+  overview: string;
+  today_focus: string[];
+  today_issues: string[];
+  comparison_to_recent: string;
+  tomorrow_actions: string[];
+  parse_error?: boolean;
+}
+
+export interface DailyReportStats {
+  date: string;
+  homework_count: number;
+  categories: string[];
+  feedback_count: number;
+  has_data: boolean;
+}
+
+export interface DailyReportResponse {
+  ai_report: DailyReportAI;
+  stats: DailyReportStats;
+  date: string;
+}
+
 // ========== Listening Practice (听力精听复盘) ==========
 
 export type ListeningDifficultyType =

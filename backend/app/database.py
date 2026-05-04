@@ -20,7 +20,7 @@ async def get_db():
 
 
 async def init_db():
-    from app.models import Agent, Conversation, Message, File, Note, Setting, Homework, HomeworkFile, HomeworkFeedback, VocabularyWord, FavoriteSentence, ContextMaterial  # noqa
+    from app.models import Agent, Conversation, Message, File, Note, Setting, Homework, HomeworkFile, HomeworkFeedback, VocabularyWord, FavoriteSentence, ContextMaterial, DailyReportCache  # noqa
     from app.models.feedback import FeedbackItem  # noqa
     from app.models.schedule import ScheduleTask  # noqa
     from app.models.writing_template import WritingTemplate  # noqa
@@ -40,7 +40,25 @@ async def init_db():
 
 async def _migrate_add_columns(conn):
     """Add new columns to existing tables if they don't exist yet."""
+    # Recreate daily_report_cache if it has the old unique constraint on report_date
+    # (it's just a cache table, so dropping it is safe)
+    try:
+        await conn.execute(text(
+            "SELECT include_notes FROM daily_report_cache LIMIT 1"
+        ))
+    except Exception:
+        # Column doesn't exist — old schema. Drop and let create_all rebuild it.
+        try:
+            await conn.execute(text("DROP TABLE IF EXISTS daily_report_cache"))
+            # Re-run create_all for just this table
+            from app.models.daily_report_cache import DailyReportCache
+            await conn.run_sync(DailyReportCache.__table__.create, checkfirst=True)
+        except Exception:
+            pass
+
     new_columns = [
+        ("daily_report_cache", "include_notes", "BOOLEAN DEFAULT 0"),
+        ("homework_feedbacks", "scores", "TEXT"),
         ("listening_practice_sentences", "note", "TEXT"),
         ("homeworks", "summary", "TEXT"),
         ("homeworks", "summary_updated_at", "TEXT"),

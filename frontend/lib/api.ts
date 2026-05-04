@@ -209,6 +209,15 @@ export const api = {
   getVocabularyStats: () =>
     request<import("@/types").VocabularyStats>("/api/vocabulary/stats"),
 
+  // Reports (daily brief for homepage)
+  getDailyReport: (params?: { date?: string; include_notes?: boolean; force?: boolean }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.date) searchParams.set("date", params.date);
+    if (params?.include_notes) searchParams.set("include_notes", "true");
+    if (params?.force) searchParams.set("force", "true");
+    return request<import("@/types").DailyReportResponse>(`/api/reports/daily?${searchParams}`);
+  },
+
   // Listening Practice (精听复盘)
   listListeningSessions: () =>
     request<import("@/types").ListeningSessionSummary[]>("/api/listening-practice/sessions"),

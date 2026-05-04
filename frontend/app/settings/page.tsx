@@ -395,7 +395,7 @@ export default function SettingsPage() {
                   <div>
                     <Label className="text-xs">默认语速</Label>
                     <Select
-                      value={settings.speech_providers?.tts?.default_rate || "-10%"}
+                      value={settings.speech_providers?.tts?.default_rate || "+0%"}
                       onValueChange={(v) => updateTts("default_rate", v)}
                     >
                       <SelectTrigger className="text-sm">
@@ -403,8 +403,8 @@ export default function SettingsPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="-25%">0.75x 慢速精听</SelectItem>
-                        <SelectItem value="-10%">0.9x 略慢（推荐）</SelectItem>
-                        <SelectItem value="+0%">1.0x 正常</SelectItem>
+                        <SelectItem value="-10%">0.9x 略慢</SelectItem>
+                        <SelectItem value="+0%">1.0x 正常（推荐）</SelectItem>
                         <SelectItem value="+10%">1.1x 略快</SelectItem>
                       </SelectContent>
                     </Select>
