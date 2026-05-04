@@ -377,8 +377,25 @@ export default function ListeningPracticeDetailPage() {
       }
     } catch (err) {
       console.error(err);
-      const msg = err instanceof Error ? err.message : "生成失败";
-      toast({ variant: "destructive", description: msg });
+      // 改进的错误分类和消息
+      let msg = "生成失败";
+      let variant: "default" | "destructive" = "destructive";
+      
+      if (err instanceof Error) {
+        const errorMsg = err.message.toLowerCase();
+        // 根据错误类型提供有针对性的建议
+        if (errorMsg.includes("api") || errorMsg.includes("key")) {
+          msg = "API 密钥未配置，请前往设置页面配置";
+        } else if (errorMsg.includes("network") || errorMsg.includes("connect")) {
+          msg = "网络连接失败，请检查网络后重试";
+        } else if (errorMsg.includes("timeout")) {
+          msg = "请求超时，请稍后重试";
+        } else {
+          msg = err.message;
+        }
+      }
+      
+      toast({ variant, description: msg });
     } finally {
       setGeneratingMap((m) => {
         const rest = { ...m };
@@ -489,9 +506,23 @@ export default function ListeningPracticeDetailPage() {
         }
       } catch (err) {
         console.error(`生成句子 ${s.id} 失败:`, err);
+        // 根据错误类型提供错误原因
+        let reason = "未知错误";
+        if (err instanceof Error) {
+          const errorMsg = err.message.toLowerCase();
+          if (errorMsg.includes("api") || errorMsg.includes("key")) {
+            reason = "API 密钥未配置";
+          } else if (errorMsg.includes("network") || errorMsg.includes("connect")) {
+            reason = "网络连接失败";
+          } else if (errorMsg.includes("timeout")) {
+            reason = "请求超时";
+          } else {
+            reason = err.message.substring(0, 50); // 截断长错误消息
+          }
+        }
         failedSentences.push({
           text: s.original_text.substring(0, 30) + (s.original_text.length > 30 ? "..." : ""),
-          reason: err instanceof Error ? err.message : "未知错误",
+          reason,
         });
       }
       setBatchProgress({ done: i + 1, total: needGen.length });

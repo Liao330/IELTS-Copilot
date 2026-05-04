@@ -38,6 +38,18 @@ class GenerationResult(NamedTuple):
 # ==================== 工具 ====================
 
 def _normalize_word(word: str) -> str:
+    """
+    规范化单词以实现缓存去重。
+    
+    策略：strip() + lowercase()
+    - strip()：删除前后空格
+    - lowercase()：转为小写
+    
+    缓存键使用规范化形式，而 blocker_word 字段存储规范化后的结果。
+    这确保了即使用户输入 "Apple"、"APPLE"、"apple "，都会映射到同一条缓存记录。
+    
+    返回空字符串表示无效输入（仅空格/空串）。
+    """
     return word.strip().lower()
 
 
@@ -263,7 +275,14 @@ async def generate_for_sentence(
     # 保留原始请求词用于最后的返回
     requested_words_original = words.copy()
 
-    # 归一化 + 去重，保留原大小写作为展示
+    # === 阶段0: 输入规范化与去重 ===
+    # 步骤:
+    #   1. 调用 _normalize_word() 统一大小写和前后空格
+    #   2. 使用 seen set 去除重复的规范化词
+    #   3. 返回 unique_words: 去重后的规范化词列表（用于后续查询和LLM调用）
+    #   4. seen set: 快速查找已请求的词是否在当前请求中
+    # 
+    # 约束: 请求中的重复词（如 ['hello', 'HELLO']）在规范化后视为同一词
     seen: set[str] = set()
     unique_words: list[str] = []
     for w in words:
@@ -272,7 +291,10 @@ async def generate_for_sentence(
             seen.add(n)
             unique_words.append(n)
 
-    # 读取已缓存
+    # === 阶段1: 读取现有缓存 ===
+    # 从数据库查询该句子已有的生成块（缓存）
+    # cached_map 使用规范化词作为 key，便于快速查找是否已缓存
+    # 注：blocker_word 字段存储的是规范化后的词
     cached_q = await db.execute(
         select(ListeningPracticeGenerated).where(
             ListeningPracticeGenerated.sentence_id == sentence.id
@@ -281,7 +303,10 @@ async def generate_for_sentence(
     cached_list = list(cached_q.scalars().all())
     cached_map = {g.blocker_word: g for g in cached_list}
 
-    # 跟踪失败的词和生成成功的词
+    # === 阶段2-3: 错误追踪 ===
+    # 收集本次生成过程中的失败词和成功词
+    #   - failed_words: 记录生成失败的词和失败原因
+    #   - generated_words: 记录成功生成或从缓存取得的词
     failed_words: list[dict] = []
     generated_words: set[str] = set()
 
@@ -435,6 +460,19 @@ async def generate_for_sentence(
                 requested_words=requested_words_original,
             )
 
+        # === 阶段3: LLM 响应验证与正规化 ===
+        # 逐项验证 LLM 返回的数据，检查：
+        #   1. 数据结构完整性（调用 _validate_generated_item）
+        #   2. 返回的词是否在请求列表中（seen set 中）
+        #   3. 是否已在缓存中（cached_map 中）
+        #
+        # 处理4种情况：
+        #   - 验证失败 → 记录 "validation_error"，继续
+        #   - 不在请求中 → 记录 "unexpected_word"，继续（防止LLM幻觉）
+        #   - 已在缓存中 → 标记为已生成（generated_words），继续
+        #   - 有效新项 → 加入 items_to_insert 待批量插入
+        #
+        # 此时不落库，等全部验证完再批量插入，保证事务一致性
         # 第一阶段：验证和收集要插入的项（不落库）
         items_to_insert = []
         for item in parsed:
