@@ -58,7 +58,7 @@ export default function VocabularyPage() {
   const [category, setCategory] = useState("");
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
-  const [sortBy, setSortBy] = useState<"" | "encounter">("");
+  const [sortBy, setSortBy] = useState<"" | "encounter">("encounter");
 
   // 编辑/添加状态
   const [editingWord, setEditingWord] = useState<VocabularyWord | null>(null);
