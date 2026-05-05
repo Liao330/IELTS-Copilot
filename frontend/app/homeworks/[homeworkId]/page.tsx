@@ -1409,8 +1409,8 @@ function ListeningPracticeLink({ homeworkId, homeworkTitle }: { homeworkId: stri
 // ==================== 阅读题型标注表单 ====================
 
 const READING_QUESTION_TYPES = [
-  "判断题", "填空题", "选择题", "段落匹配题", "细节匹配题",
-  "List of Headings", "句子完成题", "摘要填空题", "流程图填空",
+  "判断题", "填空题", "选择题", "多选题", "段落匹配题", "细节匹配题",
+  "List of Headings", "主旨概括题", "句子完成题", "摘要填空题", "流程图填空",
   "简答题", "分类题",
 ];
 
