@@ -518,7 +518,7 @@ async def get_downgrade_sentences(db: AsyncSession = Depends(get_db)):
                 id=f"mat-{m.id[:8]}",
                 chinese=chain,
                 source_material_id=m.id,
-                hint=f"{m.topic_cn} · {m.angle}",
+                hint=f"话题：{m.topic_cn}",
             ))
 
     # 从12条常用表达中补充
@@ -529,7 +529,7 @@ async def get_downgrade_sentences(db: AsyncSession = Depends(get_db)):
             id=expr["id"],
             chinese=expr["chinese"],
             source_material_id=None,
-            hint=expr["hint"],
+            hint=None,  # 不给提示，避免暴露答案
         ))
 
     # 如果还不够5条，再从素材补
