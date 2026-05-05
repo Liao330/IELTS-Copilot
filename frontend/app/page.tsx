@@ -6,9 +6,8 @@ import { api } from "@/lib/api";
 import type { Agent, Conversation, DailyReportResponse, ScheduleTask } from "@/types";
 import { AgentCard } from "@/components/agent/AgentCard";
 import {
-  Settings, BookMarked, Library, BookOpen, ArrowRight,
-  Target, Loader2, Sparkles, ChevronRight, ChevronDown, RefreshCw, Headphones,
-  Calendar, Plus, Check, Pencil, Trash2, PenLine,
+  Settings, Target, Loader2, Sparkles, ChevronRight, ChevronDown, RefreshCw,
+  Calendar, Plus, Check, Pencil, Trash2, ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -189,83 +188,50 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 max-w-5xl">
-        {/* ====== 昨日学习回顾 ====== */}
-        <div className="mb-8">
+      <div className="flex">
+        {/* ====== 左侧固定栏：昨日学习回顾 ====== */}
+        <aside className="hidden lg:block w-72 xl:w-80 shrink-0 sticky top-14 h-[calc(100vh-3.5rem)] overflow-y-auto border-r p-4">
           <button
             onClick={() => setSheetOpen(true)}
-            className="w-full rounded-xl border-2 border-amber-300/40 bg-gradient-to-br from-amber-50 via-orange-50/60 to-yellow-50 dark:from-amber-950/30 dark:via-orange-950/20 dark:to-yellow-950/20 dark:border-amber-700/30 hover:shadow-lg hover:shadow-amber-100/50 dark:hover:shadow-amber-900/20 transition-all duration-300 p-5 text-left group"
+            className="w-full rounded-xl border border-amber-200/60 dark:border-amber-800/40 bg-gradient-to-br from-amber-50/80 to-orange-50/60 dark:from-amber-950/20 dark:to-orange-950/10 hover:shadow-md transition-all p-4 text-left group"
           >
-            {/* Header row */}
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-sm">
-                  <Sparkles className="h-5 w-5" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold group-hover:text-amber-700 dark:group-hover:text-amber-400 transition-colors">
-                    昨日学习回顾
-                  </h2>
-                  <p className="text-xs text-muted-foreground">
-                    {(() => {
-                      const y = new Date();
-                      y.setDate(y.getDate() - 1);
-                      return y.toLocaleDateString("zh-CN", { month: "long", day: "numeric", weekday: "short" });
-                    })()}
-                  </p>
-                </div>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-sm">
+                <Sparkles className="h-4 w-4" />
               </div>
-              <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                查看详情
-                <ChevronRight className="h-3.5 w-3.5" />
+              <div>
+                <h2 className="text-sm font-bold">昨日学习回顾</h2>
+                <p className="text-[10px] text-muted-foreground">
+                  {(() => { const y = new Date(); y.setDate(y.getDate() - 1); return y.toLocaleDateString("zh-CN", { month: "long", day: "numeric", weekday: "short" }); })()}
+                </p>
               </div>
             </div>
 
-            {/* Content area */}
             {dailyLoading ? (
-              <div className="flex items-center gap-2 py-3 text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm">AI 正在生成昨日回顾...</span>
+              <div className="flex items-center gap-2 py-2 text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span className="text-xs">生成中...</span>
               </div>
             ) : dailyError ? (
-              <p className="text-sm text-muted-foreground py-2">
-                回顾加载失败，点击查看详情
-              </p>
+              <p className="text-xs text-muted-foreground">加载失败，点击查看</p>
             ) : dailyReport ? (
-              <div className="space-y-2.5">
-                {/* Mini stats */}
-                <div className="flex items-center gap-3 text-xs">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-white/70 dark:bg-white/10 px-2.5 py-1 font-medium">
-                    📝 作业 {yesterdayCount}
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-white/70 dark:bg-white/10 px-2.5 py-1 font-medium">
-                    💬 反馈 {yesterdayFeedback}
-                  </span>
-                  {dailyReport.stats.categories.length > 0 && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-white/70 dark:bg-white/10 px-2.5 py-1 font-medium">
-                      📚 {dailyReport.stats.categories.join(" · ")}
-                    </span>
-                  )}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-[10px]">
+                  <span className="rounded-full bg-white/70 dark:bg-white/10 px-2 py-0.5">📝 {yesterdayCount}</span>
+                  <span className="rounded-full bg-white/70 dark:bg-white/10 px-2 py-0.5">💬 {yesterdayFeedback}</span>
                 </div>
-
-                {/* Overview */}
                 {briefOverview && (
-                  <p className="text-sm leading-relaxed text-foreground/80 line-clamp-2">
-                    {briefOverview}
-                  </p>
+                  <p className="text-xs leading-relaxed text-foreground/80 line-clamp-4">{briefOverview}</p>
                 )}
-
-                {/* Tomorrow actions preview */}
                 {briefActions && briefActions.length > 0 && (
-                  <div className="flex flex-col gap-1 pt-1">
-                    <span className="text-xs font-semibold text-amber-700/70 dark:text-amber-400/70 flex items-center gap-1">
-                      <Target className="h-3 w-3" />
-                      今日建议
+                  <div className="space-y-1 pt-1">
+                    <span className="text-[10px] font-semibold text-amber-700/70 dark:text-amber-400/70 flex items-center gap-1">
+                      <Target className="h-3 w-3" /> 今日建议
                     </span>
                     {briefActions.map((action, i) => (
-                      <div key={i} className="flex items-start gap-1.5 text-xs text-foreground/70">
-                        <ArrowRight className="h-3 w-3 mt-0.5 shrink-0 text-amber-600/60" />
-                        <span className="line-clamp-1">{action}</span>
+                      <div key={i} className="flex items-start gap-1 text-[10px] text-foreground/70">
+                        <ArrowRight className="h-2.5 w-2.5 mt-0.5 shrink-0 text-amber-600/60" />
+                        <span className="line-clamp-2">{action}</span>
                       </div>
                     ))}
                   </div>
@@ -273,322 +239,228 @@ export default function HomePage() {
               </div>
             ) : null}
           </button>
-        </div>
+        </aside>
 
-        {/* ====== 今日待办 ====== */}
-        <div className="mb-8 rounded-xl border bg-card p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-semibold">今日待办</h3>
-            {(todos.length > 0 || overdueTasks.length > 0) && (
-              <span className="text-[10px] text-muted-foreground ml-auto">
-                {todos.length + overdueTasks.length} 项待完成
-              </span>
+        {/* ====== 中间主体内容 ====== */}
+        <main className="flex-1 min-w-0 px-4 py-6 max-w-4xl mx-auto">
+          {/* 功能模块入口（顶部网格） */}
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-6">
+            {[
+              { icon: "📋", label: "备考计划", path: "/study-plan", color: "border-amber-200 hover:bg-amber-50 dark:border-amber-800 dark:hover:bg-amber-950/30" },
+              { icon: "🎧", label: "听力精听", path: "/listening-practice", color: "border-orange-200 hover:bg-orange-50 dark:border-orange-800 dark:hover:bg-orange-950/30" },
+              { icon: "📖", label: "单词本", path: "/vocabulary", color: "border-sky-200 hover:bg-sky-50 dark:border-sky-800 dark:hover:bg-sky-950/30" },
+              { icon: "✏️", label: "句型&素材", path: "/writing-practice", color: "border-purple-200 hover:bg-purple-50 dark:border-purple-800 dark:hover:bg-purple-950/30" },
+              { icon: "📚", label: "作业库", path: "/homeworks", color: "border-emerald-200 hover:bg-emerald-50 dark:border-emerald-800 dark:hover:bg-emerald-950/30" },
+              { icon: "📒", label: "笔记", path: "/notes", color: "border-rose-200 hover:bg-rose-50 dark:border-rose-800 dark:hover:bg-rose-950/30" },
+            ].map((item) => (
+              <button
+                key={item.path}
+                onClick={() => router.push(item.path)}
+                className={`flex flex-col items-center justify-center gap-1 py-3 rounded-xl border transition-all ${item.color}`}
+              >
+                <span className="text-xl">{item.icon}</span>
+                <span className="text-[10px] font-medium">{item.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* 手机端：昨日回顾 (lg以下显示) */}
+          <div className="lg:hidden mb-6">
+            <button
+              onClick={() => setSheetOpen(true)}
+              className="w-full rounded-xl border border-amber-200/60 dark:border-amber-800/40 bg-gradient-to-br from-amber-50/80 to-orange-50/60 dark:from-amber-950/20 dark:to-orange-950/10 p-4 text-left"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="h-4 w-4 text-amber-500" />
+                <span className="text-sm font-bold">昨日学习回顾</span>
+                <ChevronRight className="h-3.5 w-3.5 ml-auto text-muted-foreground" />
+              </div>
+              {briefOverview && <p className="text-xs text-foreground/80 line-clamp-2">{briefOverview}</p>}
+            </button>
+          </div>
+
+          {/* 手机端：今日待办 (lg以下显示) */}
+          <div className="lg:hidden mb-6 rounded-xl border bg-card p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold">今日待办</h3>
+              {(todos.length > 0 || overdueTasks.length > 0) && (
+                <span className="text-[10px] text-muted-foreground ml-auto">{todos.length + overdueTasks.length} 项</span>
+              )}
+            </div>
+            {todos.map((task) => (
+              <div key={task.id} className="flex items-center gap-2 text-sm">
+                <button type="button" onClick={() => handleToggleTodo(task)} className="h-4 w-4 rounded border shrink-0 border-muted-foreground/30 hover:border-emerald-500" />
+                <span className="flex-1 truncate">{task.title}</span>
+              </div>
+            ))}
+            <div className="flex gap-2">
+              <Input value={newTodo} onChange={(e) => setNewTodo(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) handleAddTodo(); }}
+                placeholder="添加任务..." className="text-sm h-8" />
+              <Button size="sm" variant="outline" className="h-8 px-2.5 shrink-0" onClick={handleAddTodo} disabled={!newTodo.trim() || addingTodo}>
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+
+          {/* IELTS Copilot 主助手 */}
+          <div className="mb-6">
+            <button
+              onClick={() => handleStartChat("ielts-copilot")}
+              className="w-full rounded-xl border-2 border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10 hover:from-primary/10 hover:to-primary/20 transition-all duration-300 p-5 text-left group"
+            >
+              <div className="flex items-center gap-4">
+                <span className="text-3xl">🎓</span>
+                <div className="flex-1">
+                  <h2 className="text-lg font-bold mb-0.5 group-hover:text-primary transition-colors">IELTS Copilot</h2>
+                  <p className="text-xs text-muted-foreground">智能全能助手 — 直接提问或发送材料，自动调用专项助手</p>
+                </div>
+                <ChevronRight className="h-5 w-5 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+            </button>
+          </div>
+
+          {/* 专项助手 */}
+          <div className="mb-6">
+            <button type="button" onClick={() => setAgentsFolded(!agentsFolded)}
+              className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors mb-3">
+              {agentsFolded ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              专项助手 <span className="text-xs font-normal">({agents.filter(a => a.id !== "ielts-copilot").length})</span>
+            </button>
+            {!agentsFolded && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {agents.filter(a => a.id !== "ielts-copilot").map((agent) => (
+                  <AgentCard key={agent.id} agent={agent} onStart={() => handleStartChat(agent.id)} />
+                ))}
+              </div>
             )}
           </div>
 
-          {/* Today's active tasks */}
-          {todos.length > 0 && (
-            <div className="space-y-1.5">
-              {todos.map((task) => (
-                <div key={task.id} className="flex items-center gap-2.5 group">
-                  <button
-                    type="button"
-                    onClick={() => handleToggleTodo(task)}
-                    className="h-4 w-4 rounded border shrink-0 flex items-center justify-center transition-colors border-muted-foreground/30 hover:border-emerald-500"
-                  />
-                  {editingId === task.id ? (
-                    <Input
-                      value={editingText}
-                      onChange={(e) => setEditingText(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.nativeEvent.isComposing) handleEditTodo(task.id);
-                        if (e.key === "Escape") setEditingId(null);
-                      }}
-                      onBlur={() => handleEditTodo(task.id)}
-                      autoFocus
-                      className="text-sm h-6 py-0 flex-1"
-                    />
-                  ) : (
-                    <span className="text-sm flex-1">{task.title}</span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => { setEditingId(task.id); setEditingText(task.title); }}
-                    className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary text-xs transition-opacity"
-                  >
-                    <Pencil className="h-3 w-3" />
+          {/* 最近对话 */}
+          {recentConversations.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                <span className="inline-block w-1 h-4 bg-primary rounded-full" />
+                最近对话
+              </h3>
+              <div className="space-y-1">
+                {recentConversations.map((conv) => (
+                  <button key={conv.id} onClick={() => router.push(`/chat/${conv.id}`)}
+                    className="w-full text-left p-2.5 rounded-lg hover:bg-accent transition-colors flex items-center justify-between">
+                    <span className="truncate text-sm">{conv.title || "新对话"}</span>
+                    <span className="text-[10px] text-muted-foreground shrink-0">{new Date(conv.updated_at).toLocaleDateString("zh-CN")}</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteTodo(task.id)}
-                    className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive text-xs transition-opacity"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Overdue tasks (past days' undone) */}
-          {overdueTasks.length > 0 && (
-            <div className="pt-2 border-t">
-              <button
-                type="button"
-                onClick={() => setShowOverdue(!showOverdue)}
-                className="text-xs text-amber-600 dark:text-amber-400 hover:text-amber-700 transition-colors flex items-center gap-1 mb-1.5"
-              >
-                <ChevronRight className={`h-3 w-3 transition-transform ${showOverdue ? "rotate-90" : ""}`} />
-                历史遗留（{overdueTasks.length} 项未完成）
-              </button>
-              {showOverdue && (
-                <div className="space-y-1.5 pl-1">
-                  {overdueTasks.map((task) => (
-                    <div key={task.id} className="flex items-center gap-2.5 group">
-                      <button
-                        type="button"
-                        onClick={() => handleToggleTodo(task)}
-                        className="h-4 w-4 rounded border shrink-0 flex items-center justify-center transition-colors border-amber-400/50 hover:border-emerald-500"
-                      />
-                      {editingId === task.id ? (
-                        <Input
-                          value={editingText}
-                          onChange={(e) => setEditingText(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" && !e.nativeEvent.isComposing) handleEditTodo(task.id);
-                            if (e.key === "Escape") setEditingId(null);
-                          }}
-                          onBlur={() => handleEditTodo(task.id)}
-                          autoFocus
-                          className="text-sm h-6 py-0 flex-1"
-                        />
-                      ) : (
-                        <span className="text-sm flex-1">{task.title}</span>
-                      )}
-                      <span className="text-[10px] text-amber-500/70 shrink-0">
-                        {new Date(task.scheduled_date + "T00:00:00").toLocaleDateString("zh-CN", { month: "numeric", day: "numeric" })}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => { setEditingId(task.id); setEditingText(task.title); }}
-                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary text-xs transition-opacity"
-                      >
-                        <Pencil className="h-3 w-3" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteTodo(task.id)}
-                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive text-xs transition-opacity"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Quick add */}
-          <div className="flex gap-2">
-            <Input
-              value={newTodo}
-              onChange={(e) => setNewTodo(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) handleAddTodo(); }}
-              placeholder="添加今日任务..."
-              className="text-sm h-8"
-            />
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 px-2.5 shrink-0"
-              onClick={handleAddTodo}
-              disabled={!newTodo.trim() || addingTodo}
-            >
-              <Plus className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-
-          {/* History (completed) */}
-          {historyTasks.length > 0 && (
-            <div className="pt-2 border-t">
-              <button
-                type="button"
-                onClick={() => setShowHistory(!showHistory)}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-              >
-                <ChevronRight className={`h-3 w-3 transition-transform ${showHistory ? "rotate-90" : ""}`} />
-                历史记录（{historyTasks.length} 项已完成）
-              </button>
-              {showHistory && (
-                <div className="mt-2 space-y-3 max-h-60 overflow-y-auto">
-                  {(() => {
-                    const grouped: Record<string, ScheduleTask[]> = {};
-                    historyTasks.forEach((t) => {
-                      if (!grouped[t.scheduled_date]) grouped[t.scheduled_date] = [];
-                      grouped[t.scheduled_date].push(t);
-                    });
-                    const dates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
-                    return dates.map((date) => (
-                      <div key={date}>
-                        <p className="text-[10px] font-medium text-muted-foreground mb-1">
-                          {new Date(date + "T00:00:00").toLocaleDateString("zh-CN", {
-                            month: "short", day: "numeric", weekday: "short",
-                          })}
-                          {date === todayStr && " (今天)"}
-                        </p>
-                        <div className="space-y-0.5 pl-2 border-l-2 border-emerald-200 dark:border-emerald-800">
-                          {grouped[date].map((task) => (
-                            <div key={task.id} className="flex items-center gap-2 text-xs text-muted-foreground/70 group">
-                              <Check className="h-3 w-3 text-emerald-500 shrink-0" />
-                              <span className="line-through flex-1">{task.title}</span>
-                              <button
-                                type="button"
-                                onClick={() => handleToggleTodo(task)}
-                                className="opacity-0 group-hover:opacity-100 text-[10px] text-muted-foreground hover:text-amber-500 transition-opacity"
-                                title="标记为未完成"
-                              >
-                                撤回
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ));
-                  })()}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* ====== IELTS Copilot 主助手 ====== */}
-        <div className="mb-8">
-          <button
-            onClick={() => handleStartChat("ielts-copilot")}
-            className="w-full rounded-xl border-2 border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10 hover:from-primary/10 hover:to-primary/20 transition-all duration-300 p-6 text-left group"
-          >
-            <div className="flex items-center gap-4">
-              <span className="text-4xl">🎓</span>
-              <div className="flex-1">
-                <h2 className="text-xl font-bold mb-1 group-hover:text-primary transition-colors">
-                  IELTS Copilot
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  智能全能助手 — 直接提问或发送材料，自动调用最合适的专项助手为你解答
-                </p>
-              </div>
-              <div className="text-primary opacity-0 group-hover:opacity-100 transition-opacity text-2xl">
-                →
+                ))}
               </div>
             </div>
-          </button>
-        </div>
-
-        {/* ====== 专项助手（默认折叠） ====== */}
-        <div className="mb-10">
-          <button
-            type="button"
-            onClick={() => setAgentsFolded(!agentsFolded)}
-            className="flex items-center gap-2 text-lg font-semibold text-muted-foreground hover:text-foreground transition-colors mb-4"
-          >
-            {agentsFolded ? <ChevronRight className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-            专项助手
-            <span className="text-xs font-normal text-muted-foreground">({agents.filter(a => a.id !== "ielts-copilot").length})</span>
-          </button>
-          {!agentsFolded && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {agents.filter(a => a.id !== "ielts-copilot").map((agent) => (
-                <AgentCard
-                  key={agent.id}
-                  agent={agent}
-                  onStart={() => handleStartChat(agent.id)}
-                />
-              ))}
-            </div>
           )}
-        </div>
+        </main>
 
-        {recentConversations.length > 0 && (
-          <div>
-            <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-              <span className="inline-block w-1 h-5 bg-primary rounded-full" />
-              最近对话
-            </h3>
-            <div className="space-y-2">
-              {recentConversations.map((conv) => (
-                <button
-                  key={conv.id}
-                  onClick={() => router.push(`/chat/${conv.id}`)}
-                  className="w-full text-left p-3 rounded-lg hover:bg-accent transition-colors flex items-center justify-between group"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-sm">📝</span>
-                    <span className="truncate text-sm font-medium">
-                      {conv.title || "新对话"}
-                    </span>
+        {/* ====== 右侧固定栏：今日待办 ====== */}
+        <aside className="hidden lg:block w-72 xl:w-80 shrink-0 sticky top-14 h-[calc(100vh-3.5rem)] overflow-y-auto border-l p-4">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold">今日待办</h3>
+              {(todos.length > 0 || overdueTasks.length > 0) && (
+                <span className="text-[10px] text-muted-foreground ml-auto">{todos.length + overdueTasks.length} 项待完成</span>
+              )}
+            </div>
+
+            {/* Today's active tasks */}
+            {todos.length > 0 && (
+              <div className="space-y-1.5">
+                {todos.map((task) => (
+                  <div key={task.id} className="flex items-center gap-2 group">
+                    <button type="button" onClick={() => handleToggleTodo(task)}
+                      className="h-4 w-4 rounded border shrink-0 flex items-center justify-center border-muted-foreground/30 hover:border-emerald-500" />
+                    {editingId === task.id ? (
+                      <Input value={editingText} onChange={(e) => setEditingText(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) handleEditTodo(task.id); if (e.key === "Escape") setEditingId(null); }}
+                        onBlur={() => handleEditTodo(task.id)} autoFocus className="text-xs h-6 py-0 flex-1" />
+                    ) : (
+                      <span className="text-xs flex-1">{task.title}</span>
+                    )}
+                    <button type="button" onClick={() => { setEditingId(task.id); setEditingText(task.title); }}
+                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary transition-opacity">
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                    <button type="button" onClick={() => handleDeleteTodo(task.id)}
+                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity">
+                      <Trash2 className="h-3 w-3" />
+                    </button>
                   </div>
-                  <span className="text-xs text-muted-foreground flex-shrink-0">
-                    {new Date(conv.updated_at).toLocaleDateString("zh-CN")}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+                ))}
+              </div>
+            )}
 
-        <div className="mt-8 space-y-3">
-          <Button
-            variant="outline"
-            className="w-full h-12 text-base gap-2 border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-950/40"
-            onClick={() => router.push("/study-plan")}
-          >
-            <Target className="h-5 w-5" />
-            📋 备考计划
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full h-12 text-base gap-2"
-            onClick={() => router.push("/listening-practice")}
-          >
-            <Headphones className="h-5 w-5" />
-            🎧 听力精听复盘
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full h-12 text-base gap-2"
-            onClick={() => router.push("/vocabulary")}
-          >
-            <BookOpen className="h-5 w-5" />
-            📖 单词本
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full h-12 text-base gap-2"
-            onClick={() => router.push("/writing-practice")}
-          >
-            <PenLine className="h-5 w-5" />
-            ✏️ 写作句型背诵
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full h-12 text-base gap-2"
-            onClick={() => router.push("/homeworks")}
-          >
-            <Library className="h-5 w-5" />
-            📚 作业库
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full h-12 text-base gap-2"
-            onClick={() => router.push("/notes")}
-          >
-            <BookMarked className="h-5 w-5" />
-            📒 我的笔记
-          </Button>
-        </div>
-      </main>
+            {/* Overdue */}
+            {overdueTasks.length > 0 && (
+              <div className="pt-2 border-t">
+                <button type="button" onClick={() => setShowOverdue(!showOverdue)}
+                  className="text-[10px] text-amber-600 dark:text-amber-400 flex items-center gap-1 mb-1.5">
+                  <ChevronRight className={`h-3 w-3 transition-transform ${showOverdue ? "rotate-90" : ""}`} />
+                  历史遗留（{overdueTasks.length}项）
+                </button>
+                {showOverdue && (
+                  <div className="space-y-1.5">
+                    {overdueTasks.map((task) => (
+                      <div key={task.id} className="flex items-center gap-2 group">
+                        <button type="button" onClick={() => handleToggleTodo(task)}
+                          className="h-4 w-4 rounded border shrink-0 border-amber-400/50 hover:border-emerald-500" />
+                        {editingId === task.id ? (
+                          <Input value={editingText} onChange={(e) => setEditingText(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) handleEditTodo(task.id); if (e.key === "Escape") setEditingId(null); }}
+                            onBlur={() => handleEditTodo(task.id)} autoFocus className="text-xs h-6 py-0 flex-1" />
+                        ) : (
+                          <span className="text-xs flex-1">{task.title}</span>
+                        )}
+                        <span className="text-[9px] text-amber-500/70 shrink-0">
+                          {new Date(task.scheduled_date + "T00:00:00").toLocaleDateString("zh-CN", { month: "numeric", day: "numeric" })}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Quick add */}
+            <div className="flex gap-1.5">
+              <Input value={newTodo} onChange={(e) => setNewTodo(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) handleAddTodo(); }}
+                placeholder="添加任务..." className="text-xs h-7" />
+              <Button size="sm" variant="outline" className="h-7 px-2 shrink-0" onClick={handleAddTodo} disabled={!newTodo.trim() || addingTodo}>
+                <Plus className="h-3 w-3" />
+              </Button>
+            </div>
+
+            {/* History */}
+            {historyTasks.length > 0 && (
+              <div className="pt-2 border-t">
+                <button type="button" onClick={() => setShowHistory(!showHistory)}
+                  className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1">
+                  <ChevronRight className={`h-3 w-3 transition-transform ${showHistory ? "rotate-90" : ""}`} />
+                  已完成（{historyTasks.length}）
+                </button>
+                {showHistory && (
+                  <div className="mt-1.5 space-y-0.5 max-h-40 overflow-y-auto">
+                    {historyTasks.slice(0, 20).map((task) => (
+                      <div key={task.id} className="flex items-center gap-1.5 text-[10px] text-muted-foreground/70 group">
+                        <Check className="h-3 w-3 text-emerald-500 shrink-0" />
+                        <span className="line-through flex-1 truncate">{task.title}</span>
+                        <button type="button" onClick={() => handleToggleTodo(task)}
+                          className="opacity-0 group-hover:opacity-100 text-[9px] hover:text-amber-500">撤回</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </aside>
+      </div>
 
       {/* ====== Sheet: Full Daily Brief ====== */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
