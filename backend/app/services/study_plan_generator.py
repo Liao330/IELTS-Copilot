@@ -165,12 +165,17 @@ def generate_phase3_tasks(
 
             # Morning office (10:20-10:50) — 到工位后
             if template_day <= 18:
-                add(f"写作句型背诵 (Day {template_day})", "writing", "10:20", 15,
+                add(f"写作句型背诵 (Day {template_day})", "writing", "10:20", 10,
                     "新学5条 + 复习到期句型，打开写作句型背诵模块",
                     f"句型Day{template_day}")
+                add(f"素材背诵 (Day {template_day})", "writing", "10:30", 10,
+                    "新学4条素材 + 复习理由链和关键词",
+                    f"素材Day{template_day}")
             else:
-                add("写作句型复习", "writing", "10:20", 15,
+                add("写作句型复习", "writing", "10:20", 10,
                     "全量复习巩固，默写测试")
+                add("素材复习 + 默写", "writing", "10:30", 10,
+                    "闪卡复习 + 理由链默写测试")
             add("精听练习句听写", "listening", "10:35", 15,
                 "对已生成的练习句做听写训练")
 
@@ -184,7 +189,7 @@ def generate_phase3_tasks(
 
             # Dinner (19:00-19:20) — 晚餐背诵
             add("晚餐背诵", "vocabulary", "19:00", 20,
-                "吃饭时手机背单词或复习句型")
+                "吃饭时手机背单词/复习句型/素材关键词")
 
             # Gym: vocabulary
             add("背单词 (健身房)", "vocabulary", None, 60, "手机 APP 刷词")
@@ -258,7 +263,8 @@ def _generate_sprint_day(
     if sprint_day == 10:
         # 考前最后一天：轻松复习
         add("回顾所有错题笔记", "other", "09:00", 90, "浏览作业库中的复盘笔记")
-        add("写作句型快速过一遍", "writing", "10:30", 60, "全部89条快速闪卡")
+        add("写作句型快速过一遍", "writing", "10:30", 30, "全部句型快速闪卡")
+        add("素材理由链快速过一遍", "writing", "11:00", 30, "全部素材闪卡回忆")
         add("听力单词复习", "vocabulary", "14:00", 60, "单词本中听力分类")
         add("口语关键词回顾", "speaking", "15:00", 60, "过一遍所有Part话题关键词")
         add("早睡准备考试", "other", "21:00", None, "放松心态，22:00前睡觉")
@@ -295,7 +301,7 @@ def _generate_sprint_day(
         else:
             add("写作限时加练", "writing", "14:00", 60, "自选题目严格限时")
         add("写作反馈分析", "writing", "15:00", 60, "上传作业库，复盘+句型巩固")
-        add("句型默写测试", "writing", "16:30", 30, "随机抽10条默写")
+        add("句型+素材默写", "writing", "16:30", 30, "随机抽句型10条+素材理由链5条默写")
         add("口语录音", "speaking", "19:00", 60, "每题2遍: 关键词→脱稿")
     else:  # sprint_day in (3, 6, 9)
         # 专项突破日：阅读+口语

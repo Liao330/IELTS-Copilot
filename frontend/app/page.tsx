@@ -194,9 +194,9 @@ export default function HomePage() {
           {[
             { icon: "📋", label: "备考计划", path: "/study-plan", color: "border-amber-200 hover:bg-amber-50 dark:border-amber-800 dark:hover:bg-amber-950/30" },
             { icon: "🎧", label: "听力精听", path: "/listening-practice", color: "border-orange-200 hover:bg-orange-50 dark:border-orange-800 dark:hover:bg-orange-950/30" },
-            { icon: "📖", label: "单词本", path: "/vocabulary", color: "border-sky-200 hover:bg-sky-50 dark:border-sky-800 dark:hover:bg-sky-950/30" },
             { icon: "✏️", label: "句型&素材", path: "/writing-practice", color: "border-purple-200 hover:bg-purple-50 dark:border-purple-800 dark:hover:bg-purple-950/30" },
             { icon: "📚", label: "作业库", path: "/homeworks", color: "border-emerald-200 hover:bg-emerald-50 dark:border-emerald-800 dark:hover:bg-emerald-950/30" },
+            { icon: "📖", label: "单词本", path: "/vocabulary", color: "border-sky-200 hover:bg-sky-50 dark:border-sky-800 dark:hover:bg-sky-950/30" },
             { icon: "📒", label: "笔记", path: "/notes", color: "border-rose-200 hover:bg-rose-50 dark:border-rose-800 dark:hover:bg-rose-950/30" },
           ].map((item) => (
             <button
@@ -283,7 +283,10 @@ export default function HomePage() {
                         onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) handleEditTodo(task.id); if (e.key === "Escape") setEditingId(null); }}
                         onBlur={() => handleEditTodo(task.id)} autoFocus className="text-xs h-6 py-0 flex-1" />
                     ) : (
-                      <span className="text-sm flex-1">{task.title}</span>
+                      <span className="text-sm flex-1">
+                        {task.source && <span className="inline-block text-[9px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded px-1 mr-1.5 align-middle">计划</span>}
+                        {task.title}
+                      </span>
                     )}
                     <button type="button" onClick={() => { setEditingId(task.id); setEditingText(task.title); }}
                       className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary transition-opacity">
