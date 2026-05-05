@@ -395,6 +395,11 @@ export default function HomeworkDetailPage() {
           );
         })()}
 
+        {/* 阅读题型标注（仅阅读作业） */}
+        {homework.category === "reading" && (
+          <ReadingQuestionTypeForm homework={homework} onUpdate={fetchHomework} />
+        )}
+
         {/* AI 摘要 */}
         <HomeworkSummaryBlock homework={homework} onRefresh={fetchHomework} />
 
@@ -1397,5 +1402,163 @@ function ListeningPracticeLink({ homeworkId, homeworkTitle }: { homeworkId: stri
       </DialogContent>
     </Dialog>
     </>
+  );
+}
+
+
+// ==================== 阅读题型标注表单 ====================
+
+const READING_QUESTION_TYPES = [
+  "判断题", "填空题", "选择题", "段落匹配题", "细节匹配题",
+  "List of Headings", "句子完成题", "摘要填空题", "流程图填空",
+  "简答题", "分类题",
+];
+
+interface PassageTypeEntry {
+  passage: number;
+  correct: string;
+  total: string;
+  types: string[];
+}
+
+function ReadingQuestionTypeForm({ homework, onUpdate }: { homework: Homework; onUpdate: () => void }) {
+  const { toast } = useToast();
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Parse existing description to populate form
+  const parseExisting = (): PassageTypeEntry[] => {
+    const desc = homework.description || "";
+    const pattern = /[Pp](\d+)\s+(\d+)\s*\/\s*(\d+)\s*(?:题型有|题型：|题型:)\s*(.+)/gm;
+    const entries: PassageTypeEntry[] = [];
+    let m;
+    while ((m = pattern.exec(desc)) !== null) {
+      const types = m[4].split(/[、,，&]/).map((t: string) => t.trim()).filter(Boolean);
+      entries.push({ passage: parseInt(m[1]), correct: m[2], total: m[3], types });
+    }
+    if (entries.length === 0) {
+      return [
+        { passage: 1, correct: "", total: "13", types: [] },
+        { passage: 2, correct: "", total: "13", types: [] },
+        { passage: 3, correct: "", total: "14", types: [] },
+      ];
+    }
+    return entries;
+  };
+
+  const [entries, setEntries] = useState<PassageTypeEntry[]>(parseExisting);
+
+  const updateEntry = (idx: number, field: keyof PassageTypeEntry, value: string | string[]) => {
+    setEntries((prev) => prev.map((e, i) => i === idx ? { ...e, [field]: value } : e));
+  };
+
+  const toggleType = (idx: number, type: string) => {
+    setEntries((prev) => prev.map((e, i) => {
+      if (i !== idx) return e;
+      const types = e.types.includes(type) ? e.types.filter((t) => t !== type) : [...e.types, type];
+      return { ...e, types };
+    }));
+  };
+
+  const handleSave = async () => {
+    const lines = entries
+      .filter((e) => e.correct && e.total)
+      .map((e) => `P${e.passage} ${e.correct}/${e.total} 题型有 ${e.types.join("、") || "未标注"}`);
+    if (lines.length === 0) {
+      toast({ variant: "destructive", description: "请至少填写一个 Passage 的分数" });
+      return;
+    }
+    const desc = lines.join("\n");
+    setSaving(true);
+    try {
+      await api.updateHomework(homework.id, { description: desc });
+      toast({ description: "题型标注已保存" });
+      setEditing(false);
+      onUpdate();
+    } catch {
+      toast({ variant: "destructive", description: "保存失败" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Display mode
+  if (!editing && homework.description) {
+    return (
+      <div className="rounded-lg border bg-card p-4 mb-4">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-semibold flex items-center gap-1.5">📝 题型标注</h3>
+          <button type="button" onClick={() => setEditing(true)} className="text-xs text-sky-600 hover:underline cursor-pointer">编辑</button>
+        </div>
+        <div className="space-y-1.5">
+          {entries.filter(e => e.correct).map((e) => (
+            <div key={e.passage} className="flex items-center gap-2 text-xs">
+              <span className="font-bold text-purple-600 dark:text-purple-400 w-6">P{e.passage}</span>
+              <span className="font-mono">{e.correct}/{e.total}</span>
+              <span className="text-muted-foreground">·</span>
+              <span className="text-muted-foreground">{e.types.join("、") || "未标注题型"}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Edit mode
+  return (
+    <div className="rounded-lg border bg-card p-4 mb-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold flex items-center gap-1.5">📝 题型标注</h3>
+        {homework.description && (
+          <button type="button" onClick={() => setEditing(false)} className="text-xs text-muted-foreground hover:text-foreground cursor-pointer">取消</button>
+        )}
+      </div>
+      <div className="space-y-4">
+        {entries.map((entry, idx) => (
+          <div key={idx} className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-purple-600 dark:text-purple-400 w-6">P{entry.passage}</span>
+              <input
+                type="text"
+                value={entry.correct}
+                onChange={(e) => updateEntry(idx, "correct", e.target.value)}
+                placeholder="对"
+                className="w-10 text-center text-xs border rounded px-1 py-0.5 bg-background"
+              />
+              <span className="text-xs text-muted-foreground">/</span>
+              <input
+                type="text"
+                value={entry.total}
+                onChange={(e) => updateEntry(idx, "total", e.target.value)}
+                placeholder="总"
+                className="w-10 text-center text-xs border rounded px-1 py-0.5 bg-background"
+              />
+            </div>
+            <div className="flex flex-wrap gap-1.5 pl-8">
+              {READING_QUESTION_TYPES.map((qt) => (
+                <button
+                  key={qt}
+                  type="button"
+                  onClick={() => toggleType(idx, qt)}
+                  className={`px-2 py-0.5 rounded-full text-[10px] border transition-colors cursor-pointer ${
+                    entry.types.includes(qt)
+                      ? "bg-purple-100 border-purple-300 text-purple-700 dark:bg-purple-900/40 dark:border-purple-700 dark:text-purple-300"
+                      : "bg-muted border-transparent text-muted-foreground hover:border-muted-foreground/30"
+                  }`}
+                >
+                  {qt}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 flex justify-end">
+        <Button size="sm" onClick={handleSave} disabled={saving} className="gap-1.5">
+          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+          保存标注
+        </Button>
+      </div>
+    </div>
   );
 }

@@ -92,7 +92,7 @@ export default function ListeningPracticeDetailPage() {
   const [studySeconds, setStudySeconds] = useState(0);
   const lastActivityRef = useRef(Date.now());
   const activeSecondsRef = useRef(0);
-  const IDLE_THRESHOLD = 30_000; // 30s 无操作视为离开
+  const IDLE_THRESHOLD = 15_000; // 15s 无操作视为离开
   const REPORT_INTERVAL = 30; // 每 30 秒上报一次
 
   // 监听用户活动
