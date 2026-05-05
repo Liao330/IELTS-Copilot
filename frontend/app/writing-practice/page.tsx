@@ -26,7 +26,7 @@ const MASTERY_COLORS = ["bg-gray-200 text-gray-700", "bg-amber-100 text-amber-70
 
 type MainTab = "template" | "material";
 type TemplateSubTab = "daily" | "dictation" | "flashcard" | "library" | "stats";
-type MaterialSubTab = "m-daily" | "m-flashcard" | "m-dictation" | "m-library" | "m-stats";
+type MaterialSubTab = "m-daily" | "m-flashcard" | "m-dictation" | "m-library" | "m-stats" | "m-downgrade";
 
 export default function WritingPracticePage() {
   const router = useRouter();
@@ -57,6 +57,7 @@ export default function WritingPracticePage() {
     { key: "m-daily" as const, label: "今日学习", icon: "📋" },
     { key: "m-flashcard" as const, label: "闪卡复习", icon: "🃏" },
     { key: "m-dictation" as const, label: "默写测试", icon: "✏️" },
+    { key: "m-downgrade" as const, label: "降级练习", icon: "⬇️" },
     { key: "m-library" as const, label: "素材库", icon: "📚" },
     { key: "m-stats" as const, label: "统计", icon: "📈" },
   ];
@@ -834,6 +835,7 @@ function MaterialTab({ subTab }: { subTab: string }) {
   if (subTab === "m-daily") return <MaterialDailySubTab />;
   if (subTab === "m-flashcard") return <MaterialFlashcardSubTab />;
   if (subTab === "m-dictation") return <MaterialDictationSubTab />;
+  if (subTab === "m-downgrade") return <MaterialDowngradeSubTab />;
   if (subTab === "m-library") return <MaterialLibrarySubTab />;
   if (subTab === "m-stats") return <MaterialStatsSubTab />;
   return null;
@@ -1072,6 +1074,187 @@ function MaterialDictationSubTab() {
           <Button size="sm" variant="outline" onClick={handleNext}>下一题</Button>
         </div>
       )}
+    </div>
+  );
+}
+
+function MaterialDowngradeSubTab() {
+  const [sentences, setSentences] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [input, setInput] = useState("");
+  const [result, setResult] = useState<any>(null);
+  const [checking, setChecking] = useState(false);
+  const [finished, setFinished] = useState(false);
+  const [sessionStats, setSessionStats] = useState({ correct: 0, total: 0 });
+  const { toast } = useToast();
+
+  const fetchSentences = useCallback(async () => {
+    setLoading(true);
+    setFinished(false);
+    setCurrentIdx(0);
+    setInput("");
+    setResult(null);
+    setSessionStats({ correct: 0, total: 0 });
+    try {
+      const data = await api.getDowngradeSentences();
+      setSentences(data);
+    } catch {
+      toast({ variant: "destructive", description: "加载降级练习失败" });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => { fetchSentences(); }, [fetchSentences]);
+
+  const current = sentences[currentIdx];
+
+  const handleSubmit = async () => {
+    if (!current || !input.trim() || checking) return;
+    setChecking(true);
+    try {
+      const res = await api.checkDowngrade(current.chinese, input.trim());
+      setResult(res);
+      setSessionStats((s) => ({
+        correct: s.correct + (res.correct ? 1 : 0),
+        total: s.total + 1,
+      }));
+    } catch {
+      toast({ variant: "destructive", description: "AI判分失败，请重试" });
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const handleNext = () => {
+    if (currentIdx < sentences.length - 1) {
+      setCurrentIdx(currentIdx + 1);
+      setInput("");
+      setResult(null);
+    } else {
+      setFinished(true);
+    }
+  };
+
+  if (loading) return <div className="py-12 text-center text-muted-foreground animate-pulse">加载中...</div>;
+  if (sentences.length === 0) return (
+    <div className="py-12 text-center text-muted-foreground space-y-2">
+      <p className="text-lg">📝</p>
+      <p>暂无降级练习句子</p>
+      <p className="text-xs">请先学习一些素材，系统会从理由链中抽取练习题</p>
+    </div>
+  );
+
+  if (finished) {
+    return (
+      <div className="py-12 text-center space-y-4">
+        <p className="text-2xl">🎉</p>
+        <p className="text-sm font-medium">本轮降级练习完成！</p>
+        <p className="text-xs text-muted-foreground">
+          ✅ {sessionStats.correct}/{sessionStats.total} 正确
+        </p>
+        <Button variant="outline" onClick={fetchSentences} className="gap-1">
+          再来一轮
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* 说明 */}
+      <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3 text-xs text-amber-800 dark:text-amber-200 space-y-1">
+        <p className="font-semibold">⬇️ 降级表达法练习</p>
+        <p>把复杂中文用最简单的英语表达出来。不要求高级词汇，核心意思到位 + 语法正确即可。</p>
+        <p className="text-[10px] text-amber-600 dark:text-amber-400">3步法：①抓核心意思 ②找简单替代词 ③组成简单句</p>
+      </div>
+
+      {/* Progress */}
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span>{currentIdx + 1}/{sentences.length}</span>
+        <span>✅ {sessionStats.correct}/{sessionStats.total}</span>
+      </div>
+
+      {/* Question card */}
+      <div className="rounded-xl border-2 bg-card p-5 space-y-4">
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground font-medium">请用简单英语表达：</p>
+          <p className="text-lg font-semibold text-foreground">{current.chinese}</p>
+          {current.hint && (
+            <p className="text-xs text-muted-foreground">💡 提示方向：{current.hint}</p>
+          )}
+        </div>
+
+        {/* Input */}
+        <Textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.nativeEvent.isComposing && !e.shiftKey) {
+              e.preventDefault();
+              handleSubmit();
+            }
+          }}
+          placeholder="Type your simple English here... (Enter to submit)"
+          rows={2}
+          className="font-mono text-sm"
+          disabled={!!result}
+        />
+
+        {/* Actions */}
+        {!result ? (
+          <div className="flex gap-2">
+            <Button onClick={handleSubmit} disabled={!input.trim() || checking} className="gap-1 flex-1">
+              {checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+              提交判分
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {/* Score feedback */}
+            <div className={`rounded-lg p-3 ${result.correct ? "bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800" : "bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800"}`}>
+              <div className="flex items-center gap-2 mb-1">
+                {result.correct
+                  ? <CheckCircle className="h-4 w-4 text-emerald-600" />
+                  : <XCircle className="h-4 w-4 text-red-600" />}
+                <span className={`text-sm font-semibold ${result.correct ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300"}`}>
+                  {result.correct ? `正确！${result.score}分` : `未通过 ${result.score}分`}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">{result.feedback}</p>
+            </div>
+
+            {/* Reference answer */}
+            {result.reference_answer && (
+              <div className="bg-muted/50 rounded-lg p-3">
+                <p className="text-xs text-muted-foreground mb-1">参考答案：</p>
+                <p className="text-sm font-mono">{result.reference_answer}</p>
+              </div>
+            )}
+
+            {/* 3-step breakdown */}
+            {result.steps && (result.steps.core_meaning || result.steps.keywords || result.steps.simple_sentence) && (
+              <div className="bg-sky-50 dark:bg-sky-950/20 rounded-lg p-3 space-y-2 border border-sky-200 dark:border-sky-800">
+                <p className="text-xs font-semibold text-sky-800 dark:text-sky-200">📐 三步拆解：</p>
+                {result.steps.core_meaning && (
+                  <p className="text-xs"><span className="font-medium text-sky-700 dark:text-sky-300">①核心意思：</span>{result.steps.core_meaning}</p>
+                )}
+                {result.steps.keywords && (
+                  <p className="text-xs"><span className="font-medium text-sky-700 dark:text-sky-300">②简单替代词：</span>{result.steps.keywords}</p>
+                )}
+                {result.steps.simple_sentence && (
+                  <p className="text-xs"><span className="font-medium text-sky-700 dark:text-sky-300">③简单句：</span>{result.steps.simple_sentence}</p>
+                )}
+              </div>
+            )}
+
+            <Button onClick={handleNext} className="w-full gap-1">
+              下一题 <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

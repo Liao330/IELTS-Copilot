@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import random
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List
@@ -456,3 +457,166 @@ async def seed_materials(db: AsyncSession = Depends(get_db)):
 
     await db.commit()
     return {"message": f"导入完成", "imported_materials": sort, "imported_keywords": kw_sort}
+
+
+# ─── Downgrade Practice (降级练习) ────────────────────────
+
+DOWNGRADE_EXPRESSIONS = [
+    {"id": "dg-01", "chinese": "眼睁睁看着机会流失", "hint": "miss opportunities"},
+    {"id": "dg-02", "chinese": "一蹶不振", "hint": "give up easily / fail to recover"},
+    {"id": "dg-03", "chinese": "被同伴压力左右", "hint": "be influenced by their peers"},
+    {"id": "dg-04", "chinese": "损害长远利益", "hint": "harm their future"},
+    {"id": "dg-05", "chinese": "不堪一击", "hint": "cannot handle difficulties"},
+    {"id": "dg-06", "chinese": "适得其反", "hint": "have the opposite effect"},
+    {"id": "dg-07", "chinese": "阶层固化", "hint": "the gap between rich and poor becomes permanent"},
+    {"id": "dg-08", "chinese": "挤占预算", "hint": "leave less money for other areas"},
+    {"id": "dg-09", "chinese": "激发潜能", "hint": "help people do their best"},
+    {"id": "dg-10", "chinese": "沦为受害者", "hint": "be harmed by"},
+    {"id": "dg-11", "chinese": "根深蒂固的问题", "hint": "a problem that is difficult to solve"},
+    {"id": "dg-12", "chinese": "寅吃卯粮/不可持续", "hint": "use more than we can replace"},
+]
+
+
+class DowngradeSentenceOut(BaseModel):
+    id: str
+    chinese: str
+    source_material_id: Optional[str] = None
+    hint: Optional[str] = None
+
+
+class DowngradeCheckRequest(BaseModel):
+    chinese: str
+    answer: str
+
+
+class DowngradeCheckResponse(BaseModel):
+    score: int
+    correct: bool
+    feedback: str
+    reference_answer: str
+    steps: dict  # {core_meaning, keywords, simple_sentence}
+
+
+@router.get("/downgrade-sentences", response_model=List[DowngradeSentenceOut])
+async def get_downgrade_sentences(db: AsyncSession = Depends(get_db)):
+    """返回5条降级练习句子：从素材理由链 + 12条常用表达中随机抽取"""
+    sentences: List[DowngradeSentenceOut] = []
+
+    # 从素材理由链抽取
+    result = await db.execute(
+        select(WritingMaterial).where(WritingMaterial.review_count > 0).order_by(func.random()).limit(10)
+    )
+    materials = result.scalars().all()
+
+    for m in materials:
+        if len(sentences) >= 3:
+            break
+        # 理由链格式: "A → B → C", 取整条链作为一个中文练习句
+        chain = m.reasoning_chain
+        if chain:
+            sentences.append(DowngradeSentenceOut(
+                id=f"mat-{m.id[:8]}",
+                chinese=chain,
+                source_material_id=m.id,
+                hint=f"{m.topic_cn} · {m.angle}",
+            ))
+
+    # 从12条常用表达中补充
+    remaining = 5 - len(sentences)
+    picked_exprs = random.sample(DOWNGRADE_EXPRESSIONS, min(remaining, len(DOWNGRADE_EXPRESSIONS)))
+    for expr in picked_exprs:
+        sentences.append(DowngradeSentenceOut(
+            id=expr["id"],
+            chinese=expr["chinese"],
+            source_material_id=None,
+            hint=expr["hint"],
+        ))
+
+    # 如果还不够5条，再从素材补
+    if len(sentences) < 5:
+        extra_result = await db.execute(
+            select(WritingMaterial).order_by(func.random()).limit(5 - len(sentences))
+        )
+        for m in extra_result.scalars().all():
+            if m.reasoning_chain:
+                sentences.append(DowngradeSentenceOut(
+                    id=f"mat-{m.id[:8]}",
+                    chinese=m.reasoning_chain,
+                    source_material_id=m.id,
+                    hint=f"{m.topic_cn} · {m.angle}",
+                ))
+
+    random.shuffle(sentences)
+    return sentences[:5]
+
+
+@router.post("/downgrade-check", response_model=DowngradeCheckResponse)
+async def check_downgrade(body: DowngradeCheckRequest, db: AsyncSession = Depends(get_db)):
+    """AI判断降级表达是否正确：核心意思传达？语法正确？"""
+    from app.services.llm_service import complete_chat
+    from app.utils.llm_config import get_llm_config
+
+    prompt = f"""你是一位雅思写作教练，专门帮助学生用简单英语表达复杂中文意思（降级表达法）。
+
+学生需要把以下中文用简单英语表达出来（不需要高级词汇，只要意思到位、语法正确）：
+
+中文原句：{body.chinese}
+学生答案：{body.answer}
+
+请判断：
+1. 核心意思是否传达到位（中文的关键含义是否在英文中体现）
+2. 英语语法是否正确
+3. 给出0-100分的评分
+
+评分标准：
+- 90-100: 核心意思完整传达 + 语法正确
+- 70-89: 核心意思基本传达 + 语法小瑕疵
+- 50-69: 部分意思传达 或 语法明显错误
+- 30-49: 意思偏差较大
+- 0-29: 完全偏题或无法理解
+
+同时请给出参考答案（用最简单的英语表达），并拆解为3步：
+- core_meaning: 这句话的核心意思是什么（一句话总结）
+- keywords: 关键概念用什么简单词替代
+- simple_sentence: 最终的简单英语句子
+
+输出格式（只输出JSON）：
+{{"score": 数字, "correct": true/false, "feedback": "简短点评", "reference_answer": "参考英文", "steps": {{"core_meaning": "...", "keywords": "...", "simple_sentence": "..."}}}}"""
+
+    model, api_key, api_base = await get_llm_config(db)
+    raw = await complete_chat(
+        model=model, api_key=api_key, api_base=api_base,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.1,
+    )
+
+    # Parse response
+    import re
+    cleaned = raw.strip()
+    if cleaned.startswith("```"):
+        lines = cleaned.split("\n")
+        lines = [l for l in lines if not l.strip().startswith("```")]
+        cleaned = "\n".join(lines).strip()
+
+    try:
+        data = json.loads(cleaned)
+        score = int(data.get("score", 0))
+        correct = data.get("correct", score >= 70)
+        feedback = data.get("feedback", "")
+        reference_answer = data.get("reference_answer", "")
+        steps = data.get("steps", {"core_meaning": "", "keywords": "", "simple_sentence": ""})
+    except (json.JSONDecodeError, ValueError):
+        score_match = re.search(r'"score"\s*:\s*(\d+)', cleaned)
+        score = int(score_match.group(1)) if score_match else 50
+        correct = score >= 70
+        feedback = "评分解析异常，请重试"
+        reference_answer = ""
+        steps = {"core_meaning": "", "keywords": "", "simple_sentence": ""}
+
+    return DowngradeCheckResponse(
+        score=score,
+        correct=correct,
+        feedback=feedback,
+        reference_answer=reference_answer,
+        steps=steps,
+    )
