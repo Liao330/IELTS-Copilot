@@ -26,7 +26,7 @@ const MASTERY_COLORS = ["bg-gray-200 text-gray-700", "bg-amber-100 text-amber-70
 
 type MainTab = "template" | "material";
 type TemplateSubTab = "daily" | "dictation" | "flashcard" | "library" | "stats";
-type MaterialSubTab = "m-daily" | "m-flashcard" | "m-dictation" | "m-library";
+type MaterialSubTab = "m-daily" | "m-flashcard" | "m-dictation" | "m-library" | "m-stats";
 
 export default function WritingPracticePage() {
   const router = useRouter();
@@ -58,6 +58,7 @@ export default function WritingPracticePage() {
     { key: "m-flashcard" as const, label: "闪卡复习", icon: "🃏" },
     { key: "m-dictation" as const, label: "默写测试", icon: "✏️" },
     { key: "m-library" as const, label: "素材库", icon: "📚" },
+    { key: "m-stats" as const, label: "统计", icon: "📈" },
   ];
 
   return (
@@ -834,6 +835,7 @@ function MaterialTab({ subTab }: { subTab: string }) {
   if (subTab === "m-flashcard") return <MaterialFlashcardSubTab />;
   if (subTab === "m-dictation") return <MaterialDictationSubTab />;
   if (subTab === "m-library") return <MaterialLibrarySubTab />;
+  if (subTab === "m-stats") return <MaterialStatsSubTab />;
   return null;
 }
 
@@ -1113,6 +1115,81 @@ function MaterialLibrarySubTab() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function MaterialStatsSubTab() {
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const s = await api.getWritingMaterialStats();
+      setStats(s);
+      setLoading(false);
+    })();
+  }, []);
+
+  if (loading) return <div className="py-12 text-center text-muted-foreground animate-pulse">加载中...</div>;
+  if (!stats) return null;
+
+  const pct = stats.total > 0 ? Math.round((stats.mastered / stats.total) * 100) : 0;
+  const topicEntries = Object.entries(stats.topic_stats || {}) as [string, any][];
+
+  return (
+    <div className="space-y-6">
+      {/* Overall */}
+      <div className="rounded-lg border bg-card p-4 space-y-3">
+        <h3 className="text-sm font-semibold">总体进度</h3>
+        <div className="grid grid-cols-2 gap-3 text-center">
+          <div className="rounded-lg bg-muted p-3">
+            <p className="text-2xl font-bold text-purple-600">{stats.mastered}/{stats.total}</p>
+            <p className="text-[10px] text-muted-foreground">素材掌握</p>
+          </div>
+          <div className="rounded-lg bg-muted p-3">
+            <p className="text-2xl font-bold text-sky-600">{stats.keyword_mastered}/{stats.keyword_total}</p>
+            <p className="text-[10px] text-muted-foreground">关键词掌握</p>
+          </div>
+        </div>
+        <div className="h-2 bg-muted rounded-full overflow-hidden">
+          <div className="h-full bg-purple-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+        </div>
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <span>{pct}% 掌握率</span>
+          <span>今日新学 {stats.learned_today} · 待复习 {stats.due_today}</span>
+        </div>
+      </div>
+
+      {/* Per topic */}
+      <div className="rounded-lg border bg-card p-4 space-y-3">
+        <h3 className="text-sm font-semibold">各话题进度</h3>
+        <div className="space-y-2">
+          {topicEntries.map(([topic, info]) => {
+            const topicPct = info.total > 0 ? Math.round((info.mastered / info.total) * 100) : 0;
+            const tl = TOPIC_LABELS[topic];
+            return (
+              <div key={topic} className="flex items-center gap-3">
+                <span className="text-sm w-20 truncate">{tl?.emoji} {tl?.label || topic}</span>
+                <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
+                  <div className="h-full bg-purple-400 rounded-full" style={{ width: `${topicPct}%` }} />
+                </div>
+                <span className="text-xs text-muted-foreground w-16 text-right">{info.mastered}/{info.total}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Mastery distribution */}
+      <div className="rounded-lg border bg-card p-4 space-y-3">
+        <h3 className="text-sm font-semibold">掌握度分布</h3>
+        <div className="flex gap-2 flex-wrap">
+          <span className="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800">新 {stats.new_count}</span>
+          <span className="text-xs px-2 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30">学习中 {stats.learning}</span>
+          <span className="text-xs px-2 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30">已掌握 {stats.mastered}</span>
+        </div>
+      </div>
     </div>
   );
 }
