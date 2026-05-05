@@ -581,6 +581,8 @@ export interface ScheduleTask {
   duration_minutes: number | null;
   done: boolean;
   sort_order: number;
+  source: string | null;
+  plan_tag: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -593,6 +595,26 @@ export interface ScheduleTaskCreate {
   start_time?: string;
   duration_minutes?: number;
   sort_order?: number;
+  source?: string;
+  plan_tag?: string;
+}
+
+export interface StudyPlanStatus {
+  exists: boolean;
+  start_date: string;
+  end_date: string;
+  total_tasks: number;
+  total_days: number;
+  current_day: number;
+  days_remaining: number;
+  completed_tasks: number;
+  completion_pct: number;
+}
+
+export interface StudyPlanProgress {
+  overall: { total: number; done: number; pct: number };
+  by_category: Record<string, { total: number; done: number; pct: number }>;
+  milestones: Record<string, number>;
 }
 
 // ========== Writing Templates 写作句型背诵 ==========
@@ -613,6 +635,7 @@ export interface WritingTemplate {
   interval_days: number;
   next_review_at: string | null;
   last_reviewed_at: string | null;
+  first_learned_at: string | null;
   created_at: string;
 }
 
@@ -633,4 +656,48 @@ export interface WritingTemplateStats {
   due_today: number;
   learned_today: number;
   category_stats: Record<string, { total: number; mastered: number; due: number; remaining_new: number }>;
+}
+
+export interface BlankSlotItem {
+  index: number;
+  hint: string;
+  passed: boolean;
+}
+
+export interface BlankSlotsInfo {
+  slots: BlankSlotItem[];
+  template_with_blank: string;
+  current_slot_index: number;
+  current_slot_hint: string;
+  slots_passed_count: number;
+  slots_total: number;
+}
+
+// ========== Reading Stats (阅读题型统计) ==========
+
+export interface ReadingPassageStats {
+  count: number;
+  avg_accuracy: number;
+  question_types: Record<string, { count: number; frequency_pct: number }>;
+}
+
+export interface ReadingTimeSeriesItem {
+  date: string;
+  homework_id: string;
+  title: string;
+  passages: {
+    passage: number;
+    correct: number;
+    total: number;
+    accuracy: number;
+    question_types: string[];
+  }[];
+  overall_accuracy: number;
+}
+
+export interface ReadingStatsResponse {
+  total_tests: number;
+  passages: Record<string, ReadingPassageStats>;
+  question_type_summary: Record<string, { total_appearances: number; by_passage: Record<string, number> }>;
+  time_series: ReadingTimeSeriesItem[];
 }

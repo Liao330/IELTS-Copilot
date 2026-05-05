@@ -277,15 +277,14 @@ async def synthesize_speech(
     preset = VOICE_PRESETS.get(voice_id)
     voice_type = preset["voice_type"] if preset else (int(voice_id) if voice_id.isdigit() else 501009)
 
-    # 自动降速：含数字的句子（如地址、电话号码、日期）播放时需要停顿
+    # 含数字文本整句轻微降速（约0.9x），保持自然
     import re as _re
     has_numbers = bool(_re.search(r'\d', text))
 
     speed = _parse_speed(rate if rate is not None else cfg.get("default_rate") or cfg.get("default_speed"))
 
-    # 如果文本含数字且用户没有手动指定速率，自动降速
     if has_numbers and (rate is None or rate == "" or rate == "+0%"):
-        speed = min(speed, -2.5)  # 含数字/字母+数字的内容大幅降速
+        speed = min(speed, -1.0)  # 含数字轻微降速，保持自然朗读
 
     # lazy import，避免启动开销
     try:
@@ -324,17 +323,11 @@ async def synthesize_speech(
             "PrimaryLanguage": 2,   # 2 = 英文
         }
 
-        # 大模型音色支持情感参数 → 更拟人的朗读
         if is_large_model_voice:
-            tts_params["EmotionCategory"] = "neutral"  # 中性自然语气
-            tts_params["EmotionIntensity"] = 100  # 情感强度（0-200，100为适中）
-            # 启用 SSML 为文本添加自然停顿
-            # 在逗号和分号后增加短停顿标记
-            enhanced_text = chunk
-            # 问句语气上扬
-            if "?" in enhanced_text:
-                tts_params["EmotionCategory"] = "chat"  # 对话式语气
-            tts_params["Text"] = enhanced_text
+            tts_params["EmotionCategory"] = "neutral"
+            tts_params["EmotionIntensity"] = 100
+            if "?" in chunk:
+                tts_params["EmotionCategory"] = "chat"
 
         req = models.TextToVoiceRequest()
         req.from_json_string(json.dumps(tts_params))

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import uuid
 from collections import defaultdict
 from datetime import date, datetime
@@ -268,6 +269,117 @@ async def list_homeworks(
         homeworks = filtered
 
     return [await _resolve_homework_out(hw, db) for hw in homeworks]
+
+
+# ---- Reading stats (题型统计) ----
+
+_PASSAGE_PATTERN = re.compile(
+    r'[Pp](\d+)\s+(\d+)\s*/\s*(\d+)\s*(?:题型有|题型：|题型:)\s*(.+?)(?:\n|$)'
+)
+
+
+def _parse_reading_description(desc: str | None) -> list[dict]:
+    """解析阅读作业描述，提取各 passage 的分数和题型"""
+    if not desc:
+        return []
+    results = []
+    for m in _PASSAGE_PATTERN.finditer(desc):
+        passage_num = int(m.group(1))
+        correct = int(m.group(2))
+        total = int(m.group(3))
+        types_raw = m.group(4)
+        # 按顿号、逗号、和字分隔
+        q_types = [t.strip() for t in re.split(r'[、,，&]', types_raw) if t.strip()]
+        results.append({
+            "passage": passage_num,
+            "correct": correct,
+            "total": total,
+            "accuracy": round(correct / total * 100, 1) if total > 0 else 0,
+            "question_types": q_types,
+        })
+    return results
+
+
+@router.get("/reading-stats")
+async def reading_stats(db: AsyncSession = Depends(get_db)):
+    """阅读题型统计：各 passage 的题型出现频率、正确率、时间趋势"""
+    stmt = (
+        select(Homework)
+        .where(Homework.category == "reading")
+        .order_by(Homework.homework_date.asc(), Homework.created_at.asc())
+    )
+    result = await db.execute(stmt)
+    homeworks = result.scalars().all()
+
+    # 解析所有阅读作业
+    time_series = []
+    passage_data: dict[int, dict] = defaultdict(lambda: {
+        "count": 0,
+        "total_correct": 0,
+        "total_questions": 0,
+        "question_types": defaultdict(int),
+    })
+
+    for hw in homeworks:
+        parsed = _parse_reading_description(hw.description)
+        if not parsed:
+            continue
+        overall_correct = sum(p["correct"] for p in parsed)
+        overall_total = sum(p["total"] for p in parsed)
+        time_series.append({
+            "date": str(hw.homework_date),
+            "homework_id": hw.id,
+            "title": hw.title,
+            "passages": parsed,
+            "overall_accuracy": round(overall_correct / overall_total * 100, 1) if overall_total > 0 else 0,
+        })
+        for p in parsed:
+            pd = passage_data[p["passage"]]
+            pd["count"] += 1
+            pd["total_correct"] += p["correct"]
+            pd["total_questions"] += p["total"]
+            for qt in p["question_types"]:
+                pd["question_types"][qt] += 1
+
+    # 汇总各 passage
+    passages_summary = {}
+    for pn in sorted(passage_data.keys()):
+        pd = passage_data[pn]
+        count = pd["count"]
+        avg_acc = round(pd["total_correct"] / pd["total_questions"] * 100, 1) if pd["total_questions"] > 0 else 0
+        qt_stats = {}
+        for qt, c in sorted(pd["question_types"].items(), key=lambda x: -x[1]):
+            qt_stats[qt] = {
+                "count": c,
+                "frequency_pct": round(c / count * 100, 1),
+            }
+        passages_summary[f"P{pn}"] = {
+            "count": count,
+            "avg_accuracy": avg_acc,
+            "question_types": qt_stats,
+        }
+
+    # 题型汇总
+    all_types: dict[str, dict] = defaultdict(lambda: {"total_appearances": 0, "passages": defaultdict(int)})
+    for pn, pd in passage_data.items():
+        for qt, c in pd["question_types"].items():
+            all_types[qt]["total_appearances"] += c
+            all_types[qt]["passages"][f"P{pn}"] += c
+
+    question_type_summary = {}
+    for qt in sorted(all_types.keys(), key=lambda x: -all_types[x]["total_appearances"]):
+        info = all_types[qt]
+        question_type_summary[qt] = {
+            "total_appearances": info["total_appearances"],
+            "by_passage": dict(info["passages"]),
+        }
+
+    return {
+        "total_tests": len(time_series),
+        "passages": passages_summary,
+        "question_type_summary": question_type_summary,
+        "time_series": time_series,
+    }
 
 
 @router.get("/calendar", response_model=list[HomeworkDateGroup])

@@ -239,10 +239,25 @@ function ExampleRow({
   const [dictMode, setDictMode] = useState(hasInitialAttempt);
   const [submitted, setSubmitted] = useState(hasInitialAttempt);
 
-  // 播放次数追踪
-  const [playCount, setPlayCount] = useState(hasInitialAttempt ? (initialAttempt?.play_count ?? 0) : 0);
-  // 对比后的播放次数（区分做题时听和对比后听）
-  const [postPlayCount, setPostPlayCount] = useState(0);
+  // 播放次数追踪（用 sessionStorage 防刷新丢失）
+  const playStorageKey = `play_count_${blockId}_${exampleIndex}`;
+  const [playCount, setPlayCount] = useState(() => {
+    if (hasInitialAttempt) return initialAttempt?.play_count ?? 0;
+    if (typeof window !== "undefined") {
+      const cached = sessionStorage.getItem(playStorageKey);
+      if (cached) return parseInt(cached, 10) || 0;
+    }
+    return 0;
+  });
+  // 对比后的播放次数（用 sessionStorage 防刷新丢失）
+  const postPlayStorageKey = `post_play_${blockId}_${exampleIndex}`;
+  const [postPlayCount, setPostPlayCount] = useState(() => {
+    if (typeof window !== "undefined") {
+      const cached = sessionStorage.getItem(postPlayStorageKey);
+      if (cached) return parseInt(cached, 10) || 0;
+    }
+    return 0;
+  });
 
   // 历史听写次数
   const [attemptCount, setAttemptCount] = useState(hasInitialAttempt ? 1 : 0);
@@ -259,6 +274,7 @@ function ExampleRow({
     hasInitialAttempt ? initialAttempt!.user_answers : Array(wordCount).fill(""),
   );
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const composingRef = useRef(false);
 
   // 响应父级信号
   useEffect(() => {
@@ -368,7 +384,7 @@ function ExampleRow({
 
   const handleKeyDown = (wordIdx: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     // 中文输入法正在组合时，不拦截任何键
-    if (e.nativeEvent.isComposing) return;
+    if (e.nativeEvent.isComposing || composingRef.current) return;
     if (e.key === "Tab") {
       e.preventDefault();
       const nextRef = inputRefs.current[wordIdx + (e.shiftKey ? -1 : 1)];
@@ -514,6 +530,8 @@ function ExampleRow({
                 value={userAnswer}
                 onChange={(e) => handleInputChange(wi, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(wi, e)}
+                onCompositionStart={() => { composingRef.current = true; }}
+                onCompositionEnd={() => { composingRef.current = false; }}
                 style={{ width: `${Math.max(slotLen, 2)}ch` }}
                 className={cn(
                   "inline-block bg-transparent text-center text-sm",
@@ -567,9 +585,17 @@ function ExampleRow({
               size="sm"
               onPlay={() => {
                 if (submitted) {
-                  setPostPlayCount((n) => n + 1);
+                  setPostPlayCount((n) => {
+                    const next = n + 1;
+                    sessionStorage.setItem(postPlayStorageKey, String(next));
+                    return next;
+                  });
                 } else if (playCount < maxPlays) {
-                  setPlayCount((n) => n + 1);
+                  setPlayCount((n) => {
+                    const next = n + 1;
+                    sessionStorage.setItem(playStorageKey, String(next));
+                    return next;
+                  });
                 }
               }}
             />

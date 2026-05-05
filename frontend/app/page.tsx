@@ -541,6 +541,14 @@ export default function HomePage() {
         <div className="mt-8 space-y-3">
           <Button
             variant="outline"
+            className="w-full h-12 text-base gap-2 border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-950/40"
+            onClick={() => router.push("/study-plan")}
+          >
+            <Target className="h-5 w-5" />
+            📋 备考计划
+          </Button>
+          <Button
+            variant="outline"
             className="w-full h-12 text-base gap-2"
             onClick={() => router.push("/listening-practice")}
           >

@@ -153,6 +153,8 @@ export const api = {
     ),
   getFileDownloadUrl: (fileId: string) => `${API_BASE}/api/homeworks/files/${fileId}/download`,
   getFilePreviewUrl: (fileId: string) => `${API_BASE}/api/homeworks/files/${fileId}/preview`,
+  getReadingStats: () =>
+    request<import("@/types").ReadingStatsResponse>("/api/homeworks/reading-stats"),
 
   // Vocabulary - Words
   getWords: (params?: { category?: string; search?: string; mastery_level?: number; due_only?: boolean; sort?: string; page?: number; page_size?: number }) => {
@@ -384,6 +386,16 @@ export const api = {
   deleteScheduleTask: (id: string) =>
     request<{ ok: boolean }>(`/api/schedule/${id}`, { method: "DELETE" }),
 
+  // Study Plan (备考计划)
+  generateStudyPlan: () =>
+    request<{ total_tasks: number; days: number; message: string }>("/api/study-plan/generate", { method: "POST", body: "{}" }),
+  getStudyPlanStatus: () =>
+    request<import("@/types").StudyPlanStatus>("/api/study-plan/status"),
+  getStudyPlanProgress: () =>
+    request<import("@/types").StudyPlanProgress>("/api/study-plan/progress"),
+  resetStudyPlan: () =>
+    request<{ ok: boolean; deleted: number }>("/api/study-plan/reset", { method: "DELETE" }),
+
   // Writing Templates (写作句型背诵)
   getWritingTemplates: (category?: string) => {
     const params = new URLSearchParams();
@@ -396,10 +408,12 @@ export const api = {
     request<import("@/types").WritingTemplate[]>(`/api/writing-templates/new-today?limit=${limit}`),
   getWritingTemplatesLearned: () =>
     request<import("@/types").WritingTemplate[]>("/api/writing-templates/learned-today"),
-  checkWritingTemplate: (id: string, answer: string) =>
+  checkWritingTemplate: (id: string, answer: string, mode: string = "full", slotIndex?: number) =>
     request<import("@/types").WritingTemplateCheckResult>(`/api/writing-templates/${id}/check`, {
-      method: "POST", body: JSON.stringify({ answer }),
+      method: "POST", body: JSON.stringify({ answer, mode, slot_index: slotIndex }),
     }),
+  getWritingTemplateBlankSlots: (id: string) =>
+    request<import("@/types").BlankSlotsInfo>(`/api/writing-templates/${id}/blank-slots`),
   reviewWritingTemplate: (id: string, quality: number) =>
     request<import("@/types").WritingTemplate>(`/api/writing-templates/${id}/review`, {
       method: "POST", body: JSON.stringify({ quality }),

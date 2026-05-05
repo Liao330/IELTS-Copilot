@@ -32,5 +32,10 @@ class WritingTemplate(Base):
     interval_days: Mapped[int] = mapped_column(Integer, default=1)
     next_review_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     last_reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    first_learned_at: Mapped[Optional[datetime]] = mapped_column(DateTime)  # 首次标记"已看"的时间
+
+    # 填空默写相关
+    blank_slots: Mapped[Optional[str]] = mapped_column(Text)    # JSON: AI拆分的可考核片段
+    slots_passed: Mapped[Optional[str]] = mapped_column(Text)   # JSON: 已通过的 slot index 列表
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

@@ -23,5 +23,7 @@ class ScheduleTask(Base):
     duration_minutes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     done: Mapped[bool] = mapped_column(Boolean, default=False)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    source: Mapped[Optional[str]] = mapped_column(String, nullable=True)    # "plan_phase3" | None
+    plan_tag: Mapped[Optional[str]] = mapped_column(String, nullable=True)  # "大作文#3", "听力套题#2"
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

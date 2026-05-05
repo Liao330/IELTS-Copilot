@@ -57,14 +57,15 @@ export default function ListeningPracticeListPage() {
     try {
       const updateData: { title: string; created_at?: string } = { title: renameValue.trim() };
       if (editDate) {
-        updateData.created_at = new Date(editDate + "T00:00:00").toISOString();
+        // 直接用日期字面值 + T12:00:00 避免时区偏移导致日期变化
+        updateData.created_at = editDate + "T12:00:00";
       }
       await api.updateListeningSession(renamingSession.id, updateData);
       toast({ description: "已保存" });
       setRenamingSession(null);
       setRenameValue("");
       setEditDate("");
-      fetchSessions();
+      await fetchSessions();
     } catch (err) {
       console.error(err);
       toast({ variant: "destructive", description: "保存失败" });
@@ -142,7 +143,9 @@ export default function ListeningPracticeListPage() {
                 onRename={() => {
                   setRenamingSession(s);
                   setRenameValue(s.title);
-                  setEditDate(s.created_at.split("T")[0]);
+                  // 用本地日期（而非UTC日期）初始化编辑框
+                  const localDate = new Date(s.created_at);
+                  setEditDate(localDate.getFullYear() + "-" + String(localDate.getMonth() + 1).padStart(2, "0") + "-" + String(localDate.getDate()).padStart(2, "0"));
                 }}
                 onDelete={() => setDeletingSession(s)}
               />

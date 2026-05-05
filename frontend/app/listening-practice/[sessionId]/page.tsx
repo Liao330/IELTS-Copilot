@@ -103,9 +103,15 @@ export default function ListeningPracticeDetailPage() {
     return () => { events.forEach((e) => window.removeEventListener(e, markActive)); };
   }, []);
 
-  // 每秒计时 + 定期上报
+  // 每秒计时 + 定期上报（仅在 session 加载后才开始）
   useEffect(() => {
-    if (!sessionId) return;
+    if (!sessionId || !session) return;
+
+    // 始终从服务器存储的总时间开始计时
+    const serverSeconds = session.study_duration_seconds || 0;
+    setStudySeconds(serverSeconds);
+    activeSecondsRef.current = 0;
+
     const timer = setInterval(() => {
       const now = Date.now();
       const idle = now - lastActivityRef.current;
@@ -123,9 +129,13 @@ export default function ListeningPracticeDetailPage() {
     const handleUnload = () => {
       const remaining = activeSecondsRef.current % REPORT_INTERVAL;
       if (remaining > 0) {
+        const blob = new Blob(
+          [JSON.stringify({ seconds: remaining })],
+          { type: "application/json" }
+        );
         navigator.sendBeacon?.(
-          `${process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000"}/api/listening-practice/sessions/${sessionId}/study-time`,
-          JSON.stringify({ seconds: remaining })
+          `/api/listening-practice/sessions/${sessionId}/study-time`,
+          blob
         );
       }
     };
@@ -140,15 +150,10 @@ export default function ListeningPracticeDetailPage() {
         api.addStudyTime(sessionId, remaining).catch(() => {});
       }
     };
-  }, [sessionId]);
+  }, [sessionId, session?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 初始化已有时长
-  useEffect(() => {
-    if (session) {
-      setStudySeconds(session.study_duration_seconds || 0);
-      activeSecondsRef.current = 0; // reset local counter
-    }
-  }, [session?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // 初始化已有时长（取服务器值和 sessionStorage 中较大的）
+  // Note: now handled in the timer effect above when session loads
 
   const formatDuration = (secs: number) => {
     const h = Math.floor(secs / 3600);

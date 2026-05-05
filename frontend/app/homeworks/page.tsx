@@ -4,12 +4,14 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import type { Homework, HomeworkDateGroup } from "@/types";
+import type { ReadingStatsResponse } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft, Plus, ChevronLeft, ChevronRight, Upload,
   FileText, Mic, BookOpen, Headphones, Calendar, Trash2, Pencil,
   MessageSquarePlus, Star, Search, Loader2, Sparkles, X,
+  ChevronDown, ChevronUp, BarChart3,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { CreateHomeworkDialog } from "@/components/homework/CreateHomeworkDialog";
@@ -493,6 +495,9 @@ export default function HomeworksPage() {
         {/* 分数趋势图（仅子类 tab 时显示） */}
         {category && <ScoreTrendChart homeworks={homeworks} category={category} />}
 
+        {/* 阅读题型统计面板 */}
+        {category === "reading" && <ReadingStatsPanel />}
+
         {/* 高分筛选 */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <Star className="h-3.5 w-3.5 text-amber-500" />
@@ -899,6 +904,214 @@ function ScoreTrendChart({ homeworks, category }: { homeworks: Homework[]; categ
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+
+// ==================== 阅读题型统计面板 ====================
+
+const PASSAGE_COLORS: Record<string, string> = {
+  P1: "#3b82f6",
+  P2: "#8b5cf6",
+  P3: "#f59e0b",
+};
+
+function ReadingStatsPanel() {
+  const [stats, setStats] = useState<ReadingStatsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await api.getReadingStats();
+        setStats(data);
+      } catch (e) {
+        console.error("Failed to load reading stats", e);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  if (loading) return <div className="py-4 text-center text-xs text-muted-foreground animate-pulse">加载阅读统计...</div>;
+  if (!stats || stats.total_tests === 0) return null;
+
+  const passageKeys = Object.keys(stats.passages).sort();
+
+  return (
+    <div className="mb-4 rounded-lg border bg-card overflow-hidden">
+      {/* Header */}
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/50 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <BarChart3 className="h-4 w-4 text-purple-500" />
+          <span className="text-sm font-semibold">阅读题型分析</span>
+          <Badge variant="outline" className="text-[10px]">基于 {stats.total_tests} 次练习</Badge>
+        </div>
+        {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+      </button>
+
+      {expanded && (
+        <div className="px-4 pb-4 space-y-5">
+          {/* Per-passage stats */}
+          <div className="space-y-4">
+            {passageKeys.map((pk) => {
+              const pd = stats.passages[pk];
+              const qtEntries = Object.entries(pd.question_types).sort((a, b) => b[1].frequency_pct - a[1].frequency_pct);
+              return (
+                <div key={pk} className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold" style={{ color: PASSAGE_COLORS[pk] || "#666" }}>{pk}</span>
+                    <span className="text-[10px] text-muted-foreground">均正确率 {pd.avg_accuracy}% · {pd.count}次</span>
+                  </div>
+                  <div className="space-y-1">
+                    {qtEntries.map(([qt, info]) => (
+                      <div key={qt} className="flex items-center gap-2">
+                        <span className="text-xs w-24 truncate text-muted-foreground">{qt}</span>
+                        <div className="flex-1 h-4 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all"
+                            style={{
+                              width: `${info.frequency_pct}%`,
+                              background: PASSAGE_COLORS[pk] || "#666",
+                              opacity: 0.7,
+                            }}
+                          />
+                        </div>
+                        <span className="text-[10px] text-muted-foreground w-10 text-right">{info.frequency_pct}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Accuracy trend mini chart */}
+          {stats.time_series.length >= 2 && (
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold text-muted-foreground">正确率趋势</h4>
+              <ReadingAccuracyChart timeSeries={stats.time_series} />
+            </div>
+          )}
+
+          {/* Question type summary */}
+          <div className="space-y-2">
+            <h4 className="text-xs font-semibold text-muted-foreground">题型总览</h4>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(stats.question_type_summary)
+                .sort((a, b) => b[1].total_appearances - a[1].total_appearances)
+                .map(([qt, info]) => (
+                  <Badge key={qt} variant="secondary" className="text-[10px] gap-1">
+                    {qt}
+                    <span className="font-bold">{info.total_appearances}次</span>
+                  </Badge>
+                ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ---- Accuracy Trend mini SVG chart ----
+
+function ReadingAccuracyChart({ timeSeries }: { timeSeries: ReadingStatsResponse["time_series"] }) {
+  const W = 500, H = 120, PAD_L = 35, PAD_R = 10, PAD_T = 10, PAD_B = 25;
+
+  const data = useMemo(() => {
+    // Gather all passages mentioned
+    const passageNums = new Set<number>();
+    for (const item of timeSeries) {
+      for (const p of item.passages) passageNums.add(p.passage);
+    }
+    return { passageNums: Array.from(passageNums).sort() };
+  }, [timeSeries]);
+
+  const n = timeSeries.length;
+  if (n < 2) return null;
+
+  const xScale = (i: number) => PAD_L + (i / (n - 1)) * (W - PAD_L - PAD_R);
+  const yScale = (v: number) => PAD_T + ((100 - v) / 60) * (H - PAD_T - PAD_B); // range 40-100
+
+  // Build polylines per passage + overall
+  const lines: { key: string; color: string; points: string }[] = [];
+
+  // Overall
+  const overallPts = timeSeries.map((item, i) => `${xScale(i)},${yScale(item.overall_accuracy)}`).join(" ");
+  lines.push({ key: "overall", color: "#10b981", points: overallPts });
+
+  for (const pn of data.passageNums) {
+    const pk = `P${pn}`;
+    const pts = timeSeries.map((item, i) => {
+      const p = item.passages.find((x) => x.passage === pn);
+      const acc = p ? p.accuracy : item.overall_accuracy;
+      return `${xScale(i)},${yScale(acc)}`;
+    }).join(" ");
+    lines.push({ key: pk, color: PASSAGE_COLORS[pk] || "#888", points: pts });
+  }
+
+  const yTicks = [60, 70, 80, 90, 100];
+
+  return (
+    <div className="space-y-1">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" style={{ maxHeight: 140 }}>
+        {/* Y grid */}
+        {yTicks.map((v) => (
+          <g key={v}>
+            <line x1={PAD_L} x2={W - PAD_R} y1={yScale(v)} y2={yScale(v)} stroke="currentColor" strokeOpacity={0.08} />
+            <text x={PAD_L - 4} y={yScale(v) + 3} textAnchor="end" fontSize={9} fill="currentColor" opacity={0.4}>{v}%</text>
+          </g>
+        ))}
+        {/* Lines */}
+        {lines.map((l) => (
+          <polyline
+            key={l.key}
+            points={l.points}
+            fill="none"
+            stroke={l.color}
+            strokeWidth={l.key === "overall" ? 2 : 1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity={l.key === "overall" ? 1 : 0.7}
+          />
+        ))}
+        {/* Dots for overall */}
+        {timeSeries.map((item, i) => (
+          <circle key={i} cx={xScale(i)} cy={yScale(item.overall_accuracy)} r={2.5} fill="#10b981" />
+        ))}
+        {/* X axis labels (sparse) */}
+        {timeSeries.map((item, i) => {
+          if (n <= 8 || i % Math.ceil(n / 6) === 0 || i === n - 1) {
+            return (
+              <text key={i} x={xScale(i)} y={H - 4} textAnchor="middle" fontSize={9} fill="currentColor" opacity={0.5}>
+                {item.date.slice(5)}
+              </text>
+            );
+          }
+          return null;
+        })}
+      </svg>
+      {/* Legend */}
+      <div className="flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground">
+        <span className="flex items-center gap-1">
+          <span className="inline-block w-3 h-0.5 rounded bg-emerald-500" />
+          总分
+        </span>
+        {data.passageNums.map((pn) => (
+          <span key={pn} className="flex items-center gap-1">
+            <span className="inline-block w-3 h-0.5 rounded" style={{ background: PASSAGE_COLORS[`P${pn}`] || "#888" }} />
+            P{pn}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

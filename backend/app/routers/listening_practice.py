@@ -352,6 +352,7 @@ async def _load_session_detail(db: AsyncSession, session_id: str) -> SessionDeta
         note=session.note,
         homework_id=session.homework_id,
         cleanup_summary=session.cleanup_summary,
+        study_duration_seconds=session.study_duration_seconds or 0,
         created_at=session.created_at,
         updated_at=session.updated_at,
         sentences=[_serialize_sentence(s) for s in sentences],

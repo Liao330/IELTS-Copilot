@@ -2,7 +2,15 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+
+_CST = timezone(timedelta(hours=8))  # 中国标准时间
+
+def _today_start_cst() -> datetime:
+    """返回今天 CST 0:00 对应的 UTC 时间（用于查询'今天'的记录）"""
+    now_cst = datetime.now(_CST)
+    today_cst = now_cst.replace(hour=0, minute=0, second=0, microsecond=0)
+    return today_cst.astimezone(timezone.utc).replace(tzinfo=None)
 from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -34,6 +42,7 @@ class TemplateOut(BaseModel):
     interval_days: int
     next_review_at: Optional[datetime]
     last_reviewed_at: Optional[datetime]
+    first_learned_at: Optional[datetime]
     created_at: datetime
 
     class Config:
@@ -53,6 +62,8 @@ class TemplateCreate(BaseModel):
 
 class CheckRequest(BaseModel):
     answer: str
+    mode: str = "full"  # "fill" (填空) or "full" (完整默写)
+    slot_index: int | None = None  # 填空模式时指定哪个 slot
 
 
 class CheckResponse(BaseModel):
@@ -146,15 +157,16 @@ async def get_new_today(
     limit: int = Query(5, ge=1, le=15),
     db: AsyncSession = Depends(get_db),
 ):
-    """获取今日新学句型。按4周背诵计划推送对应分类，每天限 limit 条新的。"""
+    """获取今日新学句型。每天限 limit 条新的。
+    使用 first_learned_at 精确判断"今天首次学习"的句型数量。
+    """
     now = datetime.utcnow()
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = _today_start_cst()
 
-    # 今天已经学过的新句型数量
+    # 今天首次学习的句型数量（first_learned_at 在今天）
     learned_today_q = await db.execute(
         select(func.count()).select_from(WritingTemplate).where(
-            WritingTemplate.review_count == 1,
-            WritingTemplate.last_reviewed_at >= today_start,
+            WritingTemplate.first_learned_at >= today_start,
         )
     )
     learned_today = learned_today_q.scalar() or 0
@@ -187,7 +199,7 @@ async def get_new_today(
 async def get_learned_today(db: AsyncSession = Depends(get_db)):
     """获取今日已学过的句型（含今天新学 + 今天复习的）"""
     now = datetime.utcnow()
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = _today_start_cst()
     stmt = (
         select(WritingTemplate)
         .where(WritingTemplate.last_reviewed_at >= today_start)
@@ -197,12 +209,110 @@ async def get_learned_today(db: AsyncSession = Depends(get_db)):
     return result.scalars().all()
 
 
-@router.post("/{template_id}/check", response_model=CheckResponse)
-async def check_answer(template_id: str, body: CheckRequest, db: AsyncSession = Depends(get_db)):
-    """提交默写答案，AI 判分"""
+# ─── 填空片段 (Blank Slots) ──────────────────────────────────
+
+async def _ensure_blank_slots(t: WritingTemplate, db: AsyncSession) -> list[dict]:
+    """确保句型有 blank_slots，没有则用 AI 生成。返回 slots 列表。"""
+    if t.blank_slots:
+        try:
+            return json.loads(t.blank_slots)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    # AI 生成片段
+    from app.services.llm_service import complete_chat
+    from app.utils.llm_config import get_llm_config
+
+    model, api_key, api_base = await get_llm_config(db)
+    slots = []
+
+    if api_key:
+        prompt = f"""将以下雅思写作句型拆分为2-3个可独立考核的核心片段。
+
+句型：{t.template_en}
+场景：{t.scene_cn}
+
+规则：
+1. 每个片段是句型中连续的一段核心文字（是需要学生记住的搭配/结构）
+2. 片段应是有学习价值的核心结构（如 "there was a dramatic/sharp increase/rise in" / "from XX to XX" / "between [时间1] and [时间2]"）
+3. [占位符] 本身不算片段内容，但可以包含在片段中作为结构的一部分
+4. 每个片段最少3个词，覆盖句型的不同学习点
+5. 输出恰好2-3个片段
+
+输出严格JSON数组：[{{"text": "片段原文（必须是句型中连续出现的原文）", "hint": "2-4字中文提示"}}]
+只输出JSON。"""
+        try:
+            raw = await complete_chat(
+                model=model, api_key=api_key, api_base=api_base,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1,
+            )
+            cleaned = raw.strip()
+            if cleaned.startswith("```"):
+                lines = cleaned.split("\n")
+                lines = [l for l in lines if not l.strip().startswith("```")]
+                cleaned = "\n".join(lines).strip()
+            slots = json.loads(cleaned)
+            # 验证每个 slot 的 text 确实存在于原句中
+            slots = [s for s in slots if isinstance(s, dict) and s.get("text") and s["text"] in t.template_en]
+        except Exception:
+            slots = []
+
+    # Fallback: 按逗号切分
+    if len(slots) < 2:
+        parts = [p.strip() for p in t.template_en.split(",") if p.strip() and len(p.strip().split()) >= 3]
+        slots = [{"text": p.rstrip(",.;"), "hint": f"片段{i+1}"} for i, p in enumerate(parts[:3])]
+        if len(slots) < 2:
+            words = t.template_en.split()
+            mid = len(words) // 2
+            slots = [
+                {"text": " ".join(words[:mid]), "hint": "前半句"},
+                {"text": " ".join(words[mid:]), "hint": "后半句"},
+            ]
+
+    t.blank_slots = json.dumps(slots, ensure_ascii=False)
+    await db.commit()
+    return slots
+
+
+@router.get("/{template_id}/blank-slots")
+async def get_blank_slots(template_id: str, db: AsyncSession = Depends(get_db)):
+    """获取句型的填空片段信息，用于填空默写模式"""
     t = await db.get(WritingTemplate, template_id)
     if not t:
         raise HTTPException(status_code=404, detail="句型不存在")
+
+    slots = await _ensure_blank_slots(t, db)
+    passed = json.loads(t.slots_passed) if t.slots_passed else []
+
+    unpassed = [i for i in range(len(slots)) if i not in passed]
+    current_idx = unpassed[0] if unpassed else 0
+
+    current_slot = slots[current_idx] if current_idx < len(slots) else slots[0]
+    template_with_blank = t.template_en.replace(current_slot["text"], "______")
+
+    return {
+        "slots": [
+            {"index": i, "hint": s.get("hint", ""), "passed": i in passed}
+            for i, s in enumerate(slots)
+        ],
+        "template_with_blank": template_with_blank,
+        "current_slot_index": current_idx,
+        "current_slot_hint": current_slot.get("hint", ""),
+        "slots_passed_count": len(passed),
+        "slots_total": len(slots),
+    }
+
+
+@router.post("/{template_id}/check", response_model=CheckResponse)
+async def check_answer(template_id: str, body: CheckRequest, db: AsyncSession = Depends(get_db)):
+    """提交默写答案，AI 判分。mode='fill'(填空,mastery 2→3) / 'full'(完整,mastery 3维持或降回2)"""
+    t = await db.get(WritingTemplate, template_id)
+    if not t:
+        raise HTTPException(status_code=404, detail="句型不存在")
+
+    is_fill_mode = body.mode == "fill"
+    pass_threshold = 70 if is_fill_mode else 85  # 填空70分通过，完整默写85分通过
 
     # AI 判分
     from app.services.llm_service import complete_chat
@@ -212,25 +322,57 @@ async def check_answer(template_id: str, body: CheckRequest, db: AsyncSession = 
     if not api_key:
         raise HTTPException(status_code=400, detail="未配置 API Key")
 
-    prompt = f"""你是雅思写作句型检验助手。学生需要背诵一个英文句型模板，现在默写了一个版本，请判断是否正确。
+    if is_fill_mode:
+        # 获取当前 slot 的标准答案
+        slots = await _ensure_blank_slots(t, db)
+        slot_idx = body.slot_index if body.slot_index is not None else 0
+        slot_text = slots[slot_idx]["text"] if slot_idx < len(slots) else t.template_en
+
+        prompt = f"""你是雅思写作句型检验助手。学生正在做填空练习，需要填写句型中被遮挡的部分。
+
+完整句型：{t.template_en}
+被遮挡部分（标准答案）：{slot_text}
+学生填写内容：{body.answer}
+场景提示：{t.scene_cn}
+
+评分规则（填空模式）：
+1. 核心结构/搭配正确（主要词组一致）：60分
+2. 关键动词/介词到位：25分
+3. 拼写正确：15分
+4. 允许同义替换（dramatic→sharp, increase→rise等）
+5. 不要求 [占位符] 内容，只看学生是否写出了核心英文结构
+6. 允许省略选项符号如"/"，只写其中一个选项也算对
+
+输出严格 JSON：
+{{"score": 80, "correct": true, "feedback": "核心搭配正确，注意原文还有soared/surged等词也要掌握"}}
+
+score >= {pass_threshold} 则 correct=true。
+feedback要求：中文不超过60字；如果学生用了同义替换虽算对但要指出原词让学生积累；指出遗漏的重要词汇。
+只输出JSON。"""
+    else:
+        prompt = f"""你是雅思写作句型检验助手。学生需要背诵一个英文句型模板，现在默写了一个版本，请判断是否正确。
 
 标准答案：{t.template_en}
 学生答案：{body.answer}
 场景提示：{t.scene_cn}
 
-评分规则：
-1. 核心结构正确（主要句式骨架一致）：60分
+评分规则（完整默写，要求更严格）：
+1. 核心结构正确（主要句式骨架一致）：50分
 2. 关键词覆盖（重要的动词/连接词/固定搭配到位）：30分
-3. 语法无误：10分
+3. 语法和拼写无误：20分
 4. 允许占位符不同（如[主语]写成具体词也行）
 5. 允许同义替换（如 dramatic→sharp, rise→increase）
 6. 不要求标点和大小写完全一致
 
 输出严格 JSON 格式：
-{{"score": 85, "correct": true, "feedback": "核心结构正确，关键词覆盖完整。注意: rise可替换为increase"}}
+{{"score": 85, "correct": true, "feedback": "核心结构正确。注意标准答案还有soared/surged等表达也要记住"}}
 
-score >= 70 则 correct=true，否则 correct=false。
-feedback 用中文，一句话点评（不超过50字）。只输出JSON。"""
+score >= {pass_threshold} 则 correct=true，否则 correct=false。
+feedback要求：
+- 用中文，不超过60字
+- 如果学生用了同义替换算对，但feedback中要指出标准答案里的原词让学生多积累
+- 指出学生遗漏的重要词汇/搭配
+只输出JSON。"""
 
     try:
         raw = await complete_chat(
@@ -245,19 +387,46 @@ feedback 用中文，一句话点评（不超过50字）。只输出JSON。"""
             cleaned = "\n".join(lines).strip()
         result = json.loads(cleaned)
         score = result.get("score", 0)
-        correct = result.get("correct", score >= 70)
+        correct = result.get("correct", score >= pass_threshold)
         feedback = result.get("feedback", "")
     except Exception:
         # Fallback: simple string similarity
         from difflib import SequenceMatcher
         ratio = SequenceMatcher(None, body.answer.lower().strip(), t.template_en.lower()).ratio()
         score = int(ratio * 100)
-        correct = score >= 70
+        correct = score >= pass_threshold
         feedback = "AI 判分暂时不可用，使用文本相似度匹配"
 
-    # SM-2 update
-    quality = 3 if correct else 0
-    _sm2_update(t, quality)
+    # 分阶段 mastery 更新
+    if is_fill_mode:
+        slot_idx = body.slot_index if body.slot_index is not None else 0
+        if correct:
+            # 将 slot 标记为已通过
+            passed = json.loads(t.slots_passed) if t.slots_passed else []
+            if slot_idx not in passed:
+                passed.append(slot_idx)
+                t.slots_passed = json.dumps(passed)
+            # 检查是否累计通过 >= 2 个不同 slot
+            if len(passed) >= 2:
+                _sm2_update(t, 3)  # 升级到 mastery 3
+            else:
+                # 通过了1个slot，间隔重复正常更新但 mastery 封顶2
+                _sm2_update(t, 3, cap_mastery=2)
+        else:
+            _sm2_update(t, 0, cap_mastery=2)  # fail, stay at 2
+    else:
+        # 完整默写
+        if correct:
+            _sm2_update(t, 3)  # pass, maintain mastery 3
+        else:
+            # 完整默写失败：降回 mastery 2，清空 slots_passed
+            t.mastery_level = 2
+            t.slots_passed = "[]"
+            t.interval_days = 1
+            t.next_review_at = datetime.utcnow() + timedelta(days=1)
+            t.last_reviewed_at = datetime.utcnow()
+            t.review_count = (t.review_count or 0) + 1
+
     await db.commit()
 
     return CheckResponse(
@@ -272,13 +441,29 @@ feedback 用中文，一句话点评（不超过50字）。只输出JSON。"""
 
 @router.post("/{template_id}/review", response_model=TemplateOut)
 async def review_template(template_id: str, body: ReviewRequest, db: AsyncSession = Depends(get_db)):
-    """认知测试/闪卡结果 — 标记会或不会"""
+    """认知测试/闪卡结果。quality: 0=不会, 1=模糊, 2=模糊偏会, 3=会了。
+    闪卡最多升到 mastery=2(认识)，需默写通过才能到3(熟练)。"""
     t = await db.get(WritingTemplate, template_id)
     if not t:
         raise HTTPException(status_code=404, detail="句型不存在")
 
-    quality = 3 if body.quality >= 2 else 0
-    _sm2_update(t, quality)
+    q = body.quality
+    if q <= 0:
+        # 不会：间隔重置，mastery -1
+        _sm2_update(t, 0, cap_mastery=2)
+    elif q == 1:
+        # 模糊：间隔重置为1天，但 mastery 不变
+        now = datetime.utcnow()
+        t.interval_days = 1
+        t.next_review_at = now + timedelta(days=1)
+        t.last_reviewed_at = now
+        t.review_count = (t.review_count or 0) + 1
+        if not t.first_learned_at:
+            t.first_learned_at = now
+    else:
+        # 会了(2/3)：正常 SM-2 pass，mastery 封顶2
+        _sm2_update(t, 3, cap_mastery=2)
+
     await db.commit()
     await db.refresh(t)
     return t
@@ -287,7 +472,7 @@ async def review_template(template_id: str, body: ReviewRequest, db: AsyncSessio
 @router.get("/stats", response_model=StatsOut)
 async def get_stats(db: AsyncSession = Depends(get_db)):
     now = datetime.utcnow()
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = _today_start_cst()
     total = (await db.execute(select(func.count()).select_from(WritingTemplate))).scalar() or 0
     mastered = (await db.execute(select(func.count()).select_from(WritingTemplate).where(WritingTemplate.mastery_level >= 3))).scalar() or 0
     learning = (await db.execute(select(func.count()).select_from(WritingTemplate).where(WritingTemplate.mastery_level.in_([1, 2])))).scalar() or 0
@@ -297,7 +482,7 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
         or_(WritingTemplate.next_review_at.is_(None), WritingTemplate.next_review_at <= now),
     ))).scalar() or 0
     learned_today = (await db.execute(select(func.count()).select_from(WritingTemplate).where(
-        WritingTemplate.last_reviewed_at >= today_start,
+        WritingTemplate.first_learned_at >= today_start,
     ))).scalar() or 0
 
     # Per category with remaining new count
@@ -324,8 +509,9 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
 
 # ─── SM-2 Helper ──────────────────────────────────────────
 
-def _sm2_update(t: WritingTemplate, quality: int):
-    """Update spaced repetition fields. quality: 0=fail, 3=pass."""
+def _sm2_update(t: WritingTemplate, quality: int, cap_mastery: int = 3):
+    """Update spaced repetition fields. quality: 0=fail, 3=pass. cap_mastery: max mastery level allowed.
+    interval 封顶7天（备考冲刺期，需要高频复习）。"""
     now = datetime.utcnow()
 
     if quality < 2:
@@ -336,16 +522,24 @@ def _sm2_update(t: WritingTemplate, quality: int):
         if t.review_count == 0:
             t.interval_days = 1
         elif t.review_count == 1:
+            t.interval_days = 2
+        elif t.review_count == 2:
             t.interval_days = 3
         else:
-            t.interval_days = max(1, int(round((t.interval_days or 1) * (t.ease_factor or 2.5))))
+            t.interval_days = min(7, max(1, int(round((t.interval_days or 1) * (t.ease_factor or 2.5)))))
 
         ef = (t.ease_factor or 2.5) + 0.1 - (3 - quality) * 0.08
         t.ease_factor = max(1.3, ef)
-        t.mastery_level = min(3, (t.mastery_level or 0) + 1)
+        t.mastery_level = min(cap_mastery, (t.mastery_level or 0) + 1)
+
+    # 备考期间 interval 永远不超过7天
+    t.interval_days = min(7, t.interval_days)
 
     t.review_count = (t.review_count or 0) + 1
     if quality >= 2:
         t.correct_count = (t.correct_count or 0) + 1
     t.next_review_at = now + timedelta(days=t.interval_days)
     t.last_reviewed_at = now
+    # 首次学习时记录
+    if not t.first_learned_at:
+        t.first_learned_at = now

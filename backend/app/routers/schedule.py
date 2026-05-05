@@ -25,6 +25,8 @@ class ScheduleTaskCreate(BaseModel):
     start_time: Optional[str] = None
     duration_minutes: Optional[int] = None
     sort_order: int = 0
+    source: Optional[str] = None
+    plan_tag: Optional[str] = None
 
 
 class ScheduleTaskUpdate(BaseModel):
@@ -36,6 +38,7 @@ class ScheduleTaskUpdate(BaseModel):
     duration_minutes: Optional[int] = None
     done: Optional[bool] = None
     sort_order: Optional[int] = None
+    plan_tag: Optional[str] = None
 
 
 class ScheduleTaskOut(BaseModel):
@@ -48,6 +51,8 @@ class ScheduleTaskOut(BaseModel):
     duration_minutes: Optional[int]
     done: bool
     sort_order: int
+    source: Optional[str] = None
+    plan_tag: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -61,14 +66,17 @@ class ScheduleTaskOut(BaseModel):
 async def list_schedule_tasks(
     date_from: Optional[date] = None,
     date_to: Optional[date] = None,
+    source: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """列出日程任务，可按日期范围过滤"""
+    """列出日程任务，可按日期范围和来源过滤"""
     stmt = select(ScheduleTask).order_by(ScheduleTask.scheduled_date, ScheduleTask.sort_order, ScheduleTask.start_time)
     if date_from:
         stmt = stmt.where(ScheduleTask.scheduled_date >= date_from)
     if date_to:
         stmt = stmt.where(ScheduleTask.scheduled_date <= date_to)
+    if source:
+        stmt = stmt.where(ScheduleTask.source == source)
     result = await db.execute(stmt)
     return result.scalars().all()
 
@@ -87,6 +95,8 @@ async def create_schedule_task(
         start_time=data.start_time,
         duration_minutes=data.duration_minutes,
         sort_order=data.sort_order,
+        source=data.source,
+        plan_tag=data.plan_tag,
     )
     db.add(task)
     await db.commit()
@@ -142,6 +152,8 @@ async def batch_create_schedule_tasks(
             start_time=data.start_time,
             duration_minutes=data.duration_minutes,
             sort_order=data.sort_order,
+            source=data.source,
+            plan_tag=data.plan_tag,
         )
         db.add(task)
         created.append(task)

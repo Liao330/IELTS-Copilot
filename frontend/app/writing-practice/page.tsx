@@ -60,7 +60,7 @@ export default function WritingPracticePage() {
           </h1>
           {stats && (
             <span className="ml-auto text-xs text-muted-foreground">
-              {stats.mastered}/{stats.total} 已掌握 · 今日已学 {stats.learned_today} · 待复习 {stats.due_today}
+              {stats.mastered}/{stats.total} 已掌握 · 今日新学 {stats.learned_today} · 待复习 {stats.due_today}
             </span>
           )}
         </div>
@@ -158,7 +158,7 @@ function DailyTab({ onUpdate }: { onUpdate: () => void }) {
         <div className="rounded-xl border-2 border-dashed border-emerald-300 dark:border-emerald-700 bg-emerald-50/50 dark:bg-emerald-950/20 p-6 text-center space-y-3">
           <p className="text-2xl">🎉</p>
           <p className="text-sm font-medium">今日任务全部完成！</p>
-          <p className="text-xs text-muted-foreground">已学 {learnedItems.length} 条 · 还有余力可以再来一组</p>
+          <p className="text-xs text-muted-foreground">今日新学 {learnedItems.filter(t => t.first_learned_at ? new Date(t.first_learned_at).getTime() >= new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()).getTime() : t.interval_days <= 2).length} 条 · 还有余力可以再来一组</p>
           <Button
             variant="outline"
             onClick={handleLearnMore}
@@ -217,19 +217,49 @@ function DailyTab({ onUpdate }: { onUpdate: () => void }) {
         )}
       </section>
 
-      {/* Learned today */}
-      {learnedItems.length > 0 && (
-        <section>
-          <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
-            ✅ 今日已学 <Badge variant="outline" className="text-xs">{learnedItems.length}</Badge>
-          </h2>
-          <div className="space-y-2">
-            {learnedItems.map((item) => (
-              <TemplateCard key={item.id} item={item} showScene />
-            ))}
-          </div>
-        </section>
-      )}
+      {/* Learned today — split into new vs reviewed */}
+      {learnedItems.length > 0 && (() => {
+        // first_learned_at 在今天 → 今日新学；否则 → 今日复习（历史已学的）
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        const isNewToday = (t: WritingTemplate) => {
+          if (t.first_learned_at) {
+            return new Date(t.first_learned_at).getTime() >= todayStart;
+          }
+          // fallback for old data without first_learned_at
+          return t.interval_days <= 2;
+        };
+        const todayNew = learnedItems.filter(isNewToday);
+        const todayReviewed = learnedItems.filter((t) => !isNewToday(t));
+        return (
+          <>
+            {todayNew.length > 0 && (
+              <section>
+                <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  🆕 今日新学 <Badge variant="outline" className="text-xs">{todayNew.length}</Badge>
+                </h2>
+                <div className="space-y-2">
+                  {todayNew.map((item) => (
+                    <TemplateCard key={item.id} item={item} showScene />
+                  ))}
+                </div>
+              </section>
+            )}
+            {todayReviewed.length > 0 && (
+              <section>
+                <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  🔁 今日复习 <Badge variant="outline" className="text-xs">{todayReviewed.length}</Badge>
+                </h2>
+                <div className="space-y-2">
+                  {todayReviewed.map((item) => (
+                    <TemplateCard key={item.id} item={item} showScene />
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
+        );
+      })()}
     </div>
   );
 }
@@ -247,39 +277,49 @@ function DictationTab({ onUpdate }: { onUpdate: () => void }) {
   const [sessionStats, setSessionStats] = useState({ correct: 0, total: 0 });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // 填空模式状态
+  const [blankInfo, setBlankInfo] = useState<import("@/types").BlankSlotsInfo | null>(null);
+  const [blankLoading, setBlankLoading] = useState(false);
+
   const loadQueue = useCallback(async () => {
     setLoading(true);
     setFinished(false);
+    // 只取今日到期的 mastery>=2 句型，不随机补充
     const due = await api.getWritingTemplatesDue(20);
-    if (due.length === 0) {
-      // No due items — pick from already-learned ones (review_count > 0)
-      const all = await api.getWritingTemplates();
-      const learned = all.filter((t) => t.review_count > 0);
-      const shuffled = learned.sort(() => Math.random() - 0.5).slice(0, 10);
-      setQueue(shuffled);
-    } else {
-      setQueue(due);
-    }
+    const eligible = due.filter((t) => t.mastery_level >= 2);
+    setQueue(eligible);
     setIdx(0);
     setInput("");
     setResult(null);
+    setBlankInfo(null);
     setLoading(false);
   }, []);
 
   useEffect(() => { loadQueue(); }, [loadQueue]);
 
   const current = queue[idx];
+  const isFillMode = current?.mastery_level === 2;
+
+  // 填空模式：加载 blank slots 信息
+  useEffect(() => {
+    if (!current || !isFillMode) { setBlankInfo(null); return; }
+    setBlankLoading(true);
+    api.getWritingTemplateBlankSlots(current.id)
+      .then(setBlankInfo)
+      .catch(() => setBlankInfo(null))
+      .finally(() => setBlankLoading(false));
+  }, [current?.id, isFillMode]);
 
   const handleSubmit = async () => {
     if (!current || !input.trim() || checking) return;
     setChecking(true);
     try {
-      const res = await api.checkWritingTemplate(current.id, input.trim());
+      const slotIdx = isFillMode && blankInfo ? blankInfo.current_slot_index : undefined;
+      const res = await api.checkWritingTemplate(current.id, input.trim(), isFillMode ? "fill" : "full", slotIdx);
       setResult(res);
       setSessionStats((s) => ({ correct: s.correct + (res.correct ? 1 : 0), total: s.total + 1 }));
       onUpdate();
     } catch {
-      // Fallback
     } finally {
       setChecking(false);
     }
@@ -290,6 +330,7 @@ function DictationTab({ onUpdate }: { onUpdate: () => void }) {
       setIdx(idx + 1);
       setInput("");
       setResult(null);
+      setBlankInfo(null);
       setTimeout(() => textareaRef.current?.focus(), 100);
     } else {
       setFinished(true);
@@ -298,7 +339,6 @@ function DictationTab({ onUpdate }: { onUpdate: () => void }) {
 
   const handleReveal = async () => {
     if (!current) return;
-    // Mark as failed
     await api.reviewWritingTemplate(current.id, 0);
     setResult({
       correct: false, score: 0, expected: current.template_en,
@@ -309,7 +349,13 @@ function DictationTab({ onUpdate }: { onUpdate: () => void }) {
   };
 
   if (loading) return <div className="py-12 text-center text-muted-foreground animate-pulse">加载中...</div>;
-  if (queue.length === 0) return <div className="py-12 text-center text-muted-foreground">还没有学过的句型，先去「今日任务」学习新句型吧</div>;
+  if (queue.length === 0) return (
+    <div className="py-12 text-center text-muted-foreground space-y-2">
+      <p className="text-lg">✅</p>
+      <p>今日默写任务已完成</p>
+      <p className="text-xs">明天会有新的到期句型，保持节奏！</p>
+    </div>
+  );
 
   if (finished) {
     return (
@@ -341,18 +387,60 @@ function DictationTab({ onUpdate }: { onUpdate: () => void }) {
             {CATEGORY_MAP[current.category]?.emoji} {CATEGORY_MAP[current.category]?.label}
           </Badge>
           <span className="text-xs text-muted-foreground">{current.sub_category}</span>
+          <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${
+            isFillMode
+              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+              : "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
+          }`}>
+            {isFillMode ? `填空 ${blankInfo ? `${blankInfo.slots_passed_count + 1}/${blankInfo.slots_total}` : ""}` : "完整默写"}
+          </span>
         </div>
         <p className="text-base font-semibold">🎯 {current.scene_cn}</p>
-        {current.note && <p className="text-xs text-muted-foreground">💡 提示: {current.note}</p>}
+
+        {/* 填空模式：显示带空的句型 */}
+        {isFillMode && (
+          <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+            {blankLoading ? (
+              <p className="text-xs text-muted-foreground animate-pulse">加载填空信息...</p>
+            ) : blankInfo ? (
+              <>
+                <p className="text-sm font-mono leading-relaxed">{blankInfo.template_with_blank}</p>
+                <p className="text-xs text-muted-foreground">
+                  💡 填写 ______ 处的内容 · 提示：{blankInfo.current_slot_hint}
+                </p>
+                {/* 已通过的 slots 标记 */}
+                <div className="flex gap-1.5">
+                  {blankInfo.slots.map((s) => (
+                    <span key={s.index} className={`text-[10px] px-1.5 py-0.5 rounded ${
+                      s.passed
+                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                        : s.index === blankInfo.current_slot_index
+                          ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 ring-1 ring-blue-300"
+                          : "bg-muted text-muted-foreground"
+                    }`}>
+                      {s.passed ? "✓" : s.index === blankInfo.current_slot_index ? "→" : "○"} {s.hint}
+                    </span>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">提示：写出该场景对应的英文句型核心结构</p>
+            )}
+          </div>
+        )}
+        {/* 完整默写模式：只给中文场景 + note */}
+        {!isFillMode && current.note && (
+          <p className="text-xs text-muted-foreground">💡 {current.note}</p>
+        )}
 
         {/* Input */}
         <Textarea
           ref={textareaRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && e.ctrlKey && !e.nativeEvent.isComposing) handleSubmit(); }}
-          placeholder="输入英文句型... (Ctrl+Enter 提交)"
-          rows={3}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) { e.preventDefault(); handleSubmit(); } }}
+          placeholder={isFillMode ? "填写被遮挡部分... (回车提交)" : "输入完整英文句型... (回车提交)"}
+          rows={isFillMode ? 1 : 2}
           className="font-mono text-sm"
           disabled={!!result}
         />
@@ -416,12 +504,7 @@ function FlashcardTab({ onUpdate }: { onUpdate: () => void }) {
     setLoading(true);
     setFinished(false);
     const due = await api.getWritingTemplatesDue(20);
-    let items = due;
-    if (due.length === 0) {
-      const all = await api.getWritingTemplates();
-      items = all.filter((t) => t.review_count > 0).sort(() => Math.random() - 0.5).slice(0, 15);
-    }
-    setQueue(items);
+    setQueue(due);
     setIdx(0);
     setFlipped(false);
     setLoading(false);
@@ -446,7 +529,12 @@ function FlashcardTab({ onUpdate }: { onUpdate: () => void }) {
   };
 
   if (loading) return <div className="py-12 text-center text-muted-foreground animate-pulse">加载中...</div>;
-  if (queue.length === 0) return <div className="py-12 text-center text-muted-foreground">还没有学过的句型，先去「今日任务」学习新句型吧</div>;
+  if (queue.length === 0) return (
+    <div className="py-12 text-center text-muted-foreground space-y-2">
+      <p>暂无到期复习的句型 ✓</p>
+      <p className="text-xs">去「默写测试」检验掌握程度，或等明天新句型到期</p>
+    </div>
+  );
 
   if (finished) {
     return (
@@ -501,7 +589,7 @@ function FlashcardTab({ onUpdate }: { onUpdate: () => void }) {
           <Button variant="outline" className="flex-1 gap-1 border-red-200 text-red-600 hover:bg-red-50" onClick={() => handleMark(0)}>
             <XCircle className="h-4 w-4" /> 不会
           </Button>
-          <Button variant="outline" className="flex-1 gap-1 border-amber-200 text-amber-600 hover:bg-amber-50" onClick={() => handleMark(2)}>
+          <Button variant="outline" className="flex-1 gap-1 border-amber-200 text-amber-600 hover:bg-amber-50" onClick={() => handleMark(1)}>
             🤔 模糊
           </Button>
           <Button variant="outline" className="flex-1 gap-1 border-emerald-200 text-emerald-600 hover:bg-emerald-50" onClick={() => handleMark(3)}>
@@ -590,7 +678,7 @@ function StatsTab({ stats }: { stats: WritingTemplateStats }) {
         <div className="h-3 bg-muted rounded-full overflow-hidden">
           <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
         </div>
-        <p className="text-xs text-muted-foreground text-center">{pct}% 掌握率 · 今日已学 {stats.learned_today} 条</p>
+        <p className="text-xs text-muted-foreground text-center">{pct}% 掌握率 · 今日新学 {stats.learned_today} 条</p>
       </div>
 
       {/* Week plan progress */}
