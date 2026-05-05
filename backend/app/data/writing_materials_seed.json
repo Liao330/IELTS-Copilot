@@ -1,0 +1,1878 @@
+{
+  "materials": [
+    {
+      "topic": "education",
+      "topic_cn": "教育",
+      "direction": "大学应该免费吗？",
+      "direction_index": 1,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "社会公平",
+      "angle_index": 1,
+      "reasoning_chain": "消除经济障碍 → 寒门子弟也能读大学 → 缩小贫富差距、促进阶层流动",
+      "example": "北欧国家（瑞典、挪威）免学费，社会流动性指标全球领先"
+    },
+    {
+      "topic": "education",
+      "topic_cn": "教育",
+      "direction": "大学应该免费吗？",
+      "direction_index": 1,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "国家发展",
+      "angle_index": 2,
+      "reasoning_chain": "更多人接受高等教育 → 劳动力素质整体提升 → 推动科技创新和经济增长",
+      "example": "德国免学费后STEM专业毕业生持续增长，制造业竞争力增强"
+    },
+    {
+      "topic": "education",
+      "topic_cn": "教育",
+      "direction": "大学应该免费吗？",
+      "direction_index": 1,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "财政压力",
+      "angle_index": 1,
+      "reasoning_chain": "政府预算有限 → 免学费挤占医疗/基建支出 → 其他公共服务质量下降",
+      "example": "部分国家免费后大学经费不足，师生比恶化，教学质量下滑"
+    },
+    {
+      "topic": "education",
+      "topic_cn": "教育",
+      "direction": "大学应该免费吗？",
+      "direction_index": 1,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "学习动力",
+      "angle_index": 2,
+      "reasoning_chain": "免费 → 学生不珍惜机会 → 辍学率上升、学习态度松懈",
+      "example": "对比数据显示收费制大学毕业率普遍高于免费制大学"
+    },
+    {
+      "topic": "education",
+      "topic_cn": "教育",
+      "direction": "网课能否取代传统课堂？",
+      "direction_index": 2,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "个人灵活性",
+      "angle_index": 1,
+      "reasoning_chain": "不受时间地点限制 → 学生可自定步调学习 → 适合不同学习风格和节奏",
+      "example": "Coursera/Khan Academy让全球数百万人免费学习顶尖大学课程"
+    },
+    {
+      "topic": "education",
+      "topic_cn": "教育",
+      "direction": "网课能否取代传统课堂？",
+      "direction_index": 2,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "资源平等化",
+      "angle_index": 2,
+      "reasoning_chain": "优质课程可无限复制 → 偏远地区学生也能获取名师资源 → 缩小教育地域差距",
+      "example": "中国「双师课堂」模式让农村学生听到城市名校教师授课"
+    },
+    {
+      "topic": "education",
+      "topic_cn": "教育",
+      "direction": "网课能否取代传统课堂？",
+      "direction_index": 2,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "学习效果",
+      "angle_index": 1,
+      "reasoning_chain": "缺乏面对面监督 → 自制力不足的学生容易分心 → 完课率和学习深度远低于线下",
+      "example": "数据显示MOOC平均完课率不到10%，远低于传统大学"
+    },
+    {
+      "topic": "education",
+      "topic_cn": "教育",
+      "direction": "网课能否取代传统课堂？",
+      "direction_index": 2,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "社交发展",
+      "angle_index": 2,
+      "reasoning_chain": "校园是社交场所 → 网课剥夺了同伴互动机会 → 影响团队协作能力和社交技能发展",
+      "example": "疫情期间长期网课导致青少年孤独感和心理问题显著上升"
+    },
+    {
+      "topic": "education",
+      "topic_cn": "教育",
+      "direction": "教育应该注重竞争还是合作？",
+      "direction_index": 3,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "激发个人潜能",
+      "angle_index": 1,
+      "reasoning_chain": "排名/考试压力 → 激励学生更加努力 → 挖掘个人最大潜力",
+      "example": "新加坡精英教育体制培养出大量高素质人才，国际学术排名领先"
+    },
+    {
+      "topic": "education",
+      "topic_cn": "教育",
+      "direction": "教育应该注重竞争还是合作？",
+      "direction_index": 3,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "为社会现实做准备",
+      "angle_index": 2,
+      "reasoning_chain": "职场本质是竞争环境 → 学校培养竞争意识 → 学生毕业后适应力更强",
+      "example": "调查显示有竞争经验的毕业生在求职中表现更突出"
+    },
+    {
+      "topic": "education",
+      "topic_cn": "教育",
+      "direction": "教育应该注重竞争还是合作？",
+      "direction_index": 3,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "心理健康",
+      "angle_index": 1,
+      "reasoning_chain": "过度竞争 → 焦虑和自我否定 → 厌学甚至心理疾病",
+      "example": "韩国/日本学生因升学压力导致的心理问题和自杀率数据"
+    },
+    {
+      "topic": "education",
+      "topic_cn": "教育",
+      "direction": "教育应该注重竞争还是合作？",
+      "direction_index": 3,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "实际工作需求",
+      "angle_index": 2,
+      "reasoning_chain": "现代工作以团队项目为主 → 合作能力比个人成绩更重要 → 学校应优先培养沟通协调能力",
+      "example": "Google等科技公司招聘最看重团队协作能力而非个人分数"
+    },
+    {
+      "topic": "technology",
+      "topic_cn": "科技",
+      "direction": "社交媒体利大于弊还是弊大于利？",
+      "direction_index": 1,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "人际连接",
+      "angle_index": 1,
+      "reasoning_chain": "打破地理限制 → 维系远距离关系/认识志同道合的人 → 减少孤独感、扩大社交圈",
+      "example": "疫情期间社交媒体成为人们维持社交的主要方式，缓解了隔离带来的孤独"
+    },
+    {
+      "topic": "technology",
+      "topic_cn": "科技",
+      "direction": "社交媒体利大于弊还是弊大于利？",
+      "direction_index": 1,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "信息与机会",
+      "angle_index": 2,
+      "reasoning_chain": "信息传播极快 → 普通人也能获得曝光和商业机会 → 催生了自媒体经济和小微创业",
+      "example": "大量年轻人通过Instagram/抖音创业成功，无需传统资本门槛"
+    },
+    {
+      "topic": "technology",
+      "topic_cn": "科技",
+      "direction": "社交媒体利大于弊还是弊大于利？",
+      "direction_index": 1,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "心理健康",
+      "angle_index": 1,
+      "reasoning_chain": "算法推送极端内容 → 用户沉迷/焦虑/社交比较 → 抑郁和自我认同问题增加",
+      "example": "研究显示每日使用社交媒体超3小时的青少年，抑郁风险翻倍"
+    },
+    {
+      "topic": "technology",
+      "topic_cn": "科技",
+      "direction": "社交媒体利大于弊还是弊大于利？",
+      "direction_index": 1,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "信息质量",
+      "angle_index": 2,
+      "reasoning_chain": "假新闻传播速度远超辟谣 → 公众判断力下降 → 社会信任被侵蚀、舆论极化",
+      "example": "美国大选/疫情期间大量虚假信息通过Facebook传播，造成严重社会分裂"
+    },
+    {
+      "topic": "technology",
+      "topic_cn": "科技",
+      "direction": "AI会取代人类工作吗？",
+      "direction_index": 2,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "大规模失业",
+      "angle_index": 1,
+      "reasoning_chain": "AI自动化 → 重复性岗位大量消失 → 低技能劳动者失业且难以转型",
+      "example": "自动驾驶技术威胁全球数百万卡车司机/出租车司机的生计"
+    },
+    {
+      "topic": "technology",
+      "topic_cn": "科技",
+      "direction": "AI会取代人类工作吗？",
+      "direction_index": 2,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "社会不平等",
+      "angle_index": 2,
+      "reasoning_chain": "AI带来的利润集中在科技公司和资本持有者手中 → 普通劳动者收入下降 → 贫富差距进一步扩大",
+      "example": "全球前10大科技公司市值暴涨，同期中产阶级收入增长停滞"
+    },
+    {
+      "topic": "technology",
+      "topic_cn": "科技",
+      "direction": "AI会取代人类工作吗？",
+      "direction_index": 2,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "历史规律",
+      "angle_index": 1,
+      "reasoning_chain": "每次技术革命都淘汰旧岗位但创造更多新岗位 → 人类总是能适应 → 关键在于教育转型而非抵制技术",
+      "example": "工业革命淘汰了手工织布，但创造了更多工厂管理和工程岗位"
+    },
+    {
+      "topic": "technology",
+      "topic_cn": "科技",
+      "direction": "AI会取代人类工作吗？",
+      "direction_index": 2,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "新岗位创造",
+      "angle_index": 2,
+      "reasoning_chain": "AI处理重复劳动 → 人类转向创意/情感/决策类工作 → 工作质量反而提升",
+      "example": "AI普及后数据标注师/AI训练师/提示工程师等全新职业涌现"
+    },
+    {
+      "topic": "technology",
+      "topic_cn": "科技",
+      "direction": "儿童使用电子设备应该被限制吗？",
+      "direction_index": 3,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "身心健康",
+      "angle_index": 1,
+      "reasoning_chain": "长时间屏幕暴露 → 视力下降/睡眠紊乱/运动不足 → 儿童身体发育受损",
+      "example": "WHO建议5岁以下儿童每日屏幕时间不超过1小时；中国青少年近视率已超60%"
+    },
+    {
+      "topic": "technology",
+      "topic_cn": "科技",
+      "direction": "儿童使用电子设备应该被限制吗？",
+      "direction_index": 3,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "学习能力",
+      "angle_index": 2,
+      "reasoning_chain": "碎片化信息浏览 → 注意力持续时间缩短 → 深度阅读和思考能力退化",
+      "example": "研究显示频繁使用短视频的儿童在持续注意力测试中表现显著更差"
+    },
+    {
+      "topic": "technology",
+      "topic_cn": "科技",
+      "direction": "儿童使用电子设备应该被限制吗？",
+      "direction_index": 3,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "学习工具",
+      "angle_index": 1,
+      "reasoning_chain": "教育类App/视频使抽象知识可视化 → 提高学习兴趣和效率 → 是传统教材的有效补充",
+      "example": "芬兰将编程纳入小学课程，儿童通过平板学习逻辑思维"
+    },
+    {
+      "topic": "technology",
+      "topic_cn": "科技",
+      "direction": "儿童使用电子设备应该被限制吗？",
+      "direction_index": 3,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "未来竞争力",
+      "angle_index": 2,
+      "reasoning_chain": "数字技能是未来必备素养 → 从小接触培养数字直觉 → 长大后更具职业竞争力",
+      "example": "早期接触科技的孩子在STEM领域的长期表现优于同龄人"
+    },
+    {
+      "topic": "environment",
+      "topic_cn": "环境",
+      "direction": "环保是政府的责任还是个人的责任？",
+      "direction_index": 1,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "规模和力度",
+      "angle_index": 1,
+      "reasoning_chain": "环境问题是系统性的 → 需要立法/政策/资金投入 → 只有政府有能力推动大规模改变",
+      "example": "欧盟碳排放交易体系使工业排放量10年下降35%，远超个人行为改变的效果"
+    },
+    {
+      "topic": "environment",
+      "topic_cn": "环境",
+      "direction": "环保是政府的责任还是个人的责任？",
+      "direction_index": 1,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "个人影响有限",
+      "angle_index": 2,
+      "reasoning_chain": "个人减排量微不足道 → 80%碳排放来自工业和能源企业 → 不从源头管控则个人努力无意义",
+      "example": "全球100家企业贡献了71%的温室气体排放（CDP报告）"
+    },
+    {
+      "topic": "environment",
+      "topic_cn": "环境",
+      "direction": "环保是政府的责任还是个人的责任？",
+      "direction_index": 1,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "消费驱动生产",
+      "angle_index": 1,
+      "reasoning_chain": "消费者选择决定市场方向 → 如果人人拒绝高污染产品 → 企业被迫转型",
+      "example": "消费者对塑料袋的抵制推动了多国「限塑令」的出台"
+    },
+    {
+      "topic": "environment",
+      "topic_cn": "环境",
+      "direction": "环保是政府的责任还是个人的责任？",
+      "direction_index": 1,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "集体行动力量",
+      "angle_index": 2,
+      "reasoning_chain": "个人行为有示范效应 → 影响周围人 → 形成社会风气后反过来推动政策制定",
+      "example": "瑞典「飞行羞耻」运动从个人倡议扩散为全国运动，推动铁路投资增加"
+    },
+    {
+      "topic": "environment",
+      "topic_cn": "环境",
+      "direction": "经济发展和环境保护能否兼顾？",
+      "direction_index": 2,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "绿色经济",
+      "angle_index": 1,
+      "reasoning_chain": "清洁能源/环保产业本身创造就业和GDP → 经济增长不必依赖高污染 → 二者可以双赢",
+      "example": "中国新能源产业（光伏/电动车）成为经济增长新引擎，出口全球领先"
+    },
+    {
+      "topic": "environment",
+      "topic_cn": "环境",
+      "direction": "经济发展和环境保护能否兼顾？",
+      "direction_index": 2,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "长期利益",
+      "angle_index": 2,
+      "reasoning_chain": "环境破坏的经济代价更高（洪灾/干旱/医疗支出）→ 环保本质上是在保护经济基础",
+      "example": "世界银行估算气候变化到2030年将使全球GDP损失5%以上"
+    },
+    {
+      "topic": "environment",
+      "topic_cn": "环境",
+      "direction": "经济发展和环境保护能否兼顾？",
+      "direction_index": 2,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "发展阶段限制",
+      "angle_index": 1,
+      "reasoning_chain": "贫困国家首要任务是解决温饱 → 强制环保标准会阻碍工业化 → 对穷国不公平",
+      "example": "非洲国家仍有数亿人用不上电，限制化石能源等于限制他们脱贫"
+    },
+    {
+      "topic": "environment",
+      "topic_cn": "环境",
+      "direction": "经济发展和环境保护能否兼顾？",
+      "direction_index": 2,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "成本过高",
+      "angle_index": 2,
+      "reasoning_chain": "清洁技术成本高 → 中小企业无力承担 → 过快转型导致企业倒闭、失业潮",
+      "example": "欧洲部分传统制造业因碳税过高而外迁至环保标准更低的国家（碳泄漏问题）"
+    },
+    {
+      "topic": "environment",
+      "topic_cn": "环境",
+      "direction": "应该限制私家车使用吗？",
+      "direction_index": 3,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "环境",
+      "angle_index": 1,
+      "reasoning_chain": "汽车尾气是城市空气污染主要来源 → 限制私家车可直接改善空气质量 → 减少呼吸道疾病",
+      "example": "伦敦征收拥堵费后市中心空气质量改善，PM2.5浓度下降"
+    },
+    {
+      "topic": "environment",
+      "topic_cn": "环境",
+      "direction": "应该限制私家车使用吗？",
+      "direction_index": 3,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "城市效率",
+      "angle_index": 2,
+      "reasoning_chain": "私家车过多 → 交通拥堵严重 → 浪费时间和燃油、降低城市运转效率",
+      "example": "新加坡通过高额车辆拥有证+完善公共交通，拥堵率全球最低之一"
+    },
+    {
+      "topic": "environment",
+      "topic_cn": "环境",
+      "direction": "应该限制私家车使用吗？",
+      "direction_index": 3,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "个人自由与便利",
+      "angle_index": 1,
+      "reasoning_chain": "私家车是合法财产 → 限制使用侵犯个人选择权 → 且对家庭出行（老人/孩子）必要性高",
+      "example": "美国郊区/农村地区几乎没有公交系统，居民100%依赖私家车"
+    },
+    {
+      "topic": "environment",
+      "topic_cn": "环境",
+      "direction": "应该限制私家车使用吗？",
+      "direction_index": 3,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "替代方案不成熟",
+      "angle_index": 2,
+      "reasoning_chain": "许多城市公共交通覆盖不足 → 贸然限车导致出行困难 → 应先完善替代方案再逐步限制",
+      "example": "部分城市限行后「打车难」「公交爆满」，反而降低了生活质量"
+    },
+    {
+      "topic": "health",
+      "topic_cn": "健康",
+      "direction": "垃圾食品应该征税吗？",
+      "direction_index": 1,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "公共健康",
+      "angle_index": 1,
+      "reasoning_chain": "加税 → 价格上升 → 消费量下降 → 肥胖率/糖尿病发病率降低",
+      "example": "墨西哥2014年征收含糖饮料税后，含糖饮料销量下降12%"
+    },
+    {
+      "topic": "health",
+      "topic_cn": "健康",
+      "direction": "垃圾食品应该征税吗？",
+      "direction_index": 1,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "减轻医疗负担",
+      "angle_index": 2,
+      "reasoning_chain": "不健康饮食导致的慢性病 → 占用大量公共医疗资源 → 征税收入可用于补贴健康食品或医疗系统",
+      "example": "英国糖税实施后，饮料公司主动降低产品含糖量以避税"
+    },
+    {
+      "topic": "health",
+      "topic_cn": "健康",
+      "direction": "垃圾食品应该征税吗？",
+      "direction_index": 1,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "个人自由",
+      "angle_index": 1,
+      "reasoning_chain": "饮食是个人选择 → 政府无权通过税收干预公民生活方式 → 属于「保姆式」管理",
+      "example": "丹麦曾征收脂肪税，因民众强烈反对和效果不明显，一年后被迫取消"
+    },
+    {
+      "topic": "health",
+      "topic_cn": "健康",
+      "direction": "垃圾食品应该征税吗？",
+      "direction_index": 1,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "对穷人不公平",
+      "angle_index": 2,
+      "reasoning_chain": "穷人食品支出占收入比例更高 → 食品税对低收入群体打击更大 → 加剧社会不平等",
+      "example": "研究显示食品税对低收入家庭的经济压力是高收入家庭的3倍"
+    },
+    {
+      "topic": "health",
+      "topic_cn": "健康",
+      "direction": "政府是否应该强制推广运动？",
+      "direction_index": 2,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "预防疾病",
+      "angle_index": 1,
+      "reasoning_chain": "规律运动预防心血管病/肥胖/抑郁 → 国民整体健康水平提升 → 医疗支出减少",
+      "example": "日本企业推行「工间操」制度，员工健康指标和工作效率均有改善"
+    },
+    {
+      "topic": "health",
+      "topic_cn": "健康",
+      "direction": "政府是否应该强制推广运动？",
+      "direction_index": 2,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "社会效益",
+      "angle_index": 2,
+      "reasoning_chain": "体育活动增强社区凝聚力 → 减少青少年犯罪 → 社会更和谐",
+      "example": "英国社区体育项目使参与区域的青少年犯罪率下降了40%"
+    },
+    {
+      "topic": "health",
+      "topic_cn": "健康",
+      "direction": "政府是否应该强制推广运动？",
+      "direction_index": 2,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "个人选择权",
+      "angle_index": 1,
+      "reasoning_chain": "运动方式和频率是个人自由 → 强制执行引发反感 → 效果适得其反",
+      "example": "调查显示被强制参加体育课的学生成年后反而更不愿运动"
+    },
+    {
+      "topic": "health",
+      "topic_cn": "健康",
+      "direction": "政府是否应该强制推广运动？",
+      "direction_index": 2,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "资源优先级",
+      "angle_index": 2,
+      "reasoning_chain": "政府资金有限 → 体育设施建设挤占教育/医疗预算 → 不如直接投入医疗系统",
+      "example": "许多城市建了大量体育场馆却利用率很低，造成财政浪费"
+    },
+    {
+      "topic": "health",
+      "topic_cn": "健康",
+      "direction": "工作与生活的平衡重要吗？",
+      "direction_index": 3,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "个人健康",
+      "angle_index": 1,
+      "reasoning_chain": "长期过劳 → 身心疾病（猝死/抑郁/家庭破裂）→ 最终个人生活质量崩塌",
+      "example": "日本「过劳死」(karoshi)现象引发全球关注，每年数百人因工作猝死"
+    },
+    {
+      "topic": "health",
+      "topic_cn": "健康",
+      "direction": "工作与生活的平衡重要吗？",
+      "direction_index": 3,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "工作效率",
+      "angle_index": 2,
+      "reasoning_chain": "适当休息 → 恢复精力和创造力 → 反而提高工作产出和质量",
+      "example": "微软日本试行四天工作制后，生产力提升了40%"
+    },
+    {
+      "topic": "health",
+      "topic_cn": "健康",
+      "direction": "工作与生活的平衡重要吗？",
+      "direction_index": 3,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "职业发展阶段",
+      "angle_index": 1,
+      "reasoning_chain": "年轻时拼搏积累 → 为未来奠定基础 → 适度牺牲短期平衡换取长期稳定合情合理",
+      "example": "许多成功创业者在早期每周工作80+小时，才建立起后来的事业"
+    },
+    {
+      "topic": "health",
+      "topic_cn": "健康",
+      "direction": "工作与生活的平衡重要吗？",
+      "direction_index": 3,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "经济现实",
+      "angle_index": 2,
+      "reasoning_chain": "生活成本高（房贷/子女教育）→ 不加班收入不够 →「平衡」是经济宽裕者的奢侈品",
+      "example": "发展中国家的工薪阶层如果追求「平衡」，可能连基本生活都无法维持"
+    },
+    {
+      "topic": "government",
+      "topic_cn": "政府",
+      "direction": "政府应优先投资教育还是医疗/基建？",
+      "direction_index": 1,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "长远回报",
+      "angle_index": 1,
+      "reasoning_chain": "教育提升人口素质 → 高素质劳动力创造更多经济价值 → 回报是几十年的复利效应",
+      "example": "韩国60年代起重金投入教育，一代人内从贫困国跃升为发达经济体"
+    },
+    {
+      "topic": "government",
+      "topic_cn": "政府",
+      "direction": "政府应优先投资教育还是医疗/基建？",
+      "direction_index": 1,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "根治贫困",
+      "angle_index": 2,
+      "reasoning_chain": "教育是脱贫最有效手段 → 受教育者收入更高 → 减少对福利系统的长期依赖",
+      "example": "世界银行数据：每多受一年教育，个人终身收入平均增加10%"
+    },
+    {
+      "topic": "government",
+      "topic_cn": "政府",
+      "direction": "政府应优先投资教育还是医疗/基建？",
+      "direction_index": 1,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "基本需求优先",
+      "angle_index": 1,
+      "reasoning_chain": "没有健康就无法学习和工作 → 医疗是一切发展的前提 → 应至少保障基本医疗",
+      "example": "非洲疟疾高发地区的儿童因反复患病缺课率极高，教育投资效果大打折扣"
+    },
+    {
+      "topic": "government",
+      "topic_cn": "政府",
+      "direction": "政府应优先投资教育还是医疗/基建？",
+      "direction_index": 1,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "教育需要基础设施支撑",
+      "angle_index": 2,
+      "reasoning_chain": "道路不通/电力不足 → 学校建了也没人能到达 → 基建是教育发挥作用的前提条件",
+      "example": "印度农村通电通网后，在线教育参与率大幅上升"
+    },
+    {
+      "topic": "government",
+      "topic_cn": "政府",
+      "direction": "犯罪治理应侧重预防还是惩罚？",
+      "direction_index": 2,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "成本效益",
+      "angle_index": 1,
+      "reasoning_chain": "预防成本远低于关押犯人 → 一个囚犯每年花费纳税人数万美元 → 预防更省钱",
+      "example": "美国每年监狱支出超800亿美元，但再犯率高达76%"
+    },
+    {
+      "topic": "government",
+      "topic_cn": "政府",
+      "direction": "犯罪治理应侧重预防还是惩罚？",
+      "direction_index": 2,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "治本而非治标",
+      "angle_index": 2,
+      "reasoning_chain": "犯罪根源是贫困/教育缺失/心理问题 → 只惩罚不解决根源 → 出狱后再犯率高",
+      "example": "挪威以教育康复为核心的监狱模式，再犯率仅20%，全球最低"
+    },
+    {
+      "topic": "government",
+      "topic_cn": "政府",
+      "direction": "犯罪治理应侧重预防还是惩罚？",
+      "direction_index": 2,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "威慑作用",
+      "angle_index": 1,
+      "reasoning_chain": "严厉惩罚 → 潜在犯罪者因恐惧而放弃 → 起到社会震慑效果",
+      "example": "新加坡严刑峻法（鞭刑/死刑），犯罪率极低，社会治安全球领先"
+    },
+    {
+      "topic": "government",
+      "topic_cn": "政府",
+      "direction": "犯罪治理应侧重预防还是惩罚？",
+      "direction_index": 2,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "公平正义",
+      "angle_index": 2,
+      "reasoning_chain": "受害者需要正义 → 惩罚是对受害者的交代 → 没有惩罚则法律失去权威",
+      "example": "民调显示大多数犯罪受害者认为适当惩罚对其心理康复至关重要"
+    },
+    {
+      "topic": "government",
+      "topic_cn": "政府",
+      "direction": "贫富差距是否需要政府干预？",
+      "direction_index": 3,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "社会稳定",
+      "angle_index": 1,
+      "reasoning_chain": "差距过大 → 底层绝望感增强 → 社会动荡/犯罪/民粹政治风险上升",
+      "example": "拉丁美洲贫富悬殊的国家普遍社会犯罪率高、政治不稳定"
+    },
+    {
+      "topic": "government",
+      "topic_cn": "政府",
+      "direction": "贫富差距是否需要政府干预？",
+      "direction_index": 3,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "机会公平",
+      "angle_index": 2,
+      "reasoning_chain": "富人子女享有更好资源 → 阶层固化 → 穷人无论多努力都无法突破 → 违背公平原则",
+      "example": "美国顶尖大学学生中来自最富有20%家庭的比例超过70%"
+    },
+    {
+      "topic": "government",
+      "topic_cn": "政府",
+      "direction": "贫富差距是否需要政府干预？",
+      "direction_index": 3,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "损害激励",
+      "angle_index": 1,
+      "reasoning_chain": "高税收重分配 → 成功者积极性受挫 → 创新和创业动力下降 → 经济总量萎缩",
+      "example": "法国曾征收75%超级富人税，导致大量富人和企业外迁，税收反而减少"
+    },
+    {
+      "topic": "government",
+      "topic_cn": "政府",
+      "direction": "贫富差距是否需要政府干预？",
+      "direction_index": 3,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "效率优先",
+      "angle_index": 2,
+      "reasoning_chain": "市场自然分配更高效 → 政府干预容易造成资源浪费和腐败 → 最终穷人也没得到真正帮助",
+      "example": "委内瑞拉大规模国有化和再分配政策最终导致经济全面崩溃"
+    },
+    {
+      "topic": "urbanisation",
+      "topic_cn": "城市化",
+      "direction": "城乡差距如何看待？",
+      "direction_index": 1,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "个人发展",
+      "angle_index": 1,
+      "reasoning_chain": "城市提供更多就业和教育机会 → 年轻人能实现更大职业发展 → 个人理性选择无可厚非",
+      "example": "中国一线城市平均工资是农村的3-5倍，吸引大量人才流入"
+    },
+    {
+      "topic": "urbanisation",
+      "topic_cn": "城市化",
+      "direction": "城乡差距如何看待？",
+      "direction_index": 1,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "经济效率",
+      "angle_index": 2,
+      "reasoning_chain": "人口集中 → 产业聚集效应 → 创新协作更高效 → 推动整体经济增长",
+      "example": "硅谷/深圳等城市因人才密度高形成创新生态，产出全球领先"
+    },
+    {
+      "topic": "urbanisation",
+      "topic_cn": "城市化",
+      "direction": "城乡差距如何看待？",
+      "direction_index": 1,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "城市病",
+      "angle_index": 1,
+      "reasoning_chain": "人口过度涌入 → 房价暴涨/交通拥堵/环境恶化 → 城市生活质量下降",
+      "example": "东京/北京等超级城市房价让年轻人绝望，「逃离北上广」成为社会议题"
+    },
+    {
+      "topic": "urbanisation",
+      "topic_cn": "城市化",
+      "direction": "城乡差距如何看待？",
+      "direction_index": 1,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "乡村凋敝",
+      "angle_index": 2,
+      "reasoning_chain": "年轻人流失 → 农村只剩老人孩子 → 农业衰退/公共服务萎缩 → 城乡差距恶性循环",
+      "example": "日本农村大量「消亡村落」，空置房屋超800万套"
+    },
+    {
+      "topic": "urbanisation",
+      "topic_cn": "城市化",
+      "direction": "全球化导致文化同质化，是好是坏？",
+      "direction_index": 2,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "丰富个人选择",
+      "angle_index": 1,
+      "reasoning_chain": "接触多元文化 → 个人视野和生活体验更丰富 → 人们有更多选择而非更少",
+      "example": "全球各城市都能吃到各国美食、看到各国电影，生活多样性前所未有"
+    },
+    {
+      "topic": "urbanisation",
+      "topic_cn": "城市化",
+      "direction": "全球化导致文化同质化，是好是坏？",
+      "direction_index": 2,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "促进理解与和平",
+      "angle_index": 2,
+      "reasoning_chain": "文化交流 → 减少偏见和误解 → 不同国家人民更容易相互尊重和合作",
+      "example": "欧盟国家间文化交流项目(Erasmus)使参与者对他国好感度显著上升"
+    },
+    {
+      "topic": "urbanisation",
+      "topic_cn": "城市化",
+      "direction": "全球化导致文化同质化，是好是坏？",
+      "direction_index": 2,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "本土文化消亡",
+      "angle_index": 1,
+      "reasoning_chain": "强势文化（美国/西方）输出 → 本地语言/传统/艺术被边缘化 → 文化多样性不可逆地减少",
+      "example": "全球每两周消亡一种语言（联合国教科文组织数据）；年轻一代不再会说祖辈方言"
+    },
+    {
+      "topic": "urbanisation",
+      "topic_cn": "城市化",
+      "direction": "全球化导致文化同质化，是好是坏？",
+      "direction_index": 2,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "经济不平等",
+      "angle_index": 2,
+      "reasoning_chain": "文化产业利润流向发达国家 → 发展中国家成为被动消费者 → 文化殖民的另一种形式",
+      "example": "好莱坞占据全球70%以上电影市场份额，本土电影产业在多数国家难以生存"
+    },
+    {
+      "topic": "urbanisation",
+      "topic_cn": "城市化",
+      "direction": "国际旅游利大于弊吗？",
+      "direction_index": 3,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "经济收入",
+      "angle_index": 1,
+      "reasoning_chain": "旅游业创造大量就业 → 带动酒店/餐饮/交通等产业链 → 对发展中国家尤其是重要收入来源",
+      "example": "泰国旅游业占GDP约20%，为数百万人提供生计"
+    },
+    {
+      "topic": "urbanisation",
+      "topic_cn": "城市化",
+      "direction": "国际旅游利大于弊吗？",
+      "direction_index": 3,
+      "stance": "pro",
+      "stance_label": "正方",
+      "angle": "文化交流",
+      "angle_index": 2,
+      "reasoning_chain": "游客亲身体验异国文化 → 促进跨文化理解 → 减少偏见和歧视",
+      "example": "研究显示有国际旅行经验的人对其他文化的包容度显著更高"
+    },
+    {
+      "topic": "urbanisation",
+      "topic_cn": "城市化",
+      "direction": "国际旅游利大于弊吗？",
+      "direction_index": 3,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "环境破坏",
+      "angle_index": 1,
+      "reasoning_chain": "大量航班碳排放 + 旅游热点过度开发 → 自然环境不堪重负 → 生态系统退化",
+      "example": "威尼斯/巴厘岛因游客过多导致环境和基础设施严重承压，居民生活质量下降"
+    },
+    {
+      "topic": "urbanisation",
+      "topic_cn": "城市化",
+      "direction": "国际旅游利大于弊吗？",
+      "direction_index": 3,
+      "stance": "con",
+      "stance_label": "反方",
+      "angle": "文化商业化",
+      "angle_index": 2,
+      "reasoning_chain": "为迎合游客 → 传统文化被简化为表演和纪念品 → 失去真实性和内在价值",
+      "example": "许多原住民社区的传统仪式变成「旅游表演」，年轻一代不再认真对待自身文化"
+    }
+  ],
+  "keywords": [
+    {
+      "topic": "education",
+      "direction_index": 1,
+      "cn": "学费",
+      "en": "tuition fees"
+    },
+    {
+      "topic": "education",
+      "direction_index": 1,
+      "cn": "免费教育",
+      "en": "tuition-free education"
+    },
+    {
+      "topic": "education",
+      "direction_index": 1,
+      "cn": "经济障碍",
+      "en": "financial barriers"
+    },
+    {
+      "topic": "education",
+      "direction_index": 1,
+      "cn": "低收入家庭",
+      "en": "low-income families / households"
+    },
+    {
+      "topic": "education",
+      "direction_index": 1,
+      "cn": "阶层流动",
+      "en": "social mobility"
+    },
+    {
+      "topic": "education",
+      "direction_index": 1,
+      "cn": "高等教育入学率",
+      "en": "enrolment rate / access to higher education"
+    },
+    {
+      "topic": "education",
+      "direction_index": 1,
+      "cn": "人力资本",
+      "en": "human capital"
+    },
+    {
+      "topic": "education",
+      "direction_index": 1,
+      "cn": "政府财政压力",
+      "en": "fiscal pressure / strain on the budget"
+    },
+    {
+      "topic": "education",
+      "direction_index": 1,
+      "cn": "挤占预算",
+      "en": "divert funds from..."
+    },
+    {
+      "topic": "education",
+      "direction_index": 1,
+      "cn": "辍学率",
+      "en": "dropout rate"
+    },
+    {
+      "topic": "education",
+      "direction_index": 1,
+      "cn": "珍惜机会",
+      "en": "value the opportunity"
+    },
+    {
+      "topic": "education",
+      "direction_index": 1,
+      "cn": "纳税人的钱",
+      "en": "taxpayers' money"
+    },
+    {
+      "topic": "education",
+      "direction_index": 2,
+      "cn": "在线学习",
+      "en": "online learning / distance education"
+    },
+    {
+      "topic": "education",
+      "direction_index": 2,
+      "cn": "面对面教学",
+      "en": "face-to-face instruction"
+    },
+    {
+      "topic": "education",
+      "direction_index": 2,
+      "cn": "自定步调学习",
+      "en": "self-paced learning"
+    },
+    {
+      "topic": "education",
+      "direction_index": 2,
+      "cn": "完课率",
+      "en": "completion rate"
+    },
+    {
+      "topic": "education",
+      "direction_index": 2,
+      "cn": "自制力",
+      "en": "self-discipline"
+    },
+    {
+      "topic": "education",
+      "direction_index": 2,
+      "cn": "注意力持续时间",
+      "en": "attention span"
+    },
+    {
+      "topic": "education",
+      "direction_index": 2,
+      "cn": "同伴互动",
+      "en": "peer interaction"
+    },
+    {
+      "topic": "education",
+      "direction_index": 2,
+      "cn": "教育资源不平等",
+      "en": "educational inequality / unequal access"
+    },
+    {
+      "topic": "education",
+      "direction_index": 2,
+      "cn": "数字鸿沟",
+      "en": "digital divide"
+    },
+    {
+      "topic": "education",
+      "direction_index": 3,
+      "cn": "竞争意识",
+      "en": "competitive spirit / sense of competition"
+    },
+    {
+      "topic": "education",
+      "direction_index": 3,
+      "cn": "激发潜能",
+      "en": "realise one's full potential"
+    },
+    {
+      "topic": "education",
+      "direction_index": 3,
+      "cn": "精英教育",
+      "en": "elite education"
+    },
+    {
+      "topic": "education",
+      "direction_index": 3,
+      "cn": "过度竞争/内卷",
+      "en": "cutthroat competition"
+    },
+    {
+      "topic": "education",
+      "direction_index": 3,
+      "cn": "焦虑/倦怠",
+      "en": "anxiety / burnout"
+    },
+    {
+      "topic": "education",
+      "direction_index": 3,
+      "cn": "团队协作",
+      "en": "teamwork / collaboration"
+    },
+    {
+      "topic": "education",
+      "direction_index": 3,
+      "cn": "沟通能力",
+      "en": "communication / interpersonal skills"
+    },
+    {
+      "topic": "education",
+      "direction_index": 3,
+      "cn": "同伴学习",
+      "en": "peer learning / cooperative learning"
+    },
+    {
+      "topic": "technology",
+      "direction_index": 1,
+      "cn": "社交媒体",
+      "en": "social media / social networking platforms"
+    },
+    {
+      "topic": "technology",
+      "direction_index": 1,
+      "cn": "信息传播",
+      "en": "information dissemination"
+    },
+    {
+      "topic": "technology",
+      "direction_index": 1,
+      "cn": "假新闻/虚假信息",
+      "en": "fake news / misinformation"
+    },
+    {
+      "topic": "technology",
+      "direction_index": 1,
+      "cn": "沉迷/上瘾",
+      "en": "addiction / screen dependency"
+    },
+    {
+      "topic": "technology",
+      "direction_index": 1,
+      "cn": "社交比较",
+      "en": "social comparison"
+    },
+    {
+      "topic": "technology",
+      "direction_index": 1,
+      "cn": "算法推送",
+      "en": "algorithm-driven content"
+    },
+    {
+      "topic": "technology",
+      "direction_index": 1,
+      "cn": "网络霸凌",
+      "en": "cyberbullying"
+    },
+    {
+      "topic": "technology",
+      "direction_index": 1,
+      "cn": "舆论极化",
+      "en": "polarisation of public opinion"
+    },
+    {
+      "topic": "technology",
+      "direction_index": 1,
+      "cn": "自媒体经济",
+      "en": "creator economy"
+    },
+    {
+      "topic": "technology",
+      "direction_index": 1,
+      "cn": "隐私泄露",
+      "en": "privacy breach / data leakage"
+    },
+    {
+      "topic": "technology",
+      "direction_index": 2,
+      "cn": "人工智能",
+      "en": "artificial intelligence (AI)"
+    },
+    {
+      "topic": "technology",
+      "direction_index": 2,
+      "cn": "自动化",
+      "en": "automation"
+    },
+    {
+      "topic": "technology",
+      "direction_index": 2,
+      "cn": "大规模失业",
+      "en": "mass unemployment"
+    },
+    {
+      "topic": "technology",
+      "direction_index": 2,
+      "cn": "重复性工作",
+      "en": "repetitive / routine tasks"
+    },
+    {
+      "topic": "technology",
+      "direction_index": 2,
+      "cn": "低技能劳动者",
+      "en": "low-skilled workers"
+    },
+    {
+      "topic": "technology",
+      "direction_index": 2,
+      "cn": "贫富差距",
+      "en": "wealth gap / income inequality"
+    },
+    {
+      "topic": "technology",
+      "direction_index": 2,
+      "cn": "技术革命",
+      "en": "technological revolution"
+    },
+    {
+      "topic": "technology",
+      "direction_index": 2,
+      "cn": "岗位创造",
+      "en": "job creation"
+    },
+    {
+      "topic": "technology",
+      "direction_index": 2,
+      "cn": "教育转型",
+      "en": "workforce retraining / reskilling"
+    },
+    {
+      "topic": "technology",
+      "direction_index": 2,
+      "cn": "创造性工作",
+      "en": "creative / cognitive work"
+    },
+    {
+      "topic": "technology",
+      "direction_index": 3,
+      "cn": "屏幕时间",
+      "en": "screen time"
+    },
+    {
+      "topic": "technology",
+      "direction_index": 3,
+      "cn": "视力下降",
+      "en": "deteriorating eyesight"
+    },
+    {
+      "topic": "technology",
+      "direction_index": 3,
+      "cn": "注意力缩短",
+      "en": "shortened attention span"
+    },
+    {
+      "topic": "technology",
+      "direction_index": 3,
+      "cn": "碎片化信息",
+      "en": "fragmented information"
+    },
+    {
+      "topic": "technology",
+      "direction_index": 3,
+      "cn": "教育类应用",
+      "en": "educational apps"
+    },
+    {
+      "topic": "technology",
+      "direction_index": 3,
+      "cn": "数字素养",
+      "en": "digital literacy"
+    },
+    {
+      "topic": "technology",
+      "direction_index": 3,
+      "cn": "网络安全",
+      "en": "online safety / cyber safety"
+    },
+    {
+      "topic": "technology",
+      "direction_index": 3,
+      "cn": "家长监管",
+      "en": "parental supervision / control"
+    },
+    {
+      "topic": "environment",
+      "direction_index": 1,
+      "cn": "碳排放",
+      "en": "carbon emissions"
+    },
+    {
+      "topic": "environment",
+      "direction_index": 1,
+      "cn": "温室气体",
+      "en": "greenhouse gases"
+    },
+    {
+      "topic": "environment",
+      "direction_index": 1,
+      "cn": "立法/政策法规",
+      "en": "legislation / regulations"
+    },
+    {
+      "topic": "environment",
+      "direction_index": 1,
+      "cn": "碳排放交易",
+      "en": "carbon trading / cap-and-trade"
+    },
+    {
+      "topic": "environment",
+      "direction_index": 1,
+      "cn": "消费者选择",
+      "en": "consumer choices"
+    },
+    {
+      "topic": "environment",
+      "direction_index": 1,
+      "cn": "可再生能源",
+      "en": "renewable energy"
+    },
+    {
+      "topic": "environment",
+      "direction_index": 1,
+      "cn": "化石燃料",
+      "en": "fossil fuels"
+    },
+    {
+      "topic": "environment",
+      "direction_index": 1,
+      "cn": "环保意识",
+      "en": "environmental awareness"
+    },
+    {
+      "topic": "environment",
+      "direction_index": 1,
+      "cn": "限塑令",
+      "en": "plastic ban / restrictions on plastic"
+    },
+    {
+      "topic": "environment",
+      "direction_index": 1,
+      "cn": "示范效应",
+      "en": "ripple effect / demonstration effect"
+    },
+    {
+      "topic": "environment",
+      "direction_index": 2,
+      "cn": "可持续发展",
+      "en": "sustainable development"
+    },
+    {
+      "topic": "environment",
+      "direction_index": 2,
+      "cn": "绿色经济",
+      "en": "green economy"
+    },
+    {
+      "topic": "environment",
+      "direction_index": 2,
+      "cn": "清洁能源产业",
+      "en": "clean energy industry"
+    },
+    {
+      "topic": "environment",
+      "direction_index": 2,
+      "cn": "经济代价",
+      "en": "economic cost"
+    },
+    {
+      "topic": "environment",
+      "direction_index": 2,
+      "cn": "发展中国家",
+      "en": "developing nations"
+    },
+    {
+      "topic": "environment",
+      "direction_index": 2,
+      "cn": "工业化",
+      "en": "industrialisation"
+    },
+    {
+      "topic": "environment",
+      "direction_index": 2,
+      "cn": "碳税",
+      "en": "carbon tax"
+    },
+    {
+      "topic": "environment",
+      "direction_index": 2,
+      "cn": "碳泄漏",
+      "en": "carbon leakage"
+    },
+    {
+      "topic": "environment",
+      "direction_index": 2,
+      "cn": "生态系统",
+      "en": "ecosystem"
+    },
+    {
+      "topic": "environment",
+      "direction_index": 2,
+      "cn": "环境退化",
+      "en": "environmental degradation"
+    },
+    {
+      "topic": "environment",
+      "direction_index": 3,
+      "cn": "尾气排放",
+      "en": "exhaust emissions / vehicle emissions"
+    },
+    {
+      "topic": "environment",
+      "direction_index": 3,
+      "cn": "交通拥堵",
+      "en": "traffic congestion"
+    },
+    {
+      "topic": "environment",
+      "direction_index": 3,
+      "cn": "拥堵费",
+      "en": "congestion charge"
+    },
+    {
+      "topic": "environment",
+      "direction_index": 3,
+      "cn": "公共交通",
+      "en": "public transport / transit"
+    },
+    {
+      "topic": "environment",
+      "direction_index": 3,
+      "cn": "空气质量",
+      "en": "air quality"
+    },
+    {
+      "topic": "environment",
+      "direction_index": 3,
+      "cn": "通勤",
+      "en": "commuting"
+    },
+    {
+      "topic": "environment",
+      "direction_index": 3,
+      "cn": "个人出行自由",
+      "en": "freedom of mobility"
+    },
+    {
+      "topic": "environment",
+      "direction_index": 3,
+      "cn": "基础设施覆盖不足",
+      "en": "inadequate infrastructure"
+    },
+    {
+      "topic": "health",
+      "direction_index": 1,
+      "cn": "垃圾食品",
+      "en": "junk food / processed food"
+    },
+    {
+      "topic": "health",
+      "direction_index": 1,
+      "cn": "含糖饮料",
+      "en": "sugary drinks / sweetened beverages"
+    },
+    {
+      "topic": "health",
+      "direction_index": 1,
+      "cn": "肥胖率",
+      "en": "obesity rate"
+    },
+    {
+      "topic": "health",
+      "direction_index": 1,
+      "cn": "慢性病",
+      "en": "chronic diseases (diabetes, heart disease)"
+    },
+    {
+      "topic": "health",
+      "direction_index": 1,
+      "cn": "公共医疗负担",
+      "en": "burden on the public health system"
+    },
+    {
+      "topic": "health",
+      "direction_index": 1,
+      "cn": "食品税/糖税",
+      "en": "food tax / sugar tax"
+    },
+    {
+      "topic": "health",
+      "direction_index": 1,
+      "cn": "个人选择权",
+      "en": "personal choice / individual freedom"
+    },
+    {
+      "topic": "health",
+      "direction_index": 1,
+      "cn": "保姆式管理",
+      "en": "nanny state"
+    },
+    {
+      "topic": "health",
+      "direction_index": 1,
+      "cn": "低收入群体",
+      "en": "low-income groups"
+    },
+    {
+      "topic": "health",
+      "direction_index": 1,
+      "cn": "健康饮食补贴",
+      "en": "subsidies for healthy food"
+    },
+    {
+      "topic": "health",
+      "direction_index": 2,
+      "cn": "久坐不动的生活方式",
+      "en": "sedentary lifestyle"
+    },
+    {
+      "topic": "health",
+      "direction_index": 2,
+      "cn": "规律运动",
+      "en": "regular exercise / physical activity"
+    },
+    {
+      "topic": "health",
+      "direction_index": 2,
+      "cn": "预防疾病",
+      "en": "disease prevention"
+    },
+    {
+      "topic": "health",
+      "direction_index": 2,
+      "cn": "心理健康",
+      "en": "mental health / well-being"
+    },
+    {
+      "topic": "health",
+      "direction_index": 2,
+      "cn": "社区凝聚力",
+      "en": "community cohesion"
+    },
+    {
+      "topic": "health",
+      "direction_index": 2,
+      "cn": "青少年犯罪",
+      "en": "juvenile crime / youth delinquency"
+    },
+    {
+      "topic": "health",
+      "direction_index": 2,
+      "cn": "体育设施",
+      "en": "sports facilities / recreational infrastructure"
+    },
+    {
+      "topic": "health",
+      "direction_index": 2,
+      "cn": "利用率低",
+      "en": "underutilised / low utilisation rate"
+    },
+    {
+      "topic": "health",
+      "direction_index": 3,
+      "cn": "工作生活平衡",
+      "en": "work-life balance"
+    },
+    {
+      "topic": "health",
+      "direction_index": 3,
+      "cn": "过劳/过劳死",
+      "en": "overwork / karoshi"
+    },
+    {
+      "topic": "health",
+      "direction_index": 3,
+      "cn": "加班文化",
+      "en": "overtime culture"
+    },
+    {
+      "topic": "health",
+      "direction_index": 3,
+      "cn": "生产力",
+      "en": "productivity"
+    },
+    {
+      "topic": "health",
+      "direction_index": 3,
+      "cn": "弹性工作制",
+      "en": "flexible working arrangements"
+    },
+    {
+      "topic": "health",
+      "direction_index": 3,
+      "cn": "四天工作制",
+      "en": "four-day work week"
+    },
+    {
+      "topic": "health",
+      "direction_index": 3,
+      "cn": "职业倦怠",
+      "en": "burnout"
+    },
+    {
+      "topic": "health",
+      "direction_index": 3,
+      "cn": "生活成本",
+      "en": "cost of living"
+    },
+    {
+      "topic": "government",
+      "direction_index": 1,
+      "cn": "公共支出/财政拨款",
+      "en": "public spending / government funding"
+    },
+    {
+      "topic": "government",
+      "direction_index": 1,
+      "cn": "教育投资",
+      "en": "investment in education"
+    },
+    {
+      "topic": "government",
+      "direction_index": 1,
+      "cn": "医疗保障",
+      "en": "healthcare provision"
+    },
+    {
+      "topic": "government",
+      "direction_index": 1,
+      "cn": "基础设施建设",
+      "en": "infrastructure development"
+    },
+    {
+      "topic": "government",
+      "direction_index": 1,
+      "cn": "长期回报",
+      "en": "long-term returns"
+    },
+    {
+      "topic": "government",
+      "direction_index": 1,
+      "cn": "脱贫",
+      "en": "poverty alleviation / lifting people out of poverty"
+    },
+    {
+      "topic": "government",
+      "direction_index": 1,
+      "cn": "经济复利效应",
+      "en": "compounding economic benefits"
+    },
+    {
+      "topic": "government",
+      "direction_index": 1,
+      "cn": "基本需求",
+      "en": "basic/fundamental needs"
+    },
+    {
+      "topic": "government",
+      "direction_index": 2,
+      "cn": "犯罪预防",
+      "en": "crime prevention"
+    },
+    {
+      "topic": "government",
+      "direction_index": 2,
+      "cn": "惩罚/量刑",
+      "en": "punishment / sentencing"
+    },
+    {
+      "topic": "government",
+      "direction_index": 2,
+      "cn": "再犯率",
+      "en": "reoffending rate / recidivism"
+    },
+    {
+      "topic": "government",
+      "direction_index": 2,
+      "cn": "监禁",
+      "en": "imprisonment / incarceration"
+    },
+    {
+      "topic": "government",
+      "direction_index": 2,
+      "cn": "威慑作用",
+      "en": "deterrent effect"
+    },
+    {
+      "topic": "government",
+      "direction_index": 2,
+      "cn": "康复/改造",
+      "en": "rehabilitation"
+    },
+    {
+      "topic": "government",
+      "direction_index": 2,
+      "cn": "社区服务",
+      "en": "community service"
+    },
+    {
+      "topic": "government",
+      "direction_index": 2,
+      "cn": "犯罪根源",
+      "en": "root causes of crime"
+    },
+    {
+      "topic": "government",
+      "direction_index": 2,
+      "cn": "贫困/教育缺失",
+      "en": "poverty / lack of education"
+    },
+    {
+      "topic": "government",
+      "direction_index": 2,
+      "cn": "公平正义",
+      "en": "justice / fairness"
+    },
+    {
+      "topic": "government",
+      "direction_index": 3,
+      "cn": "贫富差距",
+      "en": "wealth gap / income disparity"
+    },
+    {
+      "topic": "government",
+      "direction_index": 3,
+      "cn": "阶层固化",
+      "en": "social stratification / class rigidity"
+    },
+    {
+      "topic": "government",
+      "direction_index": 3,
+      "cn": "再分配",
+      "en": "redistribution of wealth"
+    },
+    {
+      "topic": "government",
+      "direction_index": 3,
+      "cn": "累进税制",
+      "en": "progressive taxation"
+    },
+    {
+      "topic": "government",
+      "direction_index": 3,
+      "cn": "社会福利",
+      "en": "social welfare / safety net"
+    },
+    {
+      "topic": "government",
+      "direction_index": 3,
+      "cn": "社会动荡",
+      "en": "social unrest / instability"
+    },
+    {
+      "topic": "government",
+      "direction_index": 3,
+      "cn": "民粹主义",
+      "en": "populism"
+    },
+    {
+      "topic": "government",
+      "direction_index": 3,
+      "cn": "创业动力",
+      "en": "entrepreneurial incentive"
+    },
+    {
+      "topic": "government",
+      "direction_index": 3,
+      "cn": "资本外逃",
+      "en": "capital flight"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 1,
+      "cn": "城市化",
+      "en": "urbanisation"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 1,
+      "cn": "城乡差距",
+      "en": "urban-rural divide / gap"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 1,
+      "cn": "人口流入/外流",
+      "en": "population influx / rural exodus"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 1,
+      "cn": "就业机会",
+      "en": "employment opportunities"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 1,
+      "cn": "产业聚集效应",
+      "en": "agglomeration effect"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 1,
+      "cn": "房价暴涨",
+      "en": "soaring housing prices"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 1,
+      "cn": "交通拥堵",
+      "en": "traffic congestion"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 1,
+      "cn": "人口老龄化（农村）",
+      "en": "ageing population in rural areas"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 1,
+      "cn": "空心化/凋敝",
+      "en": "hollowing out of rural communities"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 1,
+      "cn": "公共服务萎缩",
+      "en": "decline in public services"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 2,
+      "cn": "全球化",
+      "en": "globalisation"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 2,
+      "cn": "文化同质化",
+      "en": "cultural homogenisation"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 2,
+      "cn": "文化多样性",
+      "en": "cultural diversity"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 2,
+      "cn": "强势文化输出",
+      "en": "cultural dominance / cultural imperialism"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 2,
+      "cn": "本土文化消亡",
+      "en": "erosion of local/indigenous culture"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 2,
+      "cn": "语言消亡",
+      "en": "language extinction"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 2,
+      "cn": "跨文化理解",
+      "en": "cross-cultural understanding"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 2,
+      "cn": "文化交流",
+      "en": "cultural exchange"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 2,
+      "cn": "文化认同",
+      "en": "cultural identity"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 2,
+      "cn": "商业化",
+      "en": "commercialisation"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 3,
+      "cn": "旅游业",
+      "en": "tourism industry"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 3,
+      "cn": "经济收入/创汇",
+      "en": "tourism revenue / foreign exchange"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 3,
+      "cn": "就业岗位",
+      "en": "job creation / employment"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 3,
+      "cn": "过度旅游",
+      "en": "overtourism"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 3,
+      "cn": "生态承载力",
+      "en": "carrying capacity"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 3,
+      "cn": "碳足迹（航空）",
+      "en": "carbon footprint (aviation)"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 3,
+      "cn": "文化商业化",
+      "en": "commercialisation of culture"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 3,
+      "cn": "跨文化交流",
+      "en": "cross-cultural exchange"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 3,
+      "cn": "刻板印象",
+      "en": "stereotypes"
+    },
+    {
+      "topic": "urbanisation",
+      "direction_index": 3,
+      "cn": "基础设施压力",
+      "en": "strain on infrastructure"
+    }
+  ]
+}
