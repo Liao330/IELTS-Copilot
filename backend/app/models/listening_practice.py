@@ -47,6 +47,7 @@ class ListeningPracticeSentence(Base):
         String, ForeignKey("listening_practice_sessions.id", ondelete="CASCADE"), nullable=False
     )
     original_text: Mapped[str] = mapped_column(Text, nullable=False)
+    translation: Mapped[Optional[str]] = mapped_column(Text)  # 原句中文翻译
     order_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     # 用户笔记原文中对这条答案句的额外说明（例如：听成了 camb、拼写错误等）。

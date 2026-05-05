@@ -174,7 +174,7 @@ function DailyTab({ onUpdate }: { onUpdate: () => void }) {
       {/* Due review */}
       <section>
         <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
-          🔄 今日复习 <Badge variant="outline" className="text-xs">{dueItems.length}</Badge>
+          🔄 待复习 <Badge variant="outline" className="text-xs">{dueItems.length}</Badge>
         </h2>
         {dueItems.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">今日无待复习句型 🎉 去「默写测试」或「闪卡复习」巩固吧</p>
@@ -248,7 +248,7 @@ function DailyTab({ onUpdate }: { onUpdate: () => void }) {
             {todayReviewed.length > 0 && (
               <section>
                 <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  🔁 今日复习 <Badge variant="outline" className="text-xs">{todayReviewed.length}</Badge>
+                  🔁 今日已复习 <Badge variant="outline" className="text-xs">{todayReviewed.length}</Badge>
                 </h2>
                 <div className="space-y-2">
                   {todayReviewed.map((item) => (

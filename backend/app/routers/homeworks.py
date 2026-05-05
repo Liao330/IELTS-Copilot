@@ -303,16 +303,20 @@ def _parse_reading_description(desc: str | None) -> list[dict]:
 
 @router.get("/reading-stats")
 async def reading_stats(db: AsyncSession = Depends(get_db)):
-    """阅读题型统计：各 passage 的题型出现频率、正确率、时间趋势"""
+    """阅读题型统计：各 passage 的正确率、时间趋势。
+    数据来源：
+    1. auto_scores feedback 中的 parts 分数
+    2. description 或 review_note 中的题型标注（P1 11/13 题型有...）
+    """
     stmt = (
         select(Homework)
         .where(Homework.category == "reading")
+        .options(selectinload(Homework.feedbacks))
         .order_by(Homework.homework_date.asc(), Homework.created_at.asc())
     )
     result = await db.execute(stmt)
     homeworks = result.scalars().all()
 
-    # 解析所有阅读作业
     time_series = []
     passage_data: dict[int, dict] = defaultdict(lambda: {
         "count": 0,
@@ -322,9 +326,63 @@ async def reading_stats(db: AsyncSession = Depends(get_db)):
     })
 
     for hw in homeworks:
-        parsed = _parse_reading_description(hw.description)
-        if not parsed:
+        # 从 auto_scores 获取各 part 的分数
+        parts_from_scores = []
+        for fb in (hw.feedbacks or []):
+            if fb.feedback_type == "auto_scores" and fb.scores:
+                try:
+                    scores_data = json.loads(fb.scores)
+                    for p in scores_data.get("parts", []):
+                        parts_from_scores.append({
+                            "passage": p["part"],
+                            "correct": p["correct"],
+                            "total": p["total"],
+                            "accuracy": round(p["correct"] / p["total"] * 100, 1) if p["total"] > 0 else 0,
+                            "question_types": [],
+                        })
+                except (json.JSONDecodeError, KeyError, TypeError):
+                    pass
+                break
+
+        # 尝试从 description 或 review_note 中补充题型信息
+        type_info = _parse_reading_description(hw.description)
+        if not type_info:
+            for fb in (hw.feedbacks or []):
+                if fb.feedback_type in ("review_note", "teacher_text") and fb.content:
+                    type_info = _parse_reading_description(fb.content)
+                    if type_info:
+                        break
+
+        # 合并数据：以 auto_scores 的分数为准，type_info 补充题型
+        if parts_from_scores:
+            parsed = parts_from_scores
+            # 将题型信息合并进去
+            if type_info:
+                type_map = {t["passage"]: t["question_types"] for t in type_info}
+                for p in parsed:
+                    if p["passage"] in type_map:
+                        p["question_types"] = type_map[p["passage"]]
+        elif type_info:
+            parsed = type_info
+        else:
             continue
+
+        overall_correct = sum(p["correct"] for p in parsed)
+        overall_total = sum(p["total"] for p in parsed)
+        time_series.append({
+            "date": str(hw.homework_date),
+            "homework_id": hw.id,
+            "title": hw.title,
+            "passages": parsed,
+            "overall_accuracy": round(overall_correct / overall_total * 100, 1) if overall_total > 0 else 0,
+        })
+        for p in parsed:
+            pd = passage_data[p["passage"]]
+            pd["count"] += 1
+            pd["total_correct"] += p["correct"]
+            pd["total_questions"] += p["total"]
+            for qt in p["question_types"]:
+                pd["question_types"][qt] += 1
         overall_correct = sum(p["correct"] for p in parsed)
         overall_total = sum(p["total"] for p in parsed)
         time_series.append({

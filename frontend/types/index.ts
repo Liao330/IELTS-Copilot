@@ -371,6 +371,7 @@ export interface ListeningSentence {
   id: string;
   session_id: string;
   original_text: string;
+  translation: string | null;
   order_index: number;
   note: string | null;
   blocker_words: ListeningBlockerWord[];

@@ -722,11 +722,11 @@ function ExampleRow({
         </div>
       ) : null}
 
-      {/* 翻译 */}
-      {revealed ? (
+      {/* 翻译：提交后或揭晓后显示 */}
+      {(revealed || submitted) ? (
         <p className="text-xs text-muted-foreground mt-1">{example.translation}</p>
       ) : (
-        <p className="text-xs text-muted-foreground/50 mt-1 italic">（翻译已隐藏 · 先用耳朵听）</p>
+        <p className="text-xs text-muted-foreground/50 mt-1 italic">(翻译已隐藏 · 先用耳朵听)</p>
       )}
 
       {/* hint 独立控制 */}

@@ -126,6 +126,7 @@ def _serialize_sentence(s: ListeningPracticeSentence) -> SentenceOut:
         id=s.id,
         session_id=s.session_id,
         original_text=s.original_text,
+        translation=s.translation,
         order_index=s.order_index,
         note=s.note,
         blocker_words=_parse_blockers(s.blocker_words),
@@ -767,6 +768,56 @@ async def update_sentence_text(
     # relocated_norms 仅用于推断哪些 vocab 被剔除（由 sync_blockers_to_vocabulary 统一处理）
     _ = relocated_norms
     return _serialize_sentence(refreshed)
+
+
+# ==================== 原句翻译 ====================
+
+@router.post("/sessions/{session_id}/translate-sentences")
+async def translate_sentences(session_id: str, db: AsyncSession = Depends(get_db)):
+    """批量翻译 session 中所有缺少翻译的原句"""
+    from app.services.llm_service import complete_chat
+    from app.utils.llm_config import get_llm_config
+
+    q = await db.execute(
+        select(ListeningPracticeSentence)
+        .where(ListeningPracticeSentence.session_id == session_id)
+        .order_by(ListeningPracticeSentence.order_index)
+    )
+    sentences = q.scalars().all()
+    untranslated = [s for s in sentences if not s.translation]
+
+    if not untranslated:
+        return {"translated": 0, "message": "所有句子已有翻译"}
+
+    # 批量翻译（一次最多20句）
+    texts = [s.original_text for s in untranslated[:20]]
+    prompt = f"""将以下英文句子逐一翻译为中文，简洁自然。
+只输出翻译结果，每行一条，与输入顺序对应。不要添加编号或额外说明。
+
+{chr(10).join(f'{i+1}. {t}' for i, t in enumerate(texts))}"""
+
+    model, api_key, api_base = await get_llm_config(db)
+    resp = await complete_chat(
+        messages=[{"role": "user", "content": prompt}],
+        model=model,
+        api_key=api_key,
+        api_base=api_base,
+    )
+    lines = [l.strip() for l in resp.strip().split("\n") if l.strip()]
+    # 去掉可能的编号前缀
+    import re as _re
+    cleaned = []
+    for l in lines:
+        cleaned.append(_re.sub(r'^\d+[\.\)、]\s*', '', l))
+
+    count = 0
+    for i, s in enumerate(untranslated[:20]):
+        if i < len(cleaned) and cleaned[i]:
+            s.translation = cleaned[i]
+            count += 1
+
+    await db.commit()
+    return {"translated": count, "message": f"已翻译 {count} 条句子"}
 
 
 # ==================== 听写记录 ====================

@@ -85,6 +85,7 @@ class SentenceOut(BaseModel):
     id: str
     session_id: str
     original_text: str
+    translation: str | None = None
     order_index: int
     note: str | None = None
     blocker_words: list[BlockerWord] = []

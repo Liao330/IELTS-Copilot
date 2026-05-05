@@ -217,6 +217,20 @@ export default function ListeningPracticeDetailPage() {
     }).catch(() => {});
   }, [sessionId]);
 
+  // 自动翻译缺少翻译的原句
+  useEffect(() => {
+    if (!session || !session.id) return;
+    const hasUntranslated = session.sentences.some((s) => !s.translation);
+    if (hasUntranslated) {
+      api.translateSentences(session.id).then((res) => {
+        if (res.translated > 0) {
+          // 重新加载以获取翻译
+          fetchSession();
+        }
+      }).catch(() => {});
+    }
+  }, [session?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // 乐观更新 + 远端持久化
   const toggleBlocker = async (
     sentence: ListeningSentence,
@@ -1608,6 +1622,13 @@ function SentenceBlock({
           onToggle={onToggleBlocker}
           tooltipMap={tooltipMap}
         />
+
+        {/* 原句翻译 */}
+        {sentence.translation && (
+          <p className="text-xs text-muted-foreground mt-1.5 pl-1 border-l-2 border-purple-300 dark:border-purple-700">
+            {sentence.translation}
+          </p>
+        )}
 
         <SentenceNoteEditor
           value={sentence.note || ""}

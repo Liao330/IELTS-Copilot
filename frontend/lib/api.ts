@@ -144,6 +144,8 @@ export const api = {
     request<{ ok: boolean; total_seconds: number }>(`/api/listening-practice/sessions/${sessionId}/study-time`, {
       method: "POST", body: JSON.stringify({ seconds }),
     }),
+  translateSentences: (sessionId: string) =>
+    request<{ translated: number; message: string }>(`/api/listening-practice/sessions/${sessionId}/translate-sentences`, { method: "POST" }),
   batchGenerateSummaries: () =>
     request<{ message: string; generated: number; errors: number; total: number }>("/api/homeworks/batch-generate-summaries", { method: "POST" }),
   searchHomeworks: (query: string, category?: string) =>

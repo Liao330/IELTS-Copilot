@@ -70,6 +70,7 @@ async def _migrate_add_columns(conn):
         ("writing_templates", "blank_slots", "TEXT"),
         ("writing_templates", "slots_passed", "TEXT"),
         ("writing_templates", "first_learned_at", "DATETIME"),
+        ("listening_practice_sentences", "translation", "TEXT"),
     ]
     for table, column, col_type in new_columns:
         try:
@@ -78,11 +79,17 @@ async def _migrate_add_columns(conn):
             # Column already exists
             pass
 
-    # 回填 first_learned_at：已学过但没有该字段的记录，用 last_reviewed_at 填充
+    # 回填 first_learned_at：已学过但没有该字段的记录
+    # review_count <= 3 的近期新学句型用 last_reviewed_at
+    # review_count > 3 的老句型用 created_at（首次学习时间已无从追溯，用创建时间近似）
     try:
         await conn.execute(text(
             "UPDATE writing_templates SET first_learned_at = last_reviewed_at "
-            "WHERE review_count > 0 AND first_learned_at IS NULL AND last_reviewed_at IS NOT NULL"
+            "WHERE review_count > 0 AND review_count <= 3 AND first_learned_at IS NULL AND last_reviewed_at IS NOT NULL"
+        ))
+        await conn.execute(text(
+            "UPDATE writing_templates SET first_learned_at = created_at "
+            "WHERE review_count > 3 AND first_learned_at IS NULL AND created_at IS NOT NULL"
         ))
     except Exception:
         pass
