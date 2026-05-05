@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -23,12 +24,16 @@ const CATEGORY_MAP: Record<string, { label: string; emoji: string; color: string
 const MASTERY_LABELS = ["新", "模糊", "认识", "熟练"];
 const MASTERY_COLORS = ["bg-gray-200 text-gray-700", "bg-amber-100 text-amber-700", "bg-sky-100 text-sky-700", "bg-emerald-100 text-emerald-700"];
 
-type TabType = "library" | "daily" | "dictation" | "flashcard" | "stats";
+type MainTab = "template" | "material";
+type TemplateSubTab = "daily" | "dictation" | "flashcard" | "library" | "stats";
+type MaterialSubTab = "m-daily" | "m-flashcard" | "m-dictation" | "m-library";
 
 export default function WritingPracticePage() {
   const router = useRouter();
   useToast(); // available for child components
-  const [tab, setTab] = useState<TabType>("daily");
+  const [mainTab, setMainTab] = useState<MainTab>("template");
+  const [templateSub, setTemplateSub] = useState<TemplateSubTab>("daily");
+  const [materialSub, setMaterialSub] = useState<MaterialSubTab>("m-daily");
   const [stats, setStats] = useState<WritingTemplateStats | null>(null);
 
   const fetchStats = useCallback(async () => {
@@ -40,12 +45,19 @@ export default function WritingPracticePage() {
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
 
-  const tabs: { key: TabType; label: string; icon: string }[] = [
-    { key: "daily", label: "今日任务", icon: "📋" },
-    { key: "dictation", label: "默写测试", icon: "✏️" },
-    { key: "flashcard", label: "闪卡复习", icon: "🃏" },
-    { key: "library", label: "句型库", icon: "📚" },
-    { key: "stats", label: "统计", icon: "📈" },
+  const templateSubTabs = [
+    { key: "daily" as const, label: "今日任务", icon: "📋" },
+    { key: "dictation" as const, label: "默写测试", icon: "✏️" },
+    { key: "flashcard" as const, label: "闪卡复习", icon: "🃏" },
+    { key: "library" as const, label: "句型库", icon: "📚" },
+    { key: "stats" as const, label: "统计", icon: "📈" },
+  ];
+
+  const materialSubTabs = [
+    { key: "m-daily" as const, label: "今日学习", icon: "📋" },
+    { key: "m-flashcard" as const, label: "闪卡复习", icon: "🃏" },
+    { key: "m-dictation" as const, label: "默写测试", icon: "✏️" },
+    { key: "m-library" as const, label: "素材库", icon: "📚" },
   ];
 
   return (
@@ -56,9 +68,9 @@ export default function WritingPracticePage() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-lg font-semibold flex items-center gap-2">
-            ✍️ 写作句型背诵
+            ✍️ 写作句型&素材背诵
           </h1>
-          {stats && (
+          {stats && mainTab === "template" && (
             <span className="ml-auto text-xs text-muted-foreground">
               {stats.mastered}/{stats.total} 已掌握 · 今日新学 {stats.learned_today} · 待复习 {stats.due_today}
             </span>
@@ -67,28 +79,76 @@ export default function WritingPracticePage() {
       </header>
 
       <main className="container mx-auto px-4 py-4 max-w-3xl">
-        {/* Tab bar */}
-        <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
-          {tabs.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                tab === t.key
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-              }`}
-            >
-              {t.icon} {t.label}
-            </button>
-          ))}
+        {/* 大 Tab 切换 */}
+        <div className="flex gap-2 mb-3">
+          <button
+            onClick={() => setMainTab("template")}
+            className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+              mainTab === "template"
+                ? "bg-orange-500 text-white shadow-sm"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
+          >
+            📝 句型背诵
+          </button>
+          <button
+            onClick={() => setMainTab("material")}
+            className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+              mainTab === "material"
+                ? "bg-purple-500 text-white shadow-sm"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
+          >
+            💡 素材背诵
+          </button>
         </div>
 
-        {tab === "daily" && <DailyTab onUpdate={fetchStats} />}
-        {tab === "dictation" && <DictationTab onUpdate={fetchStats} />}
-        {tab === "flashcard" && <FlashcardTab onUpdate={fetchStats} />}
-        {tab === "library" && <LibraryTab />}
-        {tab === "stats" && stats && <StatsTab stats={stats} />}
+        {/* 子 Tab bar */}
+        {mainTab === "template" && (
+          <>
+            <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
+              {templateSubTabs.map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setTemplateSub(t.key)}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                    templateSub === t.key
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+                >
+                  {t.icon} {t.label}
+                </button>
+              ))}
+            </div>
+            {templateSub === "daily" && <DailyTab onUpdate={fetchStats} />}
+            {templateSub === "dictation" && <DictationTab onUpdate={fetchStats} />}
+            {templateSub === "flashcard" && <FlashcardTab onUpdate={fetchStats} />}
+            {templateSub === "library" && <LibraryTab />}
+            {templateSub === "stats" && stats && <StatsTab stats={stats} />}
+          </>
+        )}
+
+        {mainTab === "material" && (
+          <>
+            <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
+              {materialSubTabs.map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setMaterialSub(t.key)}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                    materialSub === t.key
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+                >
+                  {t.icon} {t.label}
+                </button>
+              ))}
+            </div>
+            <MaterialTab subTab={materialSub} />
+          </>
+        )}
       </main>
     </div>
   );
@@ -748,6 +808,309 @@ function TemplateCard({ item, showScene }: { item: WritingTemplate; showScene?: 
         <div className="mt-2 space-y-1">
           {item.example_en && <p className="text-xs text-muted-foreground italic">例：{item.example_en}</p>}
           {item.note && <p className="text-xs text-muted-foreground">💡 {item.note}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ─── Material Tab (素材背诵) ──────────────────────────────
+
+const TOPIC_LABELS: Record<string, { label: string; emoji: string }> = {
+  education: { label: "教育", emoji: "🎓" },
+  technology: { label: "科技", emoji: "🤖" },
+  environment: { label: "环境", emoji: "🌍" },
+  health: { label: "健康", emoji: "❤️" },
+  government: { label: "政府", emoji: "🏛️" },
+  urbanisation: { label: "城市化", emoji: "🏙️" },
+};
+
+const M_MASTERY = ["新", "已看", "理由链✓", "关键词✓", "默写✓", "掌握"];
+const M_MASTERY_C = ["bg-gray-200 text-gray-700", "bg-amber-100 text-amber-700", "bg-sky-100 text-sky-700", "bg-indigo-100 text-indigo-700", "bg-purple-100 text-purple-700", "bg-emerald-100 text-emerald-700"];
+
+function MaterialTab({ subTab }: { subTab: string }) {
+  if (subTab === "m-daily") return <MaterialDailySubTab />;
+  if (subTab === "m-flashcard") return <MaterialFlashcardSubTab />;
+  if (subTab === "m-dictation") return <MaterialDictationSubTab />;
+  if (subTab === "m-library") return <MaterialLibrarySubTab />;
+  return null;
+}
+
+function MaterialDailySubTab() {
+  const [newItems, setNewItems] = useState<any[]>([]);
+  const [learned, setLearned] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [mStats, setMStats] = useState<any>(null);
+  const { toast } = useToast();
+
+  const fetchAll = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [n, l, s] = await Promise.all([
+        api.getWritingMaterialsNewToday(4),
+        api.getWritingMaterialsLearned(),
+        api.getWritingMaterialStats(),
+      ]);
+      setNewItems(n); setLearned(l); setMStats(s);
+    } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  const handleMarkSeen = async (item: any) => {
+    await api.reviewWritingMaterial(item.id, 2);
+    toast({ description: "已标记，明天复习" });
+    fetchAll();
+  };
+
+  if (loading) return <div className="py-12 text-center text-muted-foreground animate-pulse">加载中...</div>;
+
+  return (
+    <div className="space-y-6">
+      {mStats && (
+        <div className="rounded-lg border bg-card p-3 text-xs text-muted-foreground flex flex-wrap gap-3">
+          <span>总计 {mStats.total} 条</span>
+          <span>已掌握 {mStats.mastered}</span>
+          <span>今日新学 {mStats.learned_today}</span>
+          <span>待复习 {mStats.due_today}</span>
+          <span>关键词 {mStats.keyword_mastered}/{mStats.keyword_total}</span>
+        </div>
+      )}
+
+      {newItems.length === 0 && learned.length > 0 && (
+        <div className="rounded-xl border-2 border-dashed border-emerald-300 dark:border-emerald-700 bg-emerald-50/50 dark:bg-emerald-950/20 p-6 text-center">
+          <p className="text-2xl">🎉</p>
+          <p className="text-sm font-medium">今日素材已全部学完！</p>
+          <p className="text-xs text-muted-foreground mt-1">去闪卡复习或默写测试巩固吧</p>
+        </div>
+      )}
+
+      {newItems.length > 0 && (
+        <section>
+          <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">📖 待学素材 <Badge variant="outline" className="text-xs">{newItems.length}</Badge></h2>
+          <div className="space-y-3">
+            {newItems.map((item) => (
+              <div key={item.id} className="rounded-lg border bg-card p-4 space-y-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs">{TOPIC_LABELS[item.topic]?.emoji} {item.topic_cn}</span>
+                  <span className="text-xs text-muted-foreground">·</span>
+                  <span className="text-xs font-medium">{item.direction}</span>
+                  <Badge variant="outline" className={`text-[10px] ${item.stance === "pro" ? "border-emerald-300 text-emerald-700" : "border-rose-300 text-rose-700"}`}>
+                    {item.stance_label} · {item.angle}
+                  </Badge>
+                </div>
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-[10px] text-muted-foreground font-medium mb-1">📎 理由链</p>
+                    <p className="text-sm bg-muted/50 rounded p-2 font-medium">{item.reasoning_chain}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground font-medium mb-1">📖 例子</p>
+                    <p className="text-sm bg-muted/50 rounded p-2">{item.example}</p>
+                  </div>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => handleMarkSeen(item)} className="gap-1">
+                  <CheckCircle className="h-3.5 w-3.5" /> 已看，加入复习
+                </Button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {learned.length > 0 && (
+        <section>
+          <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">✅ 今日已学 <Badge variant="outline" className="text-xs">{learned.length}</Badge></h2>
+          <div className="space-y-2">
+            {learned.map((item) => (
+              <div key={item.id} className="rounded-lg border bg-card p-3 flex items-center gap-2">
+                <span className="text-xs">{TOPIC_LABELS[item.topic]?.emoji}</span>
+                <span className="text-xs flex-1 truncate">{item.direction} · {item.stance_label} · {item.angle}</span>
+                <Badge className={`text-[10px] ${M_MASTERY_C[item.mastery_level] || ""}`}>{M_MASTERY[item.mastery_level]}</Badge>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function MaterialFlashcardSubTab() {
+  const [queue, setQueue] = useState<any[]>([]);
+  const [idx, setIdx] = useState(0);
+  const [flipped, setFlipped] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [finished, setFinished] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const due = await api.getWritingMaterialsDue(20);
+      const items = due.filter((m: any) => m.mastery_level >= 1 && m.mastery_level <= 2);
+      setQueue(items);
+      setLoading(false);
+      if (items.length === 0) setFinished(true);
+    })();
+  }, []);
+
+  if (loading) return <div className="py-12 text-center text-muted-foreground animate-pulse">加载中...</div>;
+  if (finished || queue.length === 0) return <div className="py-12 text-center"><p className="text-2xl">🎉</p><p className="text-sm text-muted-foreground mt-2">暂无待复习素材</p></div>;
+
+  const current = queue[idx];
+  if (!current) return null;
+
+  const handleReview = async (quality: number) => {
+    await api.reviewWritingMaterial(current.id, quality);
+    if (idx + 1 >= queue.length) { setFinished(true); } else { setIdx(idx + 1); setFlipped(false); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground text-center">{idx + 1} / {queue.length}</p>
+      <div className="rounded-xl border-2 bg-card p-6 min-h-[200px] cursor-pointer transition-all hover:shadow-md" onClick={() => setFlipped(!flipped)}>
+        {!flipped ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <span>{TOPIC_LABELS[current.topic]?.emoji}</span>
+              <span className="text-sm font-medium">{current.direction}</span>
+            </div>
+            <Badge variant="outline" className={`text-xs ${current.stance === "pro" ? "border-emerald-300 text-emerald-700" : "border-rose-300 text-rose-700"}`}>
+              {current.stance_label} · {current.angle}
+            </Badge>
+            <p className="text-xs text-muted-foreground mt-4 text-center italic">点击翻面查看理由链和例子</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div><p className="text-[10px] text-muted-foreground font-medium mb-1">📎 理由链</p><p className="text-sm font-medium">{current.reasoning_chain}</p></div>
+            <div><p className="text-[10px] text-muted-foreground font-medium mb-1">📖 例子</p><p className="text-sm">{current.example}</p></div>
+          </div>
+        )}
+      </div>
+      {flipped && (
+        <div className="flex justify-center gap-3">
+          <Button variant="outline" size="sm" onClick={() => handleReview(0)} className="text-rose-600">不会</Button>
+          <Button variant="outline" size="sm" onClick={() => handleReview(1)}>模糊</Button>
+          <Button variant="outline" size="sm" onClick={() => handleReview(3)} className="text-emerald-600">记住了</Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MaterialDictationSubTab() {
+  const [queue, setQueue] = useState<any[]>([]);
+  const [idx, setIdx] = useState(0);
+  const [input, setInput] = useState("");
+  const [result, setResult] = useState<any>(null);
+  const [checking, setChecking] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    (async () => {
+      const due = await api.getWritingMaterialsDue(20);
+      setQueue(due.filter((m: any) => m.mastery_level >= 3 && m.mastery_level <= 4));
+      setLoading(false);
+    })();
+  }, []);
+
+  if (loading) return <div className="py-12 text-center text-muted-foreground animate-pulse">加载中...</div>;
+  if (queue.length === 0) return <div className="py-12 text-center"><p className="text-2xl">🎉</p><p className="text-sm text-muted-foreground mt-2">暂无待默写素材（需先通过闪卡升到 mastery 3+）</p></div>;
+
+  const current = queue[idx];
+  if (!current) return <div className="py-12 text-center"><p className="text-2xl">✅</p><p className="text-sm mt-2">本轮默写完成！</p></div>;
+
+  const mode = current.mastery_level === 3 ? "reasoning" : "example";
+
+  const handleSubmit = async () => {
+    if (!input.trim()) return;
+    setChecking(true);
+    try {
+      const res = await api.checkWritingMaterial(current.id, input.trim(), mode);
+      setResult(res);
+    } catch { toast({ variant: "destructive", description: "检查失败" }); }
+    finally { setChecking(false); }
+  };
+
+  const handleNext = () => { setResult(null); setInput(""); setIdx(idx + 1); };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground text-center">{idx + 1} / {queue.length}</p>
+      <div className="rounded-xl border bg-card p-5 space-y-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span>{TOPIC_LABELS[current.topic]?.emoji} {current.topic_cn}</span>
+          <span className="text-xs font-medium">{current.direction}</span>
+          <Badge variant="outline" className="text-[10px]">{current.stance_label} · {current.angle}</Badge>
+        </div>
+        <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
+          {mode === "reasoning" ? "📎 请写出理由链（3个环节）" : "📖 请回忆例子关键信息（国家/现象）"}
+        </p>
+      </div>
+      {!result ? (
+        <div className="space-y-2">
+          <Textarea value={input} onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
+            placeholder={mode === "reasoning" ? "A → B → C" : "哪个国家/什么现象..."} rows={3} className="text-sm" />
+          <div className="flex justify-end">
+            <Button size="sm" onClick={handleSubmit} disabled={checking || !input.trim()}>
+              {checking ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}提交
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-lg border p-4 space-y-2">
+          <div className="flex items-center gap-2">
+            {result.correct ? <CheckCircle className="h-5 w-5 text-emerald-500" /> : <XCircle className="h-5 w-5 text-rose-500" />}
+            <span className="font-medium">{result.score}分</span>
+          </div>
+          <p className="text-sm text-muted-foreground">{result.feedback}</p>
+          <div className="bg-muted/50 rounded p-2 text-xs"><span className="font-medium">参考答案：</span>{result.expected}</div>
+          <Button size="sm" variant="outline" onClick={handleNext}>下一题</Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MaterialLibrarySubTab() {
+  const [materials, setMaterials] = useState<any[]>([]);
+  const [topic, setTopic] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      const data = await api.getWritingMaterials(topic ? { topic } : undefined);
+      setMaterials(data);
+      setLoading(false);
+    })();
+  }, [topic]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-1 flex-wrap">
+        <button onClick={() => setTopic("")} className={`px-2 py-1 rounded-full text-xs ${!topic ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>全部</button>
+        {Object.entries(TOPIC_LABELS).map(([k, v]) => (
+          <button key={k} onClick={() => setTopic(k)} className={`px-2 py-1 rounded-full text-xs ${topic === k ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+            {v.emoji} {v.label}
+          </button>
+        ))}
+      </div>
+      {loading ? <div className="py-8 text-center text-muted-foreground animate-pulse">加载中...</div> : (
+        <div className="space-y-2">
+          {materials.map((item) => (
+            <div key={item.id} className="rounded-lg border bg-card p-3 space-y-1.5">
+              <div className="flex items-center gap-2 text-xs">
+                <span>{TOPIC_LABELS[item.topic]?.emoji}</span>
+                <span className="font-medium truncate flex-1">{item.direction} · {item.stance_label} · {item.angle}</span>
+                <Badge className={`text-[10px] ${M_MASTERY_C[item.mastery_level] || ""}`}>{M_MASTERY[item.mastery_level]}</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground"><span className="font-medium">理由链：</span>{item.reasoning_chain}</p>
+              <p className="text-xs text-muted-foreground"><span className="font-medium">例子：</span>{item.example}</p>
+            </div>
+          ))}
         </div>
       )}
     </div>

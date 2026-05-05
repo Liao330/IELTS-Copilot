@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -157,6 +158,39 @@ export const api = {
   getFilePreviewUrl: (fileId: string) => `${API_BASE}/api/homeworks/files/${fileId}/preview`,
   getReadingStats: () =>
     request<import("@/types").ReadingStatsResponse>("/api/homeworks/reading-stats"),
+
+  // Writing Materials (素材背诵)
+  getWritingMaterials: (params?: { topic?: string }) => {
+    const sp = new URLSearchParams();
+    if (params?.topic) sp.set("topic", params.topic);
+    return request<any[]>(`/api/writing-materials?${sp}`);
+  },
+  getWritingMaterialStats: () => request<any>("/api/writing-materials/stats"),
+  getWritingMaterialsNewToday: (limit = 4) =>
+    request<any[]>(`/api/writing-materials/new-today?limit=${limit}`),
+  getWritingMaterialsLearned: () => request<any[]>("/api/writing-materials/learned-today"),
+  getWritingMaterialsDue: (limit = 20) =>
+    request<any[]>(`/api/writing-materials/due?limit=${limit}`),
+  reviewWritingMaterial: (id: string, quality: number) =>
+    request<any>(`/api/writing-materials/${id}/review`, {
+      method: "POST", body: JSON.stringify({ quality }),
+    }),
+  checkWritingMaterial: (id: string, answer: string, mode: string) =>
+    request<any>(`/api/writing-materials/${id}/check`, {
+      method: "POST", body: JSON.stringify({ answer, mode }),
+    }),
+  getWritingMaterialKeywords: (params?: { topic?: string; direction_index?: number }) => {
+    const sp = new URLSearchParams();
+    if (params?.topic) sp.set("topic", params.topic);
+    if (params?.direction_index != null) sp.set("direction_index", String(params.direction_index));
+    return request<any[]>(`/api/writing-materials/keywords?${sp}`);
+  },
+  getWritingMaterialKeywordsDue: (limit = 20) =>
+    request<any[]>(`/api/writing-materials/keywords/due?limit=${limit}`),
+  reviewWritingMaterialKeyword: (id: string, quality: number) =>
+    request<any>(`/api/writing-materials/keywords/${id}/review`, {
+      method: "POST", body: JSON.stringify({ quality }),
+    }),
 
   // Vocabulary - Words
   getWords: (params?: { category?: string; search?: string; mastery_level?: number; due_only?: boolean; sort?: string; page?: number; page_size?: number }) => {
