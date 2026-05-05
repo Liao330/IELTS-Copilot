@@ -1414,11 +1414,15 @@ const READING_QUESTION_TYPES = [
   "简答题", "分类题",
 ];
 
-interface PassageTypeEntry {
-  passage: number;
+interface TypeScore {
+  type: string;
   correct: string;
   total: string;
-  types: string[];
+}
+
+interface PassageTypeEntry {
+  passage: number;
+  typeScores: TypeScore[];
 }
 
 function ReadingQuestionTypeForm({ homework, onUpdate }: { homework: Homework; onUpdate: () => void }) {
@@ -1426,21 +1430,28 @@ function ReadingQuestionTypeForm({ homework, onUpdate }: { homework: Homework; o
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Parse existing description to populate form
+  // 解析已有 description: "P1 题型有 判断题6/8、填空题5/5"
   const parseExisting = (): PassageTypeEntry[] => {
     const desc = homework.description || "";
-    const pattern = /[Pp](\d+)\s+(\d+)\s*\/\s*(\d+)\s*(?:题型有|题型：|题型:)\s*(.+)/gm;
+    const pattern = /[Pp](\d+)\s*(?:题型有|题型：|题型:)\s*(.+)/gm;
     const entries: PassageTypeEntry[] = [];
     let m;
     while ((m = pattern.exec(desc)) !== null) {
-      const types = m[4].split(/[、,，&]/).map((t: string) => t.trim()).filter(Boolean);
-      entries.push({ passage: parseInt(m[1]), correct: m[2], total: m[3], types });
+      const parts = m[2].split(/[、,，]/).map((s: string) => s.trim()).filter(Boolean);
+      const typeScores: TypeScore[] = parts.map((p: string) => {
+        const scoreMatch = p.match(/^(.+?)(\d+)\s*\/\s*(\d+)$/);
+        if (scoreMatch) {
+          return { type: scoreMatch[1].trim(), correct: scoreMatch[2], total: scoreMatch[3] };
+        }
+        return { type: p, correct: "", total: "" };
+      });
+      entries.push({ passage: parseInt(m[1]), typeScores });
     }
     if (entries.length === 0) {
       return [
-        { passage: 1, correct: "", total: "13", types: [] },
-        { passage: 2, correct: "", total: "13", types: [] },
-        { passage: 3, correct: "", total: "14", types: [] },
+        { passage: 1, typeScores: [] },
+        { passage: 2, typeScores: [] },
+        { passage: 3, typeScores: [] },
       ];
     }
     return entries;
@@ -1448,24 +1459,43 @@ function ReadingQuestionTypeForm({ homework, onUpdate }: { homework: Homework; o
 
   const [entries, setEntries] = useState<PassageTypeEntry[]>(parseExisting);
 
-  const updateEntry = (idx: number, field: keyof PassageTypeEntry, value: string | string[]) => {
-    setEntries((prev) => prev.map((e, i) => i === idx ? { ...e, [field]: value } : e));
+  const addType = (passageIdx: number, type: string) => {
+    setEntries((prev) => prev.map((e, i) => {
+      if (i !== passageIdx) return e;
+      if (e.typeScores.some((ts) => ts.type === type)) return e;
+      return { ...e, typeScores: [...e.typeScores, { type, correct: "", total: "" }] };
+    }));
   };
 
-  const toggleType = (idx: number, type: string) => {
+  const removeType = (passageIdx: number, typeIdx: number) => {
     setEntries((prev) => prev.map((e, i) => {
-      if (i !== idx) return e;
-      const types = e.types.includes(type) ? e.types.filter((t) => t !== type) : [...e.types, type];
-      return { ...e, types };
+      if (i !== passageIdx) return e;
+      return { ...e, typeScores: e.typeScores.filter((_, ti) => ti !== typeIdx) };
+    }));
+  };
+
+  const updateTypeScore = (passageIdx: number, typeIdx: number, field: "correct" | "total", value: string) => {
+    setEntries((prev) => prev.map((e, i) => {
+      if (i !== passageIdx) return e;
+      return {
+        ...e,
+        typeScores: e.typeScores.map((ts, ti) => ti === typeIdx ? { ...ts, [field]: value } : ts),
+      };
     }));
   };
 
   const handleSave = async () => {
     const lines = entries
-      .filter((e) => e.correct && e.total)
-      .map((e) => `P${e.passage} ${e.correct}/${e.total} 题型有 ${e.types.join("、") || "未标注"}`);
+      .filter((e) => e.typeScores.length > 0)
+      .map((e) => {
+        const typeParts = e.typeScores.map((ts) => {
+          if (ts.correct && ts.total) return `${ts.type}${ts.correct}/${ts.total}`;
+          return ts.type;
+        });
+        return `P${e.passage} 题型有 ${typeParts.join("、")}`;
+      });
     if (lines.length === 0) {
-      toast({ variant: "destructive", description: "请至少填写一个 Passage 的分数" });
+      toast({ variant: "destructive", description: "请至少标注一个 Passage 的题型" });
       return;
     }
     const desc = lines.join("\n");
@@ -1490,13 +1520,20 @@ function ReadingQuestionTypeForm({ homework, onUpdate }: { homework: Homework; o
           <h3 className="text-sm font-semibold flex items-center gap-1.5">📝 题型标注</h3>
           <button type="button" onClick={() => setEditing(true)} className="text-xs text-sky-600 hover:underline cursor-pointer">编辑</button>
         </div>
-        <div className="space-y-1.5">
-          {entries.filter(e => e.correct).map((e) => (
-            <div key={e.passage} className="flex items-center gap-2 text-xs">
-              <span className="font-bold text-purple-600 dark:text-purple-400 w-6">P{e.passage}</span>
-              <span className="font-mono">{e.correct}/{e.total}</span>
-              <span className="text-muted-foreground">·</span>
-              <span className="text-muted-foreground">{e.types.join("、") || "未标注题型"}</span>
+        <div className="space-y-2">
+          {entries.filter(e => e.typeScores.length > 0).map((e) => (
+            <div key={e.passage} className="flex items-start gap-2 text-xs">
+              <span className="font-bold text-purple-600 dark:text-purple-400 w-6 pt-0.5">P{e.passage}</span>
+              <div className="flex flex-wrap gap-1.5">
+                {e.typeScores.map((ts, i) => (
+                  <span key={i} className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800">
+                    <span className="text-purple-700 dark:text-purple-300">{ts.type}</span>
+                    {ts.correct && ts.total && (
+                      <span className="font-mono text-purple-900 dark:text-purple-200 font-medium">{ts.correct}/{ts.total}</span>
+                    )}
+                  </span>
+                ))}
+              </div>
             </div>
           ))}
         </div>
@@ -1513,40 +1550,54 @@ function ReadingQuestionTypeForm({ homework, onUpdate }: { homework: Homework; o
           <button type="button" onClick={() => setEditing(false)} className="text-xs text-muted-foreground hover:text-foreground cursor-pointer">取消</button>
         )}
       </div>
-      <div className="space-y-4">
-        {entries.map((entry, idx) => (
-          <div key={idx} className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-purple-600 dark:text-purple-400 w-6">P{entry.passage}</span>
-              <input
-                type="text"
-                value={entry.correct}
-                onChange={(e) => updateEntry(idx, "correct", e.target.value)}
-                placeholder="对"
-                className="w-10 text-center text-xs border rounded px-1 py-0.5 bg-background"
-              />
-              <span className="text-xs text-muted-foreground">/</span>
-              <input
-                type="text"
-                value={entry.total}
-                onChange={(e) => updateEntry(idx, "total", e.target.value)}
-                placeholder="总"
-                className="w-10 text-center text-xs border rounded px-1 py-0.5 bg-background"
-              />
-            </div>
-            <div className="flex flex-wrap gap-1.5 pl-8">
-              {READING_QUESTION_TYPES.map((qt) => (
+      <p className="text-[11px] text-muted-foreground mb-3">选择各 Passage 出现的题型，并填写各题型的正确率</p>
+      <div className="space-y-5">
+        {entries.map((entry, pIdx) => (
+          <div key={pIdx} className="space-y-2">
+            <span className="text-xs font-bold text-purple-600 dark:text-purple-400">P{entry.passage}</span>
+            {/* 已选题型 + 分数输入 */}
+            {entry.typeScores.length > 0 && (
+              <div className="space-y-1.5 pl-4">
+                {entry.typeScores.map((ts, tIdx) => (
+                  <div key={tIdx} className="flex items-center gap-2">
+                    <span className="text-xs w-28 truncate">{ts.type}</span>
+                    <input
+                      type="text"
+                      value={ts.correct}
+                      onChange={(e) => updateTypeScore(pIdx, tIdx, "correct", e.target.value)}
+                      placeholder="对"
+                      className="w-9 text-center text-xs border rounded px-1 py-0.5 bg-background"
+                    />
+                    <span className="text-xs text-muted-foreground">/</span>
+                    <input
+                      type="text"
+                      value={ts.total}
+                      onChange={(e) => updateTypeScore(pIdx, tIdx, "total", e.target.value)}
+                      placeholder="总"
+                      className="w-9 text-center text-xs border rounded px-1 py-0.5 bg-background"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeType(pIdx, tIdx)}
+                      className="text-muted-foreground hover:text-destructive cursor-pointer p-0.5"
+                      title="移除"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* 题型选择器 */}
+            <div className="flex flex-wrap gap-1 pl-4">
+              {READING_QUESTION_TYPES.filter((qt) => !entry.typeScores.some((ts) => ts.type === qt)).map((qt) => (
                 <button
                   key={qt}
                   type="button"
-                  onClick={() => toggleType(idx, qt)}
-                  className={`px-2 py-0.5 rounded-full text-[10px] border transition-colors cursor-pointer ${
-                    entry.types.includes(qt)
-                      ? "bg-purple-100 border-purple-300 text-purple-700 dark:bg-purple-900/40 dark:border-purple-700 dark:text-purple-300"
-                      : "bg-muted border-transparent text-muted-foreground hover:border-muted-foreground/30"
-                  }`}
+                  onClick={() => addType(pIdx, qt)}
+                  className="px-2 py-0.5 rounded-full text-[10px] border bg-muted border-transparent text-muted-foreground hover:border-purple-300 hover:text-purple-700 dark:hover:border-purple-700 dark:hover:text-purple-300 transition-colors cursor-pointer"
                 >
-                  {qt}
+                  + {qt}
                 </button>
               ))}
             </div>
