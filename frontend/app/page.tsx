@@ -188,9 +188,31 @@ export default function HomePage() {
         </div>
       </header>
 
-      <div className="flex">
-        {/* ====== 左侧固定栏：昨日学习回顾 ====== */}
-        <aside className="hidden lg:block w-72 xl:w-80 shrink-0 sticky top-14 h-[calc(100vh-3.5rem)] overflow-y-auto border-r p-4">
+      <main className="container mx-auto px-4 py-6 max-w-5xl">
+        {/* ====== 顶部：功能模块入口 ====== */}
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-6">
+          {[
+            { icon: "📋", label: "备考计划", path: "/study-plan", color: "border-amber-200 hover:bg-amber-50 dark:border-amber-800 dark:hover:bg-amber-950/30" },
+            { icon: "🎧", label: "听力精听", path: "/listening-practice", color: "border-orange-200 hover:bg-orange-50 dark:border-orange-800 dark:hover:bg-orange-950/30" },
+            { icon: "📖", label: "单词本", path: "/vocabulary", color: "border-sky-200 hover:bg-sky-50 dark:border-sky-800 dark:hover:bg-sky-950/30" },
+            { icon: "✏️", label: "句型&素材", path: "/writing-practice", color: "border-purple-200 hover:bg-purple-50 dark:border-purple-800 dark:hover:bg-purple-950/30" },
+            { icon: "📚", label: "作业库", path: "/homeworks", color: "border-emerald-200 hover:bg-emerald-50 dark:border-emerald-800 dark:hover:bg-emerald-950/30" },
+            { icon: "📒", label: "笔记", path: "/notes", color: "border-rose-200 hover:bg-rose-50 dark:border-rose-800 dark:hover:bg-rose-950/30" },
+          ].map((item) => (
+            <button
+              key={item.path}
+              onClick={() => router.push(item.path)}
+              className={`flex flex-col items-center justify-center gap-1 py-3 rounded-xl border transition-all ${item.color}`}
+            >
+              <span className="text-xl">{item.icon}</span>
+              <span className="text-[10px] font-medium">{item.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* ====== 左右两栏：昨日回顾 + 今日待办 ====== */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+          {/* 左：昨日学习回顾 */}
           <button
             onClick={() => setSheetOpen(true)}
             className="w-full rounded-xl border border-amber-200/60 dark:border-amber-800/40 bg-gradient-to-br from-amber-50/80 to-orange-50/60 dark:from-amber-950/20 dark:to-orange-950/10 hover:shadow-md transition-all p-4 text-left group"
@@ -199,14 +221,14 @@ export default function HomePage() {
               <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-sm">
                 <Sparkles className="h-4 w-4" />
               </div>
-              <div>
+              <div className="flex-1">
                 <h2 className="text-sm font-bold">昨日学习回顾</h2>
                 <p className="text-[10px] text-muted-foreground">
                   {(() => { const y = new Date(); y.setDate(y.getDate() - 1); return y.toLocaleDateString("zh-CN", { month: "long", day: "numeric", weekday: "short" }); })()}
                 </p>
               </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
-
             {dailyLoading ? (
               <div className="flex items-center gap-2 py-2 text-muted-foreground">
                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -221,7 +243,7 @@ export default function HomePage() {
                   <span className="rounded-full bg-white/70 dark:bg-white/10 px-2 py-0.5">💬 {yesterdayFeedback}</span>
                 </div>
                 {briefOverview && (
-                  <p className="text-xs leading-relaxed text-foreground/80 line-clamp-4">{briefOverview}</p>
+                  <p className="text-xs leading-relaxed text-foreground/80 line-clamp-3">{briefOverview}</p>
                 )}
                 {briefActions && briefActions.length > 0 && (
                   <div className="space-y-1 pt-1">
@@ -231,7 +253,7 @@ export default function HomePage() {
                     {briefActions.map((action, i) => (
                       <div key={i} className="flex items-start gap-1 text-[10px] text-foreground/70">
                         <ArrowRight className="h-2.5 w-2.5 mt-0.5 shrink-0 text-amber-600/60" />
-                        <span className="line-clamp-2">{action}</span>
+                        <span className="line-clamp-1">{action}</span>
                       </div>
                     ))}
                   </div>
@@ -239,127 +261,9 @@ export default function HomePage() {
               </div>
             ) : null}
           </button>
-        </aside>
 
-        {/* ====== 中间主体内容 ====== */}
-        <main className="flex-1 min-w-0 px-4 py-6 max-w-4xl mx-auto">
-          {/* 功能模块入口（顶部网格） */}
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-6">
-            {[
-              { icon: "📋", label: "备考计划", path: "/study-plan", color: "border-amber-200 hover:bg-amber-50 dark:border-amber-800 dark:hover:bg-amber-950/30" },
-              { icon: "🎧", label: "听力精听", path: "/listening-practice", color: "border-orange-200 hover:bg-orange-50 dark:border-orange-800 dark:hover:bg-orange-950/30" },
-              { icon: "📖", label: "单词本", path: "/vocabulary", color: "border-sky-200 hover:bg-sky-50 dark:border-sky-800 dark:hover:bg-sky-950/30" },
-              { icon: "✏️", label: "句型&素材", path: "/writing-practice", color: "border-purple-200 hover:bg-purple-50 dark:border-purple-800 dark:hover:bg-purple-950/30" },
-              { icon: "📚", label: "作业库", path: "/homeworks", color: "border-emerald-200 hover:bg-emerald-50 dark:border-emerald-800 dark:hover:bg-emerald-950/30" },
-              { icon: "📒", label: "笔记", path: "/notes", color: "border-rose-200 hover:bg-rose-50 dark:border-rose-800 dark:hover:bg-rose-950/30" },
-            ].map((item) => (
-              <button
-                key={item.path}
-                onClick={() => router.push(item.path)}
-                className={`flex flex-col items-center justify-center gap-1 py-3 rounded-xl border transition-all ${item.color}`}
-              >
-                <span className="text-xl">{item.icon}</span>
-                <span className="text-[10px] font-medium">{item.label}</span>
-              </button>
-            ))}
-          </div>
-
-          {/* 手机端：昨日回顾 (lg以下显示) */}
-          <div className="lg:hidden mb-6">
-            <button
-              onClick={() => setSheetOpen(true)}
-              className="w-full rounded-xl border border-amber-200/60 dark:border-amber-800/40 bg-gradient-to-br from-amber-50/80 to-orange-50/60 dark:from-amber-950/20 dark:to-orange-950/10 p-4 text-left"
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="h-4 w-4 text-amber-500" />
-                <span className="text-sm font-bold">昨日学习回顾</span>
-                <ChevronRight className="h-3.5 w-3.5 ml-auto text-muted-foreground" />
-              </div>
-              {briefOverview && <p className="text-xs text-foreground/80 line-clamp-2">{briefOverview}</p>}
-            </button>
-          </div>
-
-          {/* 手机端：今日待办 (lg以下显示) */}
-          <div className="lg:hidden mb-6 rounded-xl border bg-card p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-primary" />
-              <h3 className="text-sm font-semibold">今日待办</h3>
-              {(todos.length > 0 || overdueTasks.length > 0) && (
-                <span className="text-[10px] text-muted-foreground ml-auto">{todos.length + overdueTasks.length} 项</span>
-              )}
-            </div>
-            {todos.map((task) => (
-              <div key={task.id} className="flex items-center gap-2 text-sm">
-                <button type="button" onClick={() => handleToggleTodo(task)} className="h-4 w-4 rounded border shrink-0 border-muted-foreground/30 hover:border-emerald-500" />
-                <span className="flex-1 truncate">{task.title}</span>
-              </div>
-            ))}
-            <div className="flex gap-2">
-              <Input value={newTodo} onChange={(e) => setNewTodo(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) handleAddTodo(); }}
-                placeholder="添加任务..." className="text-sm h-8" />
-              <Button size="sm" variant="outline" className="h-8 px-2.5 shrink-0" onClick={handleAddTodo} disabled={!newTodo.trim() || addingTodo}>
-                <Plus className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          </div>
-
-          {/* IELTS Copilot 主助手 */}
-          <div className="mb-6">
-            <button
-              onClick={() => handleStartChat("ielts-copilot")}
-              className="w-full rounded-xl border-2 border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10 hover:from-primary/10 hover:to-primary/20 transition-all duration-300 p-5 text-left group"
-            >
-              <div className="flex items-center gap-4">
-                <span className="text-3xl">🎓</span>
-                <div className="flex-1">
-                  <h2 className="text-lg font-bold mb-0.5 group-hover:text-primary transition-colors">IELTS Copilot</h2>
-                  <p className="text-xs text-muted-foreground">智能全能助手 — 直接提问或发送材料，自动调用专项助手</p>
-                </div>
-                <ChevronRight className="h-5 w-5 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-            </button>
-          </div>
-
-          {/* 专项助手 */}
-          <div className="mb-6">
-            <button type="button" onClick={() => setAgentsFolded(!agentsFolded)}
-              className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors mb-3">
-              {agentsFolded ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              专项助手 <span className="text-xs font-normal">({agents.filter(a => a.id !== "ielts-copilot").length})</span>
-            </button>
-            {!agentsFolded && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {agents.filter(a => a.id !== "ielts-copilot").map((agent) => (
-                  <AgentCard key={agent.id} agent={agent} onStart={() => handleStartChat(agent.id)} />
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* 最近对话 */}
-          {recentConversations.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
-                <span className="inline-block w-1 h-4 bg-primary rounded-full" />
-                最近对话
-              </h3>
-              <div className="space-y-1">
-                {recentConversations.map((conv) => (
-                  <button key={conv.id} onClick={() => router.push(`/chat/${conv.id}`)}
-                    className="w-full text-left p-2.5 rounded-lg hover:bg-accent transition-colors flex items-center justify-between">
-                    <span className="truncate text-sm">{conv.title || "新对话"}</span>
-                    <span className="text-[10px] text-muted-foreground shrink-0">{new Date(conv.updated_at).toLocaleDateString("zh-CN")}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </main>
-
-        {/* ====== 右侧固定栏：今日待办 ====== */}
-        <aside className="hidden lg:block w-72 xl:w-80 shrink-0 sticky top-14 h-[calc(100vh-3.5rem)] overflow-y-auto border-l p-4">
-          <div className="space-y-3">
+          {/* 右：今日待办 */}
+          <div className="rounded-xl border bg-card p-4 space-y-3">
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-primary" />
               <h3 className="text-sm font-semibold">今日待办</h3>
@@ -368,19 +272,18 @@ export default function HomePage() {
               )}
             </div>
 
-            {/* Today's active tasks */}
             {todos.length > 0 && (
               <div className="space-y-1.5">
                 {todos.map((task) => (
                   <div key={task.id} className="flex items-center gap-2 group">
                     <button type="button" onClick={() => handleToggleTodo(task)}
-                      className="h-4 w-4 rounded border shrink-0 flex items-center justify-center border-muted-foreground/30 hover:border-emerald-500" />
+                      className="h-4 w-4 rounded border shrink-0 border-muted-foreground/30 hover:border-emerald-500" />
                     {editingId === task.id ? (
                       <Input value={editingText} onChange={(e) => setEditingText(e.target.value)}
                         onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) handleEditTodo(task.id); if (e.key === "Escape") setEditingId(null); }}
                         onBlur={() => handleEditTodo(task.id)} autoFocus className="text-xs h-6 py-0 flex-1" />
                     ) : (
-                      <span className="text-xs flex-1">{task.title}</span>
+                      <span className="text-sm flex-1">{task.title}</span>
                     )}
                     <button type="button" onClick={() => { setEditingId(task.id); setEditingText(task.title); }}
                       className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary transition-opacity">
@@ -395,7 +298,6 @@ export default function HomePage() {
               </div>
             )}
 
-            {/* Overdue */}
             {overdueTasks.length > 0 && (
               <div className="pt-2 border-t">
                 <button type="button" onClick={() => setShowOverdue(!showOverdue)}
@@ -414,7 +316,7 @@ export default function HomePage() {
                             onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) handleEditTodo(task.id); if (e.key === "Escape") setEditingId(null); }}
                             onBlur={() => handleEditTodo(task.id)} autoFocus className="text-xs h-6 py-0 flex-1" />
                         ) : (
-                          <span className="text-xs flex-1">{task.title}</span>
+                          <span className="text-sm flex-1">{task.title}</span>
                         )}
                         <span className="text-[9px] text-amber-500/70 shrink-0">
                           {new Date(task.scheduled_date + "T00:00:00").toLocaleDateString("zh-CN", { month: "numeric", day: "numeric" })}
@@ -426,17 +328,15 @@ export default function HomePage() {
               </div>
             )}
 
-            {/* Quick add */}
-            <div className="flex gap-1.5">
+            <div className="flex gap-2">
               <Input value={newTodo} onChange={(e) => setNewTodo(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) handleAddTodo(); }}
-                placeholder="添加任务..." className="text-xs h-7" />
-              <Button size="sm" variant="outline" className="h-7 px-2 shrink-0" onClick={handleAddTodo} disabled={!newTodo.trim() || addingTodo}>
-                <Plus className="h-3 w-3" />
+                placeholder="添加任务..." className="text-sm h-8" />
+              <Button size="sm" variant="outline" className="h-8 px-2.5 shrink-0" onClick={handleAddTodo} disabled={!newTodo.trim() || addingTodo}>
+                <Plus className="h-3.5 w-3.5" />
               </Button>
             </div>
 
-            {/* History */}
             {historyTasks.length > 0 && (
               <div className="pt-2 border-t">
                 <button type="button" onClick={() => setShowHistory(!showHistory)}
@@ -459,8 +359,60 @@ export default function HomePage() {
               </div>
             )}
           </div>
-        </aside>
-      </div>
+        </div>
+
+        {/* ====== IELTS Copilot 主助手 ====== */}
+        <div className="mb-6">
+          <button
+            onClick={() => handleStartChat("ielts-copilot")}
+            className="w-full rounded-xl border-2 border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10 hover:from-primary/10 hover:to-primary/20 transition-all duration-300 p-5 text-left group"
+          >
+            <div className="flex items-center gap-4">
+              <span className="text-3xl">🎓</span>
+              <div className="flex-1">
+                <h2 className="text-lg font-bold mb-0.5 group-hover:text-primary transition-colors">IELTS Copilot</h2>
+                <p className="text-xs text-muted-foreground">智能全能助手 — 直接提问或发送材料，自动调用专项助手</p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+          </button>
+        </div>
+
+        {/* ====== 专项助手 ====== */}
+        <div className="mb-6">
+          <button type="button" onClick={() => setAgentsFolded(!agentsFolded)}
+            className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors mb-3">
+            {agentsFolded ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            专项助手 <span className="text-xs font-normal">({agents.filter(a => a.id !== "ielts-copilot").length})</span>
+          </button>
+          {!agentsFolded && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {agents.filter(a => a.id !== "ielts-copilot").map((agent) => (
+                <AgentCard key={agent.id} agent={agent} onStart={() => handleStartChat(agent.id)} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ====== 最近对话 ====== */}
+        {recentConversations.length > 0 && (
+          <div>
+            <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+              <span className="inline-block w-1 h-4 bg-primary rounded-full" />
+              最近对话
+            </h3>
+            <div className="space-y-1">
+              {recentConversations.map((conv) => (
+                <button key={conv.id} onClick={() => router.push(`/chat/${conv.id}`)}
+                  className="w-full text-left p-2.5 rounded-lg hover:bg-accent transition-colors flex items-center justify-between">
+                  <span className="truncate text-sm">{conv.title || "新对话"}</span>
+                  <span className="text-[10px] text-muted-foreground shrink-0">{new Date(conv.updated_at).toLocaleDateString("zh-CN")}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </main>
 
       {/* ====== Sheet: Full Daily Brief ====== */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
