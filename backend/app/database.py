@@ -78,6 +78,15 @@ async def _migrate_add_columns(conn):
             # Column already exists
             pass
 
+    # 回填 first_learned_at：已学过但没有该字段的记录，用 last_reviewed_at 填充
+    try:
+        await conn.execute(text(
+            "UPDATE writing_templates SET first_learned_at = last_reviewed_at "
+            "WHERE review_count > 0 AND first_learned_at IS NULL AND last_reviewed_at IS NOT NULL"
+        ))
+    except Exception:
+        pass
+
 
 async def _backfill_feedback_scores():
     """One-time backfill: parse scores for existing ai_report feedbacks that have no scores yet."""

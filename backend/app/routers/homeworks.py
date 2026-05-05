@@ -274,7 +274,8 @@ async def list_homeworks(
 # ---- Reading stats (题型统计) ----
 
 _PASSAGE_PATTERN = re.compile(
-    r'[Pp](\d+)\s+(\d+)\s*/\s*(\d+)\s*(?:题型有|题型：|题型:)\s*(.+?)(?:\n|$)'
+    r'[Pp](\d+)\s+(\d+)\s*/\s*(\d+)\s*(?:题型有|题型：|题型:)\s*(.+)',
+    re.MULTILINE
 )
 
 

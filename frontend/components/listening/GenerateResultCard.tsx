@@ -235,8 +235,8 @@ function ExampleRow({
   const [revealed, setRevealed] = useState(initialRevealed);
   const [hintRevealed, setHintRevealed] = useState(initialRevealed);
 
-  // 听写模式
-  const [dictMode, setDictMode] = useState(hasInitialAttempt);
+  // 听写模式 — 默认展开（不再需要点击"听写填空"按钮），readOnly 时除外
+  const [dictMode, setDictMode] = useState(!readOnly);
   const [submitted, setSubmitted] = useState(hasInitialAttempt);
 
   // 播放次数追踪（用 sessionStorage 防刷新丢失）

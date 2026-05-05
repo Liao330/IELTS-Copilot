@@ -190,7 +190,7 @@ function DailyTab({ onUpdate }: { onUpdate: () => void }) {
       {/* New today */}
       <section>
         <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
-          ✨ 今日新学 <Badge variant="outline" className="text-xs">{newItems.length}</Badge>
+          📖 待学新句型 <Badge variant="outline" className="text-xs">{newItems.length}</Badge>
         </h2>
         {newItems.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">今日新句型已全部学过</p>
@@ -236,7 +236,7 @@ function DailyTab({ onUpdate }: { onUpdate: () => void }) {
             {todayNew.length > 0 && (
               <section>
                 <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  🆕 今日新学 <Badge variant="outline" className="text-xs">{todayNew.length}</Badge>
+                  ✅ 今日已学 <Badge variant="outline" className="text-xs">{todayNew.length}</Badge>
                 </h2>
                 <div className="space-y-2">
                   {todayNew.map((item) => (
