@@ -1312,17 +1312,31 @@ function MaterialDowngradeSubTab() {
 
 function MaterialLibrarySubTab() {
   const [materials, setMaterials] = useState<any[]>([]);
+  const [keywords, setKeywords] = useState<any[]>([]);
   const [topic, setTopic] = useState("");
   const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const data = await api.getWritingMaterials(topic ? { topic } : undefined);
+      const [data, kws] = await Promise.all([
+        api.getWritingMaterials(topic ? { topic } : undefined),
+        api.getWritingMaterialKeywords(topic ? { topic } : undefined),
+      ]);
       setMaterials(data);
+      setKeywords(kws);
       setLoading(false);
     })();
   }, [topic]);
+
+  // Group keywords by topic+direction_index
+  const kwMap: Record<string, any[]> = {};
+  for (const kw of keywords) {
+    const key = `${kw.topic}-${kw.direction_index}`;
+    if (!kwMap[key]) kwMap[key] = [];
+    kwMap[key].push(kw);
+  }
 
   return (
     <div className="space-y-4">
@@ -1336,17 +1350,42 @@ function MaterialLibrarySubTab() {
       </div>
       {loading ? <div className="py-8 text-center text-muted-foreground animate-pulse">加载中...</div> : (
         <div className="space-y-2">
-          {materials.map((item) => (
-            <div key={item.id} className="rounded-lg border bg-card p-3 space-y-1.5">
-              <div className="flex items-center gap-2 text-xs">
-                <span>{TOPIC_LABELS[item.topic]?.emoji}</span>
-                <span className="font-medium truncate flex-1">{item.direction} · {item.stance_label} · {item.angle}</span>
-                <Badge className={`text-[10px] ${M_MASTERY_C[item.mastery_level] || ""}`}>{M_MASTERY[item.mastery_level]}</Badge>
+          {materials.map((item) => {
+            const isExpanded = expandedId === item.id;
+            const relatedKws = kwMap[`${item.topic}-${item.direction_index}`] || [];
+            return (
+              <div key={item.id} className="rounded-lg border bg-card p-3 space-y-1.5">
+                <div className="flex items-center gap-2 text-xs cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : item.id)}>
+                  <span>{TOPIC_LABELS[item.topic]?.emoji}</span>
+                  <span className="font-medium truncate flex-1">{item.direction} · {item.stance_label} · {item.angle}</span>
+                  <Badge className={`text-[10px] ${M_MASTERY_C[item.mastery_level] || ""}`}>{M_MASTERY[item.mastery_level]}</Badge>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs"><span className="font-medium text-muted-foreground">理由链：</span>{item.reasoning_chain}</p>
+                  {item.reasoning_chain_en && (
+                    <p className="text-xs text-sky-700 dark:text-sky-400"><span className="font-medium">EN：</span>{item.reasoning_chain_en}</p>
+                  )}
+                  <p className="text-xs"><span className="font-medium text-muted-foreground">例子：</span>{item.example}</p>
+                  {item.example_en && (
+                    <p className="text-xs text-sky-700 dark:text-sky-400"><span className="font-medium">EN：</span>{item.example_en}</p>
+                  )}
+                </div>
+                {isExpanded && relatedKws.length > 0 && (
+                  <div className="pt-2 border-t mt-2">
+                    <p className="text-[10px] font-medium text-muted-foreground mb-1.5">🔑 相关关键词</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {relatedKws.map((kw: any) => (
+                        <span key={kw.id} className="text-[10px] px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800">
+                          <span className="text-purple-700 dark:text-purple-300">{kw.cn}</span>
+                          <span className="text-purple-500 dark:text-purple-400 ml-1">{kw.en}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-              <p className="text-xs text-muted-foreground"><span className="font-medium">理由链：</span>{item.reasoning_chain}</p>
-              <p className="text-xs text-muted-foreground"><span className="font-medium">例子：</span>{item.example}</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
