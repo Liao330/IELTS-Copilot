@@ -645,25 +645,28 @@ async def check_downgrade(body: DowngradeCheckRequest, db: AsyncSession = Depend
                 vocab_pairs = [f"{kw.cn} = {kw.en}" for kw in kws]
                 recommended_vocab = "\n\n【该话题的标准词汇对照（供参考答案使用，但不作为评分硬性标准）】：\n" + "\n".join(vocab_pairs)
 
-    prompt = f"""你是一位雅思写作教练，专门帮助学生用简单英语表达复杂中文意思（降级表达法）。
+    prompt = f"""你是一位雅思写作教练，专门帮助学生练习"降级表达法"——把复杂中文用清晰、正确的英语表达出来。
 
-学生需要把以下中文用简单英语表达出来（不需要高级词汇，只要意思到位、语法正确）：
+注意：降级≠幼稚。目标是雅思6-6.5分水平的表达：
+- 用词不需要高级，但句子要有逻辑连接（因果、递进等）
+- 如果原文是因果链（A → B → C），参考答案也应体现因果逻辑关系
+- 用 which/this/as a result/therefore/leading to 等连接，而不是断裂的短句
+- 参考答案应该像一个完整的论述段落片段，而非孤立句子的罗列
 
 中文原句：{body.chinese}
 学生答案：{body.answer}{recommended_vocab}
 
-评分标准（核心原则：意思到位 + 语法正确 = 好答案）：
-- 90-100: 核心意思完整传达 + 语法正确 + 表达自然流畅
-- 70-89: 核心意思基本到位 + 语法正确（用词简单也完全OK）
-- 50-69: 意思部分传达 或 语法有明显错误影响理解
-- 30-49: 意思偏差较大 或 语法错误严重
-- 0-29: 完全偏题或无法理解
+评分标准：
+- 90-100: 意思完整 + 逻辑连贯 + 语法正确
+- 70-89: 意思到位 + 语法正确（逻辑连接稍弱也OK）
+- 50-69: 意思部分传达 或 逻辑断裂 或 语法错误
+- 30-49: 意思偏差较大
+- 0-29: 完全偏题
 
-重要：学生用任何合理的简单英文表达都应给予肯定，不要求必须用特定词汇。
-参考答案中可以使用标准词汇对照表里的词，但学生用其他正确表达同样得高分。
+学生用任何合理表达都应肯定，不要求特定词汇。
 
 输出格式（只输出JSON）：
-{{"score": 数字, "correct": true/false, "feedback": "点评（肯定学生的合理表达，如有更好的词汇选择可以补充建议）", "reference_answer": "参考英文（使用标准词汇）", "steps": {{"core_meaning": "核心意思（5字概括）", "keywords": "关键词英文对应", "simple_sentence": "完整简单句"}}}}"""
+{{"score": 数字, "correct": true/false, "feedback": "点评", "reference_answer": "参考英文（保持逻辑链条连贯，用which/leading to/therefore等连接，像正式写作段落）", "steps": {{"core_meaning": "核心意思（5字概括）", "keywords": "关键概念英文", "simple_sentence": "完整表达（一句或两句，有逻辑连接）"}}}}"""
 
     model, api_key, api_base = await get_llm_config(db)
     raw = await complete_chat(
