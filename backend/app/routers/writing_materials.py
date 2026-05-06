@@ -559,6 +559,7 @@ class DowngradeSentenceOut(BaseModel):
 class DowngradeCheckRequest(BaseModel):
     chinese: str
     answer: str
+    source_material_id: Optional[str] = None
 
 
 class DowngradeCheckResponse(BaseModel):
@@ -624,36 +625,45 @@ async def get_downgrade_sentences(db: AsyncSession = Depends(get_db)):
 
 @router.post("/downgrade-check", response_model=DowngradeCheckResponse)
 async def check_downgrade(body: DowngradeCheckRequest, db: AsyncSession = Depends(get_db)):
-    """AI判断降级表达是否正确：核心意思传达？语法正确？"""
+    """AI判断降级表达是否正确：核心意思传达？语法正确？关联推荐关键词"""
     from app.services.llm_service import complete_chat
     from app.utils.llm_config import get_llm_config
+
+    # 查找相关关键词作为参考词汇（用于参考答案，不作为评分硬性标准）
+    recommended_vocab = ""
+    if body.source_material_id:
+        mat = await db.get(WritingMaterial, body.source_material_id)
+        if mat:
+            kw_result = await db.execute(
+                select(WritingMaterialKeyword).where(
+                    WritingMaterialKeyword.topic == mat.topic,
+                    WritingMaterialKeyword.direction_index == mat.direction_index,
+                )
+            )
+            kws = kw_result.scalars().all()
+            if kws:
+                vocab_pairs = [f"{kw.cn} = {kw.en}" for kw in kws]
+                recommended_vocab = "\n\n【该话题的标准词汇对照（供参考答案使用，但不作为评分硬性标准）】：\n" + "\n".join(vocab_pairs)
 
     prompt = f"""你是一位雅思写作教练，专门帮助学生用简单英语表达复杂中文意思（降级表达法）。
 
 学生需要把以下中文用简单英语表达出来（不需要高级词汇，只要意思到位、语法正确）：
 
 中文原句：{body.chinese}
-学生答案：{body.answer}
+学生答案：{body.answer}{recommended_vocab}
 
-请判断：
-1. 核心意思是否传达到位（中文的关键含义是否在英文中体现）
-2. 英语语法是否正确
-3. 给出0-100分的评分
-
-评分标准：
-- 90-100: 核心意思完整传达 + 语法正确
-- 70-89: 核心意思基本传达 + 语法小瑕疵
-- 50-69: 部分意思传达 或 语法明显错误
-- 30-49: 意思偏差较大
+评分标准（核心原则：意思到位 + 语法正确 = 好答案）：
+- 90-100: 核心意思完整传达 + 语法正确 + 表达自然流畅
+- 70-89: 核心意思基本到位 + 语法正确（用词简单也完全OK）
+- 50-69: 意思部分传达 或 语法有明显错误影响理解
+- 30-49: 意思偏差较大 或 语法错误严重
 - 0-29: 完全偏题或无法理解
 
-同时请给出参考答案（用最简单的英语表达），并拆解为3步：
-- core_meaning: 这句话的核心意思是什么（一句话总结）
-- keywords: 关键概念用什么简单词替代
-- simple_sentence: 最终的简单英语句子
+重要：学生用任何合理的简单英文表达都应给予肯定，不要求必须用特定词汇。
+参考答案中可以使用标准词汇对照表里的词，但学生用其他正确表达同样得高分。
 
 输出格式（只输出JSON）：
-{{"score": 数字, "correct": true/false, "feedback": "简短点评", "reference_answer": "参考英文", "steps": {{"core_meaning": "...", "keywords": "...", "simple_sentence": "..."}}}}"""
+{{"score": 数字, "correct": true/false, "feedback": "点评（肯定学生的合理表达，如有更好的词汇选择可以补充建议）", "reference_answer": "参考英文（使用标准词汇）", "steps": {{"core_meaning": "核心意思（5字概括）", "keywords": "关键词英文对应", "simple_sentence": "完整简单句"}}}}"""
 
     model, api_key, api_base = await get_llm_config(db)
     raw = await complete_chat(

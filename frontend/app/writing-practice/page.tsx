@@ -1165,7 +1165,7 @@ function MaterialDowngradeSubTab() {
     if (!current || !input.trim() || checking) return;
     setChecking(true);
     try {
-      const res = await api.checkDowngrade(current.chinese, input.trim());
+      const res = await api.checkDowngrade(current.chinese, input.trim(), current.source_material_id);
       setResult(res);
       setSessionStats((s) => ({
         correct: s.correct + (res.correct ? 1 : 0),
