@@ -338,6 +338,7 @@ function DictationTab({ onUpdate }: { onUpdate: () => void }) {
   const [finished, setFinished] = useState(false);
   const [sessionStats, setSessionStats] = useState({ correct: 0, total: 0 });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [tomorrowDue, setTomorrowDue] = useState(0);
 
   // 填空模式状态
   const [blankInfo, setBlankInfo] = useState<import("@/types").BlankSlotsInfo | null>(null);
@@ -346,10 +347,13 @@ function DictationTab({ onUpdate }: { onUpdate: () => void }) {
   const loadQueue = useCallback(async () => {
     setLoading(true);
     setFinished(false);
-    // 只取今日到期的 mastery>=2 句型，不随机补充
-    const due = await api.getWritingTemplatesDue(20);
+    const [due, stats] = await Promise.all([
+      api.getWritingTemplatesDue(20),
+      api.getWritingTemplateStats(),
+    ]);
     const eligible = due.filter((t) => t.mastery_level >= 2);
     setQueue(eligible);
+    setTomorrowDue(stats.tomorrow_due ?? 0);
     setIdx(0);
     setInput("");
     setResult(null);
@@ -415,7 +419,7 @@ function DictationTab({ onUpdate }: { onUpdate: () => void }) {
     <div className="py-12 text-center text-muted-foreground space-y-2">
       <p className="text-lg">✅</p>
       <p>今日默写任务已完成</p>
-      <p className="text-xs">明天会有新的到期句型，保持节奏！</p>
+      <p className="text-xs">明日将有 <span className="font-bold text-indigo-600">{tomorrowDue}</span> 条到期复习</p>
     </div>
   );
 
@@ -425,7 +429,7 @@ function DictationTab({ onUpdate }: { onUpdate: () => void }) {
         <p className="text-2xl">🎉</p>
         <p className="text-sm font-medium">本轮默写全部完成！</p>
         <p className="text-xs text-muted-foreground">
-          ✅ {sessionStats.correct}/{sessionStats.total} 正确
+          ✅ {sessionStats.correct}/{sessionStats.total} 正确 · 明日待复习 {tomorrowDue} 条
         </p>
         <Button variant="outline" onClick={() => { setSessionStats({ correct: 0, total: 0 }); loadQueue(); }} className="gap-1">
           再来一轮
@@ -561,12 +565,17 @@ function FlashcardTab({ onUpdate }: { onUpdate: () => void }) {
   const [loading, setLoading] = useState(true);
   const [finished, setFinished] = useState(false);
   const [sessionStats, setSessionStats] = useState({ correct: 0, total: 0 });
+  const [tomorrowDue, setTomorrowDue] = useState(0);
 
   const loadQueue = useCallback(async () => {
     setLoading(true);
     setFinished(false);
-    const due = await api.getWritingTemplatesDue(20);
+    const [due, stats] = await Promise.all([
+      api.getWritingTemplatesDue(20),
+      api.getWritingTemplateStats(),
+    ]);
     setQueue(due);
+    setTomorrowDue(stats.tomorrow_due ?? 0);
     setIdx(0);
     setFlipped(false);
     setLoading(false);
@@ -594,7 +603,7 @@ function FlashcardTab({ onUpdate }: { onUpdate: () => void }) {
   if (queue.length === 0) return (
     <div className="py-12 text-center text-muted-foreground space-y-2">
       <p>暂无到期复习的句型 ✓</p>
-      <p className="text-xs">去「默写测试」检验掌握程度，或等明天新句型到期</p>
+      <p className="text-xs">明日将有 <span className="font-bold text-indigo-600">{tomorrowDue}</span> 条到期复习</p>
     </div>
   );
 
@@ -604,7 +613,7 @@ function FlashcardTab({ onUpdate }: { onUpdate: () => void }) {
         <p className="text-2xl">🎉</p>
         <p className="text-sm font-medium">本轮闪卡全部完成！</p>
         <p className="text-xs text-muted-foreground">
-          ✅ {sessionStats.correct}/{sessionStats.total} 正确
+          ✅ {sessionStats.correct}/{sessionStats.total} 正确 · 明日待复习 {tomorrowDue} 条
         </p>
         <Button variant="outline" onClick={() => { setSessionStats({ correct: 0, total: 0 }); loadQueue(); }} className="gap-1">
           再来一轮
