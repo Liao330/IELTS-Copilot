@@ -38,7 +38,9 @@ class MaterialOut(BaseModel):
     angle: str
     angle_index: int
     reasoning_chain: str
+    reasoning_chain_en: Optional[str]
     example: str
+    example_en: Optional[str]
     sort_order: int
     mastery_level: int
     review_count: int
@@ -412,6 +414,66 @@ async def review_keyword(keyword_id: str, body: ReviewRequest, db: AsyncSession 
     await db.commit()
     await db.refresh(k)
     return k
+
+
+# ─── Batch translate (generate downgrade English) ─────────
+
+@router.post("/batch-translate")
+async def batch_translate_materials(db: AsyncSession = Depends(get_db)):
+    """批量为素材生成降级英文版本（reasoning_chain_en + example_en）"""
+    from app.services.llm_service import complete_chat
+    from app.utils.llm_config import get_llm_config
+
+    result = await db.execute(
+        select(WritingMaterial).where(
+            or_(WritingMaterial.reasoning_chain_en.is_(None), WritingMaterial.example_en.is_(None))
+        ).order_by(WritingMaterial.sort_order).limit(10)
+    )
+    items = result.scalars().all()
+    if not items:
+        return {"translated": 0, "message": "全部已有英文版本"}
+
+    model, api_key, api_base = await get_llm_config(db)
+
+    prompt = "For each item below, provide a SIMPLE downgrade English version (use basic words, simple grammar, clear meaning). Output JSON array.\n\n"
+    prompt += "Rules:\n- reasoning_chain_en: translate the Chinese reasoning chain using simple A → B → C format with basic English\n- example_en: translate the example into key phrases (country/phenomenon/data) in simple English\n\n"
+    prompt += "Items:\n"
+    for i, m in enumerate(items):
+        prompt += f"{i+1}. reasoning_chain: \"{m.reasoning_chain}\"\n   example: \"{m.example}\"\n"
+    prompt += '\nOutput format: [{"reasoning_chain_en":"...","example_en":"..."},...]'
+
+    raw = await complete_chat(
+        model=model, api_key=api_key, api_base=api_base,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.2,
+    )
+
+    cleaned = raw.strip()
+    if cleaned.startswith("```"):
+        lines = cleaned.split("\n")
+        lines = [l for l in lines if not l.strip().startswith("```")]
+        cleaned = "\n".join(lines).strip()
+
+    try:
+        translations = json.loads(cleaned)
+    except (json.JSONDecodeError, ValueError):
+        return {"translated": 0, "message": "AI response parse failed", "raw": cleaned[:200]}
+
+    count = 0
+    for i, m in enumerate(items):
+        if i < len(translations):
+            t = translations[i]
+            if t.get("reasoning_chain_en"):
+                m.reasoning_chain_en = t["reasoning_chain_en"]
+            if t.get("example_en"):
+                m.example_en = t["example_en"]
+            count += 1
+
+    await db.commit()
+    remaining = (await db.execute(
+        select(func.count()).select_from(WritingMaterial).where(WritingMaterial.reasoning_chain_en.is_(None))
+    )).scalar() or 0
+    return {"translated": count, "remaining": remaining}
 
 
 # ─── Seed Endpoint ────────────────────────────────────────

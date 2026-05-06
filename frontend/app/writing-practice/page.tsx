@@ -906,12 +906,21 @@ function MaterialDailySubTab() {
                 </div>
                 <div className="space-y-2">
                   <div>
-                    <p className="text-[10px] text-muted-foreground font-medium mb-1">📎 理由链</p>
+                    <p className="text-[10px] text-muted-foreground font-medium mb-1">📎 理由链（中文）</p>
                     <p className="text-sm bg-muted/50 rounded p-2 font-medium">{item.reasoning_chain}</p>
+                    {item.reasoning_chain_en && (
+                      <p className="text-[10px] text-muted-foreground font-medium mt-1.5 mb-0.5">✏️ 降级英文</p>
+                    )}
+                    {item.reasoning_chain_en && (
+                      <p className="text-sm bg-sky-50 dark:bg-sky-950/20 rounded p-2 text-sky-700 dark:text-sky-400">{item.reasoning_chain_en}</p>
+                    )}
                   </div>
                   <div>
-                    <p className="text-[10px] text-muted-foreground font-medium mb-1">📖 例子</p>
+                    <p className="text-[10px] text-muted-foreground font-medium mb-1">📖 例子（中文）</p>
                     <p className="text-sm bg-muted/50 rounded p-2">{item.example}</p>
+                    {item.example_en && (
+                      <p className="text-sm bg-sky-50 dark:bg-sky-950/20 rounded p-2 mt-1 text-sky-700 dark:text-sky-400">{item.example_en}</p>
+                    )}
                   </div>
                 </div>
                 <Button size="sm" variant="outline" onClick={() => handleMarkSeen(item)} className="gap-1">
@@ -972,22 +981,53 @@ function MaterialFlashcardSubTab() {
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground text-center">{idx + 1} / {queue.length}</p>
-      <div className="rounded-xl border-2 bg-card p-6 min-h-[200px] cursor-pointer transition-all hover:shadow-md" onClick={() => setFlipped(!flipped)}>
+      <div className="rounded-xl border-2 bg-card p-6 min-h-[240px] cursor-pointer transition-all hover:shadow-md" onClick={() => setFlipped(!flipped)}>
         {!flipped ? (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="flex items-center gap-2">
               <span>{TOPIC_LABELS[current.topic]?.emoji}</span>
               <span className="text-sm font-medium">{current.direction}</span>
+              <Badge variant="outline" className={`text-[10px] ${current.stance === "pro" ? "border-emerald-300 text-emerald-700" : "border-rose-300 text-rose-700"}`}>
+                {current.stance_label} · {current.angle}
+              </Badge>
             </div>
-            <Badge variant="outline" className={`text-xs ${current.stance === "pro" ? "border-emerald-300 text-emerald-700" : "border-rose-300 text-rose-700"}`}>
-              {current.stance_label} · {current.angle}
-            </Badge>
-            <p className="text-xs text-muted-foreground mt-4 text-center italic">点击翻面查看理由链和例子</p>
+            <div className="space-y-3">
+              <div>
+                <p className="text-[10px] text-muted-foreground font-medium mb-1">📎 理由链（中文）</p>
+                <p className="text-sm font-medium">{current.reasoning_chain}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-muted-foreground font-medium mb-1">📖 例子（中文）</p>
+                <p className="text-sm">{current.example}</p>
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground text-center italic pt-2">看中文 → 脑中过英文 → 点击翻面对照</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            <div><p className="text-[10px] text-muted-foreground font-medium mb-1">📎 理由链</p><p className="text-sm font-medium">{current.reasoning_chain}</p></div>
-            <div><p className="text-[10px] text-muted-foreground font-medium mb-1">📖 例子</p><p className="text-sm">{current.example}</p></div>
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <span>{TOPIC_LABELS[current.topic]?.emoji}</span>
+              <span className="text-sm font-medium">{current.direction}</span>
+              <Badge variant="outline" className={`text-[10px] ${current.stance === "pro" ? "border-emerald-300 text-emerald-700" : "border-rose-300 text-rose-700"}`}>
+                {current.stance_label} · {current.angle}
+              </Badge>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <p className="text-[10px] text-muted-foreground font-medium mb-1">📎 理由链</p>
+                <p className="text-sm text-foreground/70">{current.reasoning_chain}</p>
+                {current.reasoning_chain_en && (
+                  <p className="text-sm font-medium text-sky-700 dark:text-sky-400 mt-1">{current.reasoning_chain_en}</p>
+                )}
+              </div>
+              <div>
+                <p className="text-[10px] text-muted-foreground font-medium mb-1">📖 例子</p>
+                <p className="text-sm text-foreground/70">{current.example}</p>
+                {current.example_en && (
+                  <p className="text-sm font-medium text-sky-700 dark:text-sky-400 mt-1">{current.example_en}</p>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>

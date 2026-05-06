@@ -25,7 +25,9 @@ class WritingMaterial(Base):
     angle_index: Mapped[int] = mapped_column(Integer, nullable=False)   # 1/2
 
     reasoning_chain: Mapped[str] = mapped_column(Text, nullable=False)  # 理由链（→分隔）
+    reasoning_chain_en: Mapped[Optional[str]] = mapped_column(Text)     # 理由链降级英文
     example: Mapped[str] = mapped_column(Text, nullable=False)          # 例子
+    example_en: Mapped[Optional[str]] = mapped_column(Text)             # 例子关键词英文
 
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
 
