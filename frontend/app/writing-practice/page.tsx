@@ -74,7 +74,7 @@ export default function WritingPracticePage() {
           </h1>
           {stats && mainTab === "template" && (
             <span className="ml-auto text-xs text-muted-foreground">
-              {stats.mastered}/{stats.total} 已掌握 · 今日新学 {stats.learned_today} · 待复习 {stats.due_today}
+              {stats.mastered}/{stats.total} 已掌握 · 今日待复习 {stats.due_today} · 明日 {stats.tomorrow_due ?? 0}
             </span>
           )}
         </div>
@@ -736,6 +736,7 @@ function StatsTab({ stats }: { stats: WritingTemplateStats }) {
           <div><div className="text-2xl font-bold text-emerald-600">{stats.mastered}</div><div className="text-[10px] text-muted-foreground">已掌握</div></div>
           <div><div className="text-2xl font-bold text-amber-600">{stats.learning}</div><div className="text-[10px] text-muted-foreground">学习中</div></div>
           <div><div className="text-2xl font-bold text-sky-600">{stats.due_today}</div><div className="text-[10px] text-muted-foreground">今日待复习</div></div>
+          <div><div className="text-2xl font-bold text-indigo-600">{stats.tomorrow_due ?? 0}</div><div className="text-[10px] text-muted-foreground">明日待复习</div></div>
         </div>
         <div className="h-3 bg-muted rounded-full overflow-hidden">
           <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${pct}%` }} />

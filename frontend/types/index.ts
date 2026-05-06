@@ -655,6 +655,7 @@ export interface WritingTemplateStats {
   learning: number;
   new_count: number;
   due_today: number;
+  tomorrow_due: number;
   learned_today: number;
   category_stats: Record<string, { total: number; mastered: number; due: number; remaining_new: number }>;
 }

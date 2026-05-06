@@ -85,6 +85,7 @@ class StatsOut(BaseModel):
     learning: int  # mastery 1-2
     new_count: int  # mastery 0
     due_today: int
+    tomorrow_due: int
     learned_today: int  # 今日已学数
     category_stats: dict  # {category: {total, mastered, due, remaining_new}}
 
@@ -134,15 +135,18 @@ async def get_due_templates(
     limit: int = Query(20, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
 ):
-    """获取今日待复习的句型（间隔重复到期）"""
-    now = datetime.utcnow()
+    """获取今日待复习的句型（间隔重复到期）— 今天CST内到期的都算"""
+    # 用今天CST结束时间（即明天CST 0:00对应的UTC）作为截止
+    now_cst = datetime.now(_CST)
+    today_end_cst = now_cst.replace(hour=23, minute=59, second=59, microsecond=0)
+    today_end_utc = today_end_cst.astimezone(timezone.utc).replace(tzinfo=None)
     stmt = (
         select(WritingTemplate)
         .where(
-            WritingTemplate.review_count > 0,  # 至少看过一次
+            WritingTemplate.review_count > 0,
             or_(
                 WritingTemplate.next_review_at.is_(None),
-                WritingTemplate.next_review_at <= now,
+                WritingTemplate.next_review_at <= today_end_utc,
             ),
         )
         .order_by(WritingTemplate.next_review_at.asc().nullsfirst())
@@ -473,13 +477,24 @@ async def review_template(template_id: str, body: ReviewRequest, db: AsyncSessio
 async def get_stats(db: AsyncSession = Depends(get_db)):
     now = datetime.utcnow()
     today_start = _today_start_cst()
+    # 今天CST结束时间对应的UTC
+    now_cst = datetime.now(_CST)
+    today_end_utc = now_cst.replace(hour=23, minute=59, second=59).astimezone(timezone.utc).replace(tzinfo=None)
+    # 明天CST结束时间对应的UTC
+    tomorrow_end_utc = today_end_utc + timedelta(days=1)
+
     total = (await db.execute(select(func.count()).select_from(WritingTemplate))).scalar() or 0
     mastered = (await db.execute(select(func.count()).select_from(WritingTemplate).where(WritingTemplate.mastery_level >= 3))).scalar() or 0
     learning = (await db.execute(select(func.count()).select_from(WritingTemplate).where(WritingTemplate.mastery_level.in_([1, 2])))).scalar() or 0
     new_count = (await db.execute(select(func.count()).select_from(WritingTemplate).where(WritingTemplate.review_count == 0))).scalar() or 0
     due_today = (await db.execute(select(func.count()).select_from(WritingTemplate).where(
         WritingTemplate.review_count > 0,
-        or_(WritingTemplate.next_review_at.is_(None), WritingTemplate.next_review_at <= now),
+        or_(WritingTemplate.next_review_at.is_(None), WritingTemplate.next_review_at <= today_end_utc),
+    ))).scalar() or 0
+    tomorrow_due = (await db.execute(select(func.count()).select_from(WritingTemplate).where(
+        WritingTemplate.review_count > 0,
+        WritingTemplate.next_review_at > today_end_utc,
+        WritingTemplate.next_review_at <= tomorrow_end_utc,
     ))).scalar() or 0
     learned_today = (await db.execute(select(func.count()).select_from(WritingTemplate).where(
         WritingTemplate.first_learned_at >= today_start,
@@ -502,8 +517,8 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
 
     return StatsOut(
         total=total, mastered=mastered, learning=learning,
-        new_count=new_count, due_today=due_today, learned_today=learned_today,
-        category_stats=category_stats,
+        new_count=new_count, due_today=due_today, tomorrow_due=tomorrow_due,
+        learned_today=learned_today, category_stats=category_stats,
     )
 
 
