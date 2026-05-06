@@ -98,6 +98,7 @@ class StatsOut(BaseModel):
     learning: int  # mastery 1-4
     new_count: int  # mastery 0
     due_today: int
+    tomorrow_due: int
     learned_today: int
     topic_stats: dict  # per topic breakdown
     keyword_total: int
@@ -183,6 +184,10 @@ async def list_materials(
 async def get_stats(db: AsyncSession = Depends(get_db)):
     now = datetime.utcnow()
     today_start = _today_start_cst()
+    # 今天/明天CST结束对应的UTC
+    now_cst = datetime.now(_CST)
+    today_end_utc = now_cst.replace(hour=23, minute=59, second=59).astimezone(timezone.utc).replace(tzinfo=None)
+    tomorrow_end_utc = today_end_utc + timedelta(days=1)
 
     total = (await db.execute(select(func.count()).select_from(WritingMaterial))).scalar() or 0
     mastered = (await db.execute(select(func.count()).select_from(WritingMaterial).where(WritingMaterial.mastery_level >= 5))).scalar() or 0
@@ -190,7 +195,12 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
     new_count = (await db.execute(select(func.count()).select_from(WritingMaterial).where(WritingMaterial.mastery_level == 0))).scalar() or 0
     due_today = (await db.execute(select(func.count()).select_from(WritingMaterial).where(
         WritingMaterial.review_count > 0,
-        or_(WritingMaterial.next_review_at.is_(None), WritingMaterial.next_review_at <= now),
+        or_(WritingMaterial.next_review_at.is_(None), WritingMaterial.next_review_at <= today_end_utc),
+    ))).scalar() or 0
+    tomorrow_due = (await db.execute(select(func.count()).select_from(WritingMaterial).where(
+        WritingMaterial.review_count > 0,
+        WritingMaterial.next_review_at > today_end_utc,
+        WritingMaterial.next_review_at <= tomorrow_end_utc,
     ))).scalar() or 0
     learned_today = (await db.execute(select(func.count()).select_from(WritingMaterial).where(
         WritingMaterial.first_learned_at >= today_start,
@@ -210,7 +220,7 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
 
     return StatsOut(
         total=total, mastered=mastered, learning=learning, new_count=new_count,
-        due_today=due_today, learned_today=learned_today,
+        due_today=due_today, tomorrow_due=tomorrow_due, learned_today=learned_today,
         topic_stats=topic_stats, keyword_total=kw_total, keyword_mastered=kw_mastered,
     )
 

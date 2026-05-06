@@ -878,7 +878,8 @@ function MaterialDailySubTab() {
           <span>总计 {mStats.total} 条</span>
           <span>已掌握 {mStats.mastered}</span>
           <span>今日新学 {mStats.learned_today}</span>
-          <span>待复习 {mStats.due_today}</span>
+          <span>今日待复习 {mStats.due_today}</span>
+          <span>明日 {mStats.tomorrow_due ?? 0}</span>
           <span>关键词 {mStats.keyword_mastered}/{mStats.keyword_total}</span>
         </div>
       )}
@@ -1381,7 +1382,7 @@ function MaterialStatsSubTab() {
         </div>
         <div className="flex justify-between text-xs text-muted-foreground">
           <span>{pct}% 掌握率</span>
-          <span>今日新学 {stats.learned_today} · 待复习 {stats.due_today}</span>
+          <span>今日待复习 {stats.due_today} · 明日 {stats.tomorrow_due ?? 0}</span>
         </div>
       </div>
 
