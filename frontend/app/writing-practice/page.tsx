@@ -47,8 +47,8 @@ export default function WritingPracticePage() {
 
   const templateSubTabs = [
     { key: "daily" as const, label: "今日任务", icon: "📋" },
-    { key: "dictation" as const, label: "默写测试", icon: "✏️" },
     { key: "flashcard" as const, label: "闪卡复习", icon: "🃏" },
+    { key: "dictation" as const, label: "默写测试", icon: "✏️" },
     { key: "library" as const, label: "句型库", icon: "📚" },
     { key: "stats" as const, label: "统计", icon: "📈" },
   ];
