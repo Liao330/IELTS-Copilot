@@ -64,3 +64,21 @@ class WritingMaterialKeyword(Base):
     first_learned_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class DowngradeAttempt(Base):
+    """降级练习记录"""
+    __tablename__ = "downgrade_attempts"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    chinese: Mapped[str] = mapped_column(Text, nullable=False)
+    answer: Mapped[str] = mapped_column(Text, nullable=False)
+    score: Mapped[int] = mapped_column(Integer, nullable=False)
+    correct: Mapped[int] = mapped_column(Integer, default=0)
+    reference_answer: Mapped[Optional[str]] = mapped_column(Text)
+    feedback: Mapped[Optional[str]] = mapped_column(Text)
+    source_material_id: Mapped[Optional[str]] = mapped_column(String)
+    needs_retry: Mapped[int] = mapped_column(Integer, default=0)
+    retried: Mapped[int] = mapped_column(Integer, default=0)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

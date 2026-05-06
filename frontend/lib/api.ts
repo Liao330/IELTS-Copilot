@@ -195,6 +195,10 @@ export const api = {
   // Writing Materials - Downgrade Practice (降级练习)
   getDowngradeSentences: () =>
     request<any[]>("/api/writing-materials/downgrade-sentences"),
+  getDowngradeRetry: () =>
+    request<any[]>("/api/writing-materials/downgrade-retry"),
+  getDowngradeStats: () =>
+    request<any>("/api/writing-materials/downgrade-stats"),
   checkDowngrade: (chinese: string, answer: string, source_material_id?: string | null) =>
     request<any>("/api/writing-materials/downgrade-check", {
       method: "POST", body: JSON.stringify({ chinese, answer, source_material_id: source_material_id || null }),

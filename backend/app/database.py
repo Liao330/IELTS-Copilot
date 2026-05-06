@@ -24,7 +24,7 @@ async def init_db():
     from app.models.feedback import FeedbackItem  # noqa
     from app.models.schedule import ScheduleTask  # noqa
     from app.models.writing_template import WritingTemplate  # noqa
-    from app.models.writing_material import WritingMaterial, WritingMaterialKeyword  # noqa
+    from app.models.writing_material import WritingMaterial, WritingMaterialKeyword, DowngradeAttempt  # noqa
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         # Add new columns if they don't exist (SQLite doesn't support IF NOT EXISTS for columns)

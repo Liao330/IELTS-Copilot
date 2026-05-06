@@ -12,7 +12,7 @@ from sqlalchemy import select, func, or_, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models.writing_material import WritingMaterial, WritingMaterialKeyword
+from app.models.writing_material import WritingMaterial, WritingMaterialKeyword, DowngradeAttempt
 
 router = APIRouter(prefix="/api/writing-materials", tags=["writing-materials"])
 
@@ -697,6 +697,20 @@ async def check_downgrade(body: DowngradeCheckRequest, db: AsyncSession = Depend
         reference_answer = ""
         steps = {"core_meaning": "", "keywords": "", "simple_sentence": ""}
 
+    # 保存练习记录
+    attempt = DowngradeAttempt(
+        chinese=body.chinese,
+        answer=body.answer,
+        score=score,
+        correct=1 if correct else 0,
+        reference_answer=reference_answer,
+        feedback=feedback,
+        source_material_id=body.source_material_id,
+        needs_retry=1 if score < 70 else 0,
+    )
+    db.add(attempt)
+    await db.commit()
+
     return DowngradeCheckResponse(
         score=score,
         correct=correct,
@@ -704,3 +718,78 @@ async def check_downgrade(body: DowngradeCheckRequest, db: AsyncSession = Depend
         reference_answer=reference_answer,
         steps=steps,
     )
+
+
+# ─── Downgrade: retry (错题重练) ──────────────────────────
+
+@router.get("/downgrade-retry", response_model=List[DowngradeSentenceOut])
+async def get_downgrade_retry(db: AsyncSession = Depends(get_db)):
+    """获取需要重练的降级题目（score < 70 且未重练过的）"""
+    result = await db.execute(
+        select(DowngradeAttempt)
+        .where(DowngradeAttempt.needs_retry == 1, DowngradeAttempt.retried == 0)
+        .order_by(DowngradeAttempt.created_at.desc())
+        .limit(5)
+    )
+    attempts = result.scalars().all()
+    sentences = []
+    for a in attempts:
+        sentences.append(DowngradeSentenceOut(
+            id=f"retry-{a.id[:8]}",
+            chinese=a.chinese,
+            source_material_id=a.source_material_id,
+            hint=f"上次得分 {a.score}分",
+        ))
+    return sentences
+
+
+@router.post("/downgrade-retry/{attempt_id}/done")
+async def mark_retry_done(attempt_id: str, db: AsyncSession = Depends(get_db)):
+    """标记某条错题已重练"""
+    result = await db.execute(
+        select(DowngradeAttempt).where(DowngradeAttempt.id.like(f"{attempt_id}%"))
+    )
+    attempt = result.scalar_one_or_none()
+    if attempt:
+        attempt.retried = 1
+        await db.commit()
+    return {"ok": True}
+
+
+# ─── Downgrade: stats (练习统计) ──────────────────────────
+
+@router.get("/downgrade-stats")
+async def get_downgrade_stats(db: AsyncSession = Depends(get_db)):
+    """降级练习统计"""
+    total = (await db.execute(select(func.count()).select_from(DowngradeAttempt))).scalar() or 0
+    correct_count = (await db.execute(
+        select(func.count()).select_from(DowngradeAttempt).where(DowngradeAttempt.correct == 1)
+    )).scalar() or 0
+    avg_score = (await db.execute(
+        select(func.avg(DowngradeAttempt.score)).select_from(DowngradeAttempt)
+    )).scalar() or 0
+    retry_pending = (await db.execute(
+        select(func.count()).select_from(DowngradeAttempt)
+        .where(DowngradeAttempt.needs_retry == 1, DowngradeAttempt.retried == 0)
+    )).scalar() or 0
+
+    # 今日练习
+    today_start = _today_start_cst()
+    today_count = (await db.execute(
+        select(func.count()).select_from(DowngradeAttempt)
+        .where(DowngradeAttempt.created_at >= today_start)
+    )).scalar() or 0
+    today_avg = (await db.execute(
+        select(func.avg(DowngradeAttempt.score)).select_from(DowngradeAttempt)
+        .where(DowngradeAttempt.created_at >= today_start)
+    )).scalar() or 0
+
+    return {
+        "total_attempts": total,
+        "correct_count": correct_count,
+        "accuracy_pct": round(correct_count / total * 100) if total > 0 else 0,
+        "avg_score": round(float(avg_score), 1),
+        "retry_pending": retry_pending,
+        "today_count": today_count,
+        "today_avg_score": round(float(today_avg), 1) if today_avg else 0,
+    }
