@@ -56,7 +56,7 @@ LISTENING_PRACTICE_GENERATE_PROMPT = """你是一位资深雅思听力教练，�
 5. **场景多样化**：三句应尽量分布在不同雅思常见场景（租房/校园讨论/学术讲座/生活对话等），避免重复套路。
 5.5 **雅思听力场景限定**：所有练习句必须设定在雅思听力真实出题场景中（租房/校园咨询/图书馆/旅游/酒店预订/课程讨论/学术讲座/医疗预约/银行/交通等），禁止使用商务会议、科幻、法律诉讼等非雅思场景。
 5.6 **口语化/听力风格（极其重要）**：练习句必须是**自然口语风格**，像真人在对话中说出来的话，而非书面阅读材料。具体要求：
-   - 使用缩写形式（I'll, we're, there's, won't, can't）
+   - 禁止使用缩写形式（禁止 I'll/we're/there's/won't/can't/don't 等带撇号的缩写，必须写成 I will/we are/there is/will not/cannot/do not，因为TTS对撇号处理效果差）
    - 使用口语连接词（well, so, actually, you know, I mean, basically）
    - 句式偏短、直白，避免多层嵌套从句
    - 可以有口语化的省略（如 "Got any questions?" 而不是 "Do you have any questions?"）
@@ -82,4 +82,6 @@ LISTENING_PRACTICE_GENERATE_PROMPT = """你是一位资深雅思听力教练，�
 - 不要输出 markdown 代码块（不要 ```json ```）
 - 不要输出数组之外的任何文字
 - 不要在英文句子中加入中文括号注音
-- 不要虚构不存在的词汇或典故"""
+- 不要虚构不存在的词汇或典故
+- 英文练习句中禁止使用破折号（—、–、-用作破折号）。TTS语音合成会因破折号导致发音异常。如需停顿可用逗号或分成两个短句
+- 英文练习句中禁止使用撇号缩写（don't/won't/I'll/we're/there's/can't等），必须使用完整形式（do not/will not/I will/we are/there is/cannot）。TTS对撇号处理效果差"""

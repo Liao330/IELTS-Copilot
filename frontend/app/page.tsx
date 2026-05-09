@@ -39,6 +39,9 @@ export default function HomePage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
 
+  // Listening today stats
+  const [listeningToday, setListeningToday] = useState<{ today_seconds: number; today_sessions: number; today_sentences: number } | null>(null);
+
   // Agent cards folded
   const [agentsFolded, setAgentsFolded] = useState(true);
 
@@ -77,6 +80,9 @@ export default function HomePage() {
       .finally(() => setDailyLoading(false));
 
     fetchTodos();
+
+    // Load listening today stats
+    api.getListeningTodayStats().then(setListeningToday).catch(() => {});
   }, [fetchTodos]);
 
   // Force-regenerate daily report
@@ -194,7 +200,7 @@ export default function HomePage() {
           {[
             { icon: "📋", label: "备考计划", path: "/study-plan", color: "border-amber-200 hover:bg-amber-50 dark:border-amber-800 dark:hover:bg-amber-950/30" },
             { icon: "🎧", label: "听力精听", path: "/listening-practice", color: "border-orange-200 hover:bg-orange-50 dark:border-orange-800 dark:hover:bg-orange-950/30" },
-            { icon: "✏️", label: "句型&素材", path: "/writing-practice", color: "border-purple-200 hover:bg-purple-50 dark:border-purple-800 dark:hover:bg-purple-950/30" },
+            { icon: "✏️", label: "句型·素材·口语", path: "/writing-practice", color: "border-purple-200 hover:bg-purple-50 dark:border-purple-800 dark:hover:bg-purple-950/30" },
             { icon: "📚", label: "作业库", path: "/homeworks", color: "border-emerald-200 hover:bg-emerald-50 dark:border-emerald-800 dark:hover:bg-emerald-950/30" },
             { icon: "📖", label: "单词本", path: "/vocabulary", color: "border-sky-200 hover:bg-sky-50 dark:border-sky-800 dark:hover:bg-sky-950/30" },
             { icon: "📒", label: "笔记", path: "/notes", color: "border-rose-200 hover:bg-rose-50 dark:border-rose-800 dark:hover:bg-rose-950/30" },
@@ -272,6 +278,23 @@ export default function HomePage() {
               )}
             </div>
 
+            {/* 今日精听时间统计 */}
+            {listeningToday && listeningToday.today_seconds > 0 && (
+              <div className="flex items-center gap-3 rounded-lg bg-orange-50/80 dark:bg-orange-950/20 border border-orange-200/50 dark:border-orange-800/30 px-3 py-2">
+                <span className="text-sm">🎧</span>
+                <span className="text-xs text-orange-700 dark:text-orange-300 font-medium">
+                  今日精听 {listeningToday.today_seconds >= 3600
+                    ? `${Math.floor(listeningToday.today_seconds / 3600)}h${Math.floor((listeningToday.today_seconds % 3600) / 60)}m`
+                    : `${Math.floor(listeningToday.today_seconds / 60)}min`}
+                </span>
+                {listeningToday.today_sentences > 0 && (
+                  <span className="text-[10px] text-orange-600/70 dark:text-orange-400/60">
+                    · {listeningToday.today_sentences} 句
+                  </span>
+                )}
+              </div>
+            )}
+
             {todos.length > 0 && (
               <div className="space-y-1.5">
                 {todos.map((task) => (
@@ -348,15 +371,33 @@ export default function HomePage() {
                   已完成（{historyTasks.length}）
                 </button>
                 {showHistory && (
-                  <div className="mt-1.5 space-y-0.5 max-h-40 overflow-y-auto">
-                    {historyTasks.slice(0, 20).map((task) => (
-                      <div key={task.id} className="flex items-center gap-1.5 text-[10px] text-muted-foreground/70 group">
-                        <Check className="h-3 w-3 text-emerald-500 shrink-0" />
-                        <span className="line-through flex-1 truncate">{task.title}</span>
-                        <button type="button" onClick={() => handleToggleTodo(task)}
-                          className="opacity-0 group-hover:opacity-100 text-[9px] hover:text-amber-500">撤回</button>
-                      </div>
-                    ))}
+                  <div className="mt-1.5 space-y-1.5 max-h-52 overflow-y-auto">
+                    {(() => {
+                      // 按日期分组
+                      const grouped: Record<string, typeof historyTasks> = {};
+                      historyTasks.slice(0, 50).forEach((task) => {
+                        const date = task.scheduled_date || "未知";
+                        if (!grouped[date]) grouped[date] = [];
+                        grouped[date].push(task);
+                      });
+                      // 按日期倒序
+                      const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+                      return sortedDates.map((date) => (
+                        <div key={date}>
+                          <div className="text-[9px] text-muted-foreground/50 font-medium mb-0.5">
+                            {date === todayStr ? "今天" : new Date(date + "T00:00:00").toLocaleDateString("zh-CN", { month: "numeric", day: "numeric", weekday: "short" })}
+                          </div>
+                          {grouped[date].map((task) => (
+                            <div key={task.id} className="flex items-center gap-1.5 text-[10px] text-muted-foreground/70 group pl-2">
+                              <Check className="h-3 w-3 text-emerald-500 shrink-0" />
+                              <span className="line-through flex-1 truncate">{task.title}</span>
+                              <button type="button" onClick={() => handleToggleTodo(task)}
+                                className="opacity-0 group-hover:opacity-100 text-[9px] hover:text-amber-500">撤回</button>
+                            </div>
+                          ))}
+                        </div>
+                      ));
+                    })()}
                   </div>
                 )}
               </div>

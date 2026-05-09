@@ -346,6 +346,7 @@ export interface ListeningBlockerWord {
   start: number;
   end: number;
   vocab_word_id?: string | null;
+  note?: string | null;  // 听错备注，如"听成了food"
 }
 
 export interface ListeningGeneratedExample {
@@ -656,6 +657,7 @@ export interface WritingTemplateStats {
   new_count: number;
   due_today: number;
   tomorrow_due: number;
+  tomorrow_due_dictation: number;
   learned_today: number;
   category_stats: Record<string, { total: number; mastered: number; due: number; remaining_new: number }>;
 }

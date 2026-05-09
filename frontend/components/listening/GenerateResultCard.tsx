@@ -385,6 +385,14 @@ function ExampleRow({
   const handleKeyDown = (wordIdx: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     // 中文输入法正在组合时，不拦截任何键
     if (e.nativeEvent.isComposing || composingRef.current) return;
+    // Ctrl+Enter → 播放音频
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      // Ctrl+Enter → 播放音频
+      const playBtn = e.currentTarget.closest("[data-dictation-area]")?.querySelector("[data-play-btn] button") as HTMLButtonElement | null;
+      if (playBtn) playBtn.click();
+      return;
+    }
     if (e.key === "Tab") {
       e.preventDefault();
       const nextRef = inputRefs.current[wordIdx + (e.shiftKey ? -1 : 1)];
@@ -406,6 +414,7 @@ function ExampleRow({
     if (!submitted) return null;
     let correct = 0;
     const missed: string[] = [];
+    const missedDetails: { word: string; userAnswer: string }[] = [];
     const wordTokens = tokens.filter(t => t.type === "word");
     wordTokens.forEach((t, i) => {
       const expected = t.text.toLowerCase();
@@ -414,9 +423,10 @@ function ExampleRow({
         correct++;
       } else if (t.text.length >= 3) {
         missed.push(t.text);
+        missedDetails.push({ word: t.text, userAnswer: answers[i]?.trim() || "" });
       }
     });
-    return { correct, total: wordTokens.length, pct: Math.round((correct / wordTokens.length) * 100), missed };
+    return { correct, total: wordTokens.length, pct: Math.round((correct / wordTokens.length) * 100), missed, missedDetails };
   }, [submitted, tokens, answers]);
 
   // blocker word 是否匹配某个 token（用于 revealed 态可点击判断）
@@ -430,11 +440,22 @@ function ExampleRow({
   // ==================== render ====================
 
   const renderSentenceArea = () => {
-    // 已揭晓：可点击单词新增障碍词
+    // 已揭晓：可点击单词新增障碍词，也可选中词组/短语
     if (revealed) {
       if (!readOnly && onNewBlockerWord) {
+        const handleSelectionUp = () => {
+          const selection = window.getSelection();
+          if (!selection || selection.isCollapsed || !selection.toString().trim()) return;
+          const selectedText = selection.toString().trim();
+          if (!/[a-zA-Z]/.test(selectedText)) return;
+          // 选中多词短语 → 作为整体加入障碍词
+          if (selectedText.includes(" ")) {
+            onNewBlockerWord(selectedText, undefined, example.text);
+            selection.removeAllRanges();
+          }
+        };
         return (
-          <p className="text-sm font-medium leading-relaxed">
+          <p className="text-sm font-medium leading-relaxed select-text" onMouseUp={handleSelectionUp}>
             {tokens.map((t, i) => {
               if (t.type === "sep") return <span key={i}>{t.text}</span>;
               const isBW = isBlockerToken(t.text);
@@ -446,14 +467,16 @@ function ExampleRow({
                   </mark>
                 );
               }
-              // 非障碍词：可点击新增
+              // 非障碍词：可点击新增（带错误备注）
+              const missedDetail = stats?.missedDetails.find(d => d.word.toLowerCase() === t.text.toLowerCase());
+              const clickNote = missedDetail?.userAnswer ? `听成了 ${missedDetail.userAnswer}` : undefined;
               return (
                 <button
                   key={i}
                   type="button"
-                  onClick={() => onNewBlockerWord(t.text, undefined, example.text)}
+                  onClick={() => onNewBlockerWord(t.text, clickNote, example.text)}
                   className="inline rounded px-0.5 transition-colors hover:bg-rose-100 dark:hover:bg-rose-900/40 hover:text-rose-700 dark:hover:text-rose-300 cursor-pointer"
-                  title={`点击将「${t.text}」加入延伸障碍词`}
+                  title={`点击将「${t.text}」加入延伸障碍词${clickNote ? `（${clickNote}）` : ""}`}
                 >
                   {t.text}
                 </button>
@@ -486,8 +509,25 @@ function ExampleRow({
     // 盲听 + 听写模式：遮罩在上，输入/结果在下
     if (dictMode) {
       let refIdx = 0;
+      const handleResultSelectionUp = () => {
+        if (!onNewBlockerWord || !submitted) return;
+        const selection = window.getSelection();
+        if (!selection || selection.isCollapsed || !selection.toString().trim()) return;
+        const selectedText = selection.toString().trim();
+        if (!/[a-zA-Z]/.test(selectedText)) return;
+        if (selectedText.includes(" ") || selectedText.length > 2) {
+          // 尝试从 missedDetails 找到对应的错误记录作为 note
+          const detail = stats?.missedDetails.find(d => selectedText.toLowerCase().includes(d.word.toLowerCase()));
+          const note = detail?.userAnswer ? `听成了 ${detail.userAnswer}` : undefined;
+          onNewBlockerWord(selectedText, note, example.text);
+          selection.removeAllRanges();
+        }
+      };
       const inputLine = (
-        <div className="flex flex-wrap items-baseline gap-y-1 text-sm font-mono leading-relaxed">
+        <div
+          className="flex flex-wrap items-baseline gap-y-1 text-sm font-mono leading-relaxed select-text"
+          onMouseUp={handleResultSelectionUp}
+        >
           {tokens.map((t, i) => {
             if (t.type === "sep") {
               return <span key={i} className="whitespace-pre-wrap">{t.text}</span>;
@@ -561,7 +601,7 @@ function ExampleRow({
   };
 
   return (
-    <div className={cn("rounded-lg border px-3 py-2.5", style.bg)}>
+    <div className={cn("rounded-lg border px-3 py-2.5", style.bg)} data-dictation-area>
       {/* header */}
       <div className="flex items-center justify-between gap-2 mb-1.5">
         <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -580,6 +620,7 @@ function ExampleRow({
         <div className="flex items-center gap-1">
           {!readOnly && (
             <>
+            <span data-play-btn>
             <PlayButton
               text={example.text}
               size="sm"
@@ -599,6 +640,7 @@ function ExampleRow({
                 }
               }}
             />
+            </span>
             {!submitted && playCount > 0 && playCount < maxPlays && (
               <span className="text-[10px] text-muted-foreground ml-1">
                 {playCount}/{maxPlays === Infinity ? "∞" : maxPlays}
@@ -679,21 +721,30 @@ function ExampleRow({
                   {stats.missed.length > 0 && (
                     <span className="ml-1">
                       · 潜在障碍词：
-                      {stats.missed.map((w) => (
+                      {stats.missed.map((w) => {
+                        const detail = stats.missedDetails.find(d => d.word === w);
+                        const note = detail?.userAnswer
+                          ? `听成了 ${detail.userAnswer}`
+                          : "没听出来";
+                        return (
                         <span key={w} className="inline-flex items-center">
                           <span className="font-mono text-rose-600 dark:text-rose-400 ml-1">{w}</span>
+                          {detail?.userAnswer && (
+                            <span className="text-[9px] text-muted-foreground ml-0.5">({detail.userAnswer})</span>
+                          )}
                           {onAddMissedWord && (
                             <button
                               type="button"
-                              onClick={() => onAddMissedWord(w, undefined, example.text)}
+                              onClick={() => onAddMissedWord(w, note, example.text)}
                               className="ml-0.5 text-sky-500 hover:text-sky-700 dark:hover:text-sky-300 cursor-pointer"
-                              title={`将「${w}」加入延伸障碍词列表`}
+                              title={`将「${w}」加入延伸障碍词列表（备注：${note}）`}
                             >
                               <Plus className="h-3 w-3" />
                             </button>
                           )}
                         </span>
-                      ))}
+                        );
+                      })}
                     </span>
                   )}
                 </span>

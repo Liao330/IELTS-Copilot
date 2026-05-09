@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import type { ListeningBlockerWord } from "@/types";
 import { BlockerWordToken } from "./BlockerWordToken";
 
@@ -55,8 +55,34 @@ export function SentenceEditor({ text, blockers, onToggle, disabled, tooltipMap 
     return map;
   }, [tokens, blockers]);
 
+  // 支持选中多词短语作为障碍词
+  const handleMouseUp = useCallback(() => {
+    if (disabled) return;
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed || !selection.toString().trim()) return;
+
+    const selectedText = selection.toString().trim();
+    // 找到选中文本在原文中的位置
+    const startIdx = text.indexOf(selectedText);
+    if (startIdx === -1) return;
+    const endIdx = startIdx + selectedText.length;
+
+    // 检查是否已经是 blocker
+    const alreadyExists = blockers.some((b) => b.start === startIdx && b.end === endIdx);
+    if (alreadyExists) return;
+
+    // 只接受包含字母的选中（排除纯标点/空格）
+    if (!/[a-zA-Z]/.test(selectedText)) return;
+
+    onToggle({ word: selectedText, start: startIdx, end: endIdx });
+    selection.removeAllRanges();
+  }, [text, blockers, onToggle, disabled]);
+
   return (
-    <div className="leading-loose text-base font-serif tracking-wide text-foreground">
+    <div
+      className="leading-loose text-base font-serif tracking-wide text-foreground select-text"
+      onMouseUp={handleMouseUp}
+    >
       {tokens.map((t, i) => {
         if (!t.isWord) {
           // 非单词字符（空格/标点）：如果它前后两个 word token 都属于同一个 blocker，

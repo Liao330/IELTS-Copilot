@@ -24,9 +24,10 @@ const CATEGORY_MAP: Record<string, { label: string; emoji: string; color: string
 const MASTERY_LABELS = ["新", "模糊", "认识", "熟练"];
 const MASTERY_COLORS = ["bg-gray-200 text-gray-700", "bg-amber-100 text-amber-700", "bg-sky-100 text-sky-700", "bg-emerald-100 text-emerald-700"];
 
-type MainTab = "template" | "material";
+type MainTab = "template" | "material" | "speaking";
 type TemplateSubTab = "daily" | "dictation" | "flashcard" | "library" | "stats";
 type MaterialSubTab = "m-daily" | "m-flashcard" | "m-dictation" | "m-library" | "m-stats" | "m-downgrade";
+type SpeakingSubTab = "s-today" | "s-add" | "s-phrases" | "s-passed" | "s-stats";
 
 export default function WritingPracticePage() {
   const router = useRouter();
@@ -34,6 +35,7 @@ export default function WritingPracticePage() {
   const [mainTab, setMainTab] = useState<MainTab>("template");
   const [templateSub, setTemplateSub] = useState<TemplateSubTab>("daily");
   const [materialSub, setMaterialSub] = useState<MaterialSubTab>("m-daily");
+  const [speakingSub, setSpeakingSub] = useState<SpeakingSubTab>("s-today");
   const [stats, setStats] = useState<WritingTemplateStats | null>(null);
 
   const fetchStats = useCallback(async () => {
@@ -62,6 +64,14 @@ export default function WritingPracticePage() {
     { key: "m-stats" as const, label: "统计", icon: "📈" },
   ];
 
+  const speakingSubTabs = [
+    { key: "s-today" as const, label: "今日复习", icon: "🎤" },
+    { key: "s-add" as const, label: "录入", icon: "➕" },
+    { key: "s-phrases" as const, label: "降级表达", icon: "💬" },
+    { key: "s-passed" as const, label: "已过关", icon: "✅" },
+    { key: "s-stats" as const, label: "统计", icon: "📈" },
+  ];
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40">
@@ -70,7 +80,7 @@ export default function WritingPracticePage() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-lg font-semibold flex items-center gap-2">
-            ✍️ 写作句型&素材背诵
+            ✍️ 句型·素材·口语
           </h1>
           {stats && mainTab === "template" && (
             <span className="ml-auto text-xs text-muted-foreground">
@@ -102,6 +112,16 @@ export default function WritingPracticePage() {
             }`}
           >
             💡 素材背诵
+          </button>
+          <button
+            onClick={() => setMainTab("speaking")}
+            className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+              mainTab === "speaking"
+                ? "bg-emerald-500 text-white shadow-sm"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
+          >
+            🎤 口语纠错
           </button>
         </div>
 
@@ -149,6 +169,27 @@ export default function WritingPracticePage() {
               ))}
             </div>
             <MaterialTab subTab={materialSub} />
+          </>
+        )}
+
+        {mainTab === "speaking" && (
+          <>
+            <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
+              {speakingSubTabs.map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setSpeakingSub(t.key)}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                    speakingSub === t.key
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+                >
+                  {t.icon} {t.label}
+                </button>
+              ))}
+            </div>
+            <SpeakingTab subTab={speakingSub} onSwitchToAdd={() => setSpeakingSub("s-add")} />
           </>
         )}
       </main>
@@ -233,22 +274,6 @@ function DailyTab({ onUpdate }: { onUpdate: () => void }) {
         </div>
       )}
 
-      {/* Due review */}
-      <section>
-        <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
-          🔄 待复习 <Badge variant="outline" className="text-xs">{dueItems.length}</Badge>
-        </h2>
-        {dueItems.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">今日无待复习句型 🎉 去「默写测试」或「闪卡复习」巩固吧</p>
-        ) : (
-          <div className="space-y-2">
-            {dueItems.map((item) => (
-              <TemplateCard key={item.id} item={item} showScene />
-            ))}
-          </div>
-        )}
-      </section>
-
       {/* New today */}
       <section>
         <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
@@ -274,6 +299,22 @@ function DailyTab({ onUpdate }: { onUpdate: () => void }) {
                   <CheckCircle className="h-3.5 w-3.5" /> 已看，加入复习
                 </Button>
               </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Due review */}
+      <section>
+        <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
+          🔄 待复习 <Badge variant="outline" className="text-xs">{dueItems.length}</Badge>
+        </h2>
+        {dueItems.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">今日无待复习句型 🎉 去「默写测试」或「闪卡复习」巩固吧</p>
+        ) : (
+          <div className="space-y-2">
+            {dueItems.map((item) => (
+              <TemplateCard key={item.id} item={item} showScene />
             ))}
           </div>
         )}
@@ -353,7 +394,7 @@ function DictationTab({ onUpdate }: { onUpdate: () => void }) {
     ]);
     const eligible = due.filter((t) => t.mastery_level >= 2);
     setQueue(eligible);
-    setTomorrowDue(stats.tomorrow_due ?? 0);
+    setTomorrowDue(stats.tomorrow_due_dictation ?? stats.tomorrow_due ?? 0);
     setIdx(0);
     setInput("");
     setResult(null);
@@ -417,9 +458,10 @@ function DictationTab({ onUpdate }: { onUpdate: () => void }) {
   if (loading) return <div className="py-12 text-center text-muted-foreground animate-pulse">加载中...</div>;
   if (queue.length === 0) return (
     <div className="py-12 text-center text-muted-foreground space-y-2">
-      <p className="text-lg">✅</p>
-      <p>今日默写任务已完成</p>
-      <p className="text-xs">明日将有 <span className="font-bold text-indigo-600">{tomorrowDue}</span> 条到期复习</p>
+      <p className="text-lg">📝</p>
+      <p>暂无待默写句型</p>
+      <p className="text-xs">需要 mastery ≥ 2 的句型到期才会出现在这里</p>
+      {tomorrowDue > 0 && <p className="text-xs">明日将有 <span className="font-bold text-indigo-600">{tomorrowDue}</span> 条到期默写</p>}
     </div>
   );
 
@@ -574,8 +616,13 @@ function FlashcardTab({ onUpdate }: { onUpdate: () => void }) {
       api.getWritingTemplatesDue(20),
       api.getWritingTemplateStats(),
     ]);
-    setQueue(due);
-    setTomorrowDue(stats.tomorrow_due ?? 0);
+    // 闪卡只复习 mastery_level == 1 的（还没到默写阶段的）
+    // mastery >= 2 的留给默写测试
+    const eligible = due.filter((t) => t.mastery_level === 1);
+    setQueue(eligible);
+    // 闪卡的明日待复习 = 全局 - 默写部分
+    const flashcardTomorrow = (stats.tomorrow_due ?? 0) - (stats.tomorrow_due_dictation ?? 0);
+    setTomorrowDue(flashcardTomorrow >= 0 ? flashcardTomorrow : stats.tomorrow_due ?? 0);
     setIdx(0);
     setFlipped(false);
     setLoading(false);
@@ -1142,6 +1189,17 @@ function MaterialDowngradeSubTab() {
   const [mode, setMode] = useState<"new" | "retry">("new");
   const { toast } = useToast();
 
+  // 从 sessionStorage 恢复练习状态
+  const STORAGE_KEY = "downgrade_session";
+
+  const saveSession = useCallback((data: { sentences: any[]; idx: number; stats: { correct: number; total: number }; mode: string }) => {
+    try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
+  }, []);
+
+  const clearSession = useCallback(() => {
+    try { sessionStorage.removeItem(STORAGE_KEY); } catch {}
+  }, []);
+
   const fetchSentences = useCallback(async (m: "new" | "retry" = "new") => {
     setLoading(true);
     setFinished(false);
@@ -1153,18 +1211,38 @@ function MaterialDowngradeSubTab() {
     try {
       const data = m === "retry" ? await api.getDowngradeRetry() : await api.getDowngradeSentences();
       setSentences(data);
+      saveSession({ sentences: data, idx: 0, stats: { correct: 0, total: 0 }, mode: m });
     } catch {
       toast({ variant: "destructive", description: "加载失败" });
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, saveSession]);
 
   const fetchStats = useCallback(async () => {
     try { setDStats(await api.getDowngradeStats()); } catch {}
   }, []);
 
-  useEffect(() => { fetchSentences("new"); fetchStats(); }, [fetchSentences, fetchStats]);
+  useEffect(() => {
+    // 尝试恢复上次未完成的练习
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const data = JSON.parse(saved);
+        if (data.sentences && data.sentences.length > 0 && data.idx < data.sentences.length) {
+          setSentences(data.sentences);
+          setCurrentIdx(data.idx);
+          setSessionStats(data.stats || { correct: 0, total: 0 });
+          setMode(data.mode || "new");
+          setLoading(false);
+          fetchStats();
+          return;
+        }
+      }
+    } catch {}
+    fetchSentences("new");
+    fetchStats();
+  }, [fetchSentences, fetchStats]);
 
   const current = sentences[currentIdx];
 
@@ -1174,7 +1252,9 @@ function MaterialDowngradeSubTab() {
     try {
       const res = await api.checkDowngrade(current.chinese, input.trim(), current.source_material_id);
       setResult(res);
-      setSessionStats((s) => ({ correct: s.correct + (res.correct ? 1 : 0), total: s.total + 1 }));
+      const newStats = { correct: sessionStats.correct + (res.correct ? 1 : 0), total: sessionStats.total + 1 };
+      setSessionStats(newStats);
+      saveSession({ sentences, idx: currentIdx, stats: newStats, mode });
     } catch {
       toast({ variant: "destructive", description: "AI判分失败" });
     } finally {
@@ -1184,11 +1264,14 @@ function MaterialDowngradeSubTab() {
 
   const handleNext = () => {
     if (currentIdx < sentences.length - 1) {
-      setCurrentIdx(currentIdx + 1);
+      const nextIdx = currentIdx + 1;
+      setCurrentIdx(nextIdx);
       setInput("");
       setResult(null);
+      saveSession({ sentences, idx: nextIdx, stats: sessionStats, mode });
     } else {
       setFinished(true);
+      clearSession();
       fetchStats();
     }
   };
@@ -1206,7 +1289,7 @@ function MaterialDowngradeSubTab() {
           {dStats.retry_pending > 0 && (
             <span className="text-amber-600 font-medium">待重练 {dStats.retry_pending} 题</span>
           )}
-          <span>今日 {dStats.today_count} 次</span>
+          <span>今日 {dStats.today_count}/5</span>
         </div>
       )}
 
@@ -1225,11 +1308,20 @@ function MaterialDowngradeSubTab() {
       )}
 
       {sentences.length === 0 ? (
-        <div className="py-12 text-center text-muted-foreground space-y-2">
-          <p className="text-lg">📝</p>
-          <p>{mode === "retry" ? "暂无错题需要重练 🎉" : "暂无降级练习句子"}</p>
+        <div className="py-12 text-center text-muted-foreground space-y-3">
+          <p className="text-lg">{dStats && dStats.today_count >= 5 ? "✅" : "📝"}</p>
+          <p>{mode === "retry" ? "暂无错题需要重练 🎉" : dStats && dStats.today_count >= 5 ? "今日5题新题已完成！" : "暂无降级练习句子"}</p>
+          {mode === "new" && dStats && dStats.today_count >= 5 && dStats.retry_pending > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs text-amber-600">还有 {dStats.retry_pending} 题错题可以重练（不占每日配额）</p>
+              <Button variant="outline" size="sm" onClick={() => fetchSentences("retry")} className="text-amber-600">去重练错题</Button>
+            </div>
+          )}
+          {mode === "new" && dStats && dStats.today_count >= 5 && (!dStats.retry_pending || dStats.retry_pending === 0) && (
+            <p className="text-xs">明天继续 💪</p>
+          )}
           {mode === "retry" && <Button variant="outline" size="sm" onClick={() => fetchSentences("new")}>做新题</Button>}
-          {mode === "new" && <p className="text-xs">请先学习一些素材</p>}
+          {mode === "new" && dStats && dStats.today_count < 5 && <p className="text-xs">请先学习一些素材</p>}
         </div>
       ) : finished ? (
         <div className="py-12 text-center space-y-4">
@@ -1284,6 +1376,12 @@ function MaterialDowngradeSubTab() {
                   </div>
                   <p className="text-xs text-muted-foreground">{result.feedback}</p>
                 </div>
+                {!result.correct && result.corrected_answer && (
+                  <div className="bg-amber-50 dark:bg-amber-950/20 rounded-lg p-3 border border-amber-200 dark:border-amber-800">
+                    <p className="text-xs text-amber-700 dark:text-amber-300 font-medium mb-1">✏️ 你的答案修正后：</p>
+                    <p className="text-sm font-mono">{result.corrected_answer}</p>
+                  </div>
+                )}
                 {result.reference_answer && (
                   <div className="bg-muted/50 rounded-lg p-3">
                     <p className="text-xs text-muted-foreground mb-1">参考答案：</p>
@@ -1373,9 +1471,14 @@ function MaterialLibrarySubTab() {
                     <p className="text-[10px] font-medium text-muted-foreground mb-1.5">🔑 相关关键词</p>
                     <div className="flex flex-wrap gap-1.5">
                       {relatedKws.map((kw: any) => (
-                        <span key={kw.id} className="text-[10px] px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800">
-                          <span className="text-purple-700 dark:text-purple-300">{kw.cn}</span>
-                          <span className="text-purple-500 dark:text-purple-400 ml-1">{kw.en}</span>
+                        <span key={kw.id} className={`text-[10px] px-2 py-0.5 rounded-full border ${
+                          kw.level === "advanced"
+                            ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800"
+                            : "bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800"
+                        }`}>
+                          {kw.level === "advanced" && <span className="text-amber-500 mr-0.5">⭐</span>}
+                          <span className={kw.level === "advanced" ? "text-amber-700 dark:text-amber-300" : "text-purple-700 dark:text-purple-300"}>{kw.cn}</span>
+                          <span className={`ml-1 ${kw.level === "advanced" ? "text-amber-500 dark:text-amber-400" : "text-purple-500 dark:text-purple-400"}`}>{kw.en}</span>
                         </span>
                       ))}
                     </div>
@@ -1461,6 +1564,522 @@ function MaterialStatsSubTab() {
           <span className="text-xs px-2 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30">已掌握 {stats.mastered}</span>
         </div>
       </div>
+    </div>
+  );
+}
+
+
+// ─── Speaking Tab ────────────────────────────────────────────
+
+function SpeakingTab({ subTab, onSwitchToAdd }: { subTab: string; onSwitchToAdd: () => void }) {
+  if (subTab === "s-today") return <SpeakingTodaySubTab onSwitchToAdd={onSwitchToAdd} />;
+  if (subTab === "s-add") return <SpeakingAddSubTab />;
+  if (subTab === "s-phrases") return <SpeakingPhrasesSubTab />;
+  if (subTab === "s-passed") return <SpeakingPassedSubTab />;
+  if (subTab === "s-stats") return <SpeakingStatsSubTab />;
+  return null;
+}
+
+function SpeakingTodaySubTab({ onSwitchToAdd }: { onSwitchToAdd: () => void }) {
+  const [pending, setPending] = useState<any[]>([]);
+  const [reviewed, setReviewed] = useState<any[]>([]);
+  const [totalActive, setTotalActive] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [recording, setRecording] = useState<string | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const { toast } = useToast();
+
+  const fetchToday = useCallback(async () => {
+    try {
+      const data = await api.getSpeakingToday();
+      setPending(data.pending);
+      setReviewed(data.reviewed);
+      setTotalActive(data.total_active);
+    } catch {} finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchToday(); }, [fetchToday]);
+
+  const handleReview = async (id: string, result: string) => {
+    try {
+      const updated = await api.reviewSpeakingCorrection(id, result);
+      if (updated.status === "passed") {
+        toast({ title: "🎉 过关！", description: "连续3天脱口而出，已归档" });
+      }
+      setAudioUrl(null);
+      fetchToday();
+    } catch {}
+  };
+
+  const startRecording = async (id: string) => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream);
+      chunksRef.current = [];
+      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mr.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        setAudioUrl(URL.createObjectURL(blob));
+        stream.getTracks().forEach(t => t.stop());
+      };
+      mr.start();
+      mediaRecorderRef.current = mr;
+      setRecording(id);
+      setAudioUrl(null);
+    } catch {
+      toast({ title: "无法录音", description: "请允许麦克风权限", variant: "destructive" });
+    }
+  };
+
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    setRecording(null);
+  };
+
+  if (loading) return <div className="text-center py-10 text-muted-foreground animate-pulse">加载中...</div>;
+
+  if (pending.length === 0 && reviewed.length === 0 && totalActive === 0) {
+    return (
+      <div className="text-center py-16 space-y-3">
+        <p className="text-4xl">🎤</p>
+        <p className="text-muted-foreground">还没有纠错条目</p>
+        <button onClick={onSwitchToAdd} className="text-sm text-primary hover:underline">去录入纠错 →</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-3 text-xs text-muted-foreground mb-2">
+        <span>待复习 <strong className="text-foreground">{pending.length}</strong></span>
+        <span>今日已练 <strong className="text-foreground">{reviewed.length}</strong></span>
+        <span>总活跃 <strong className="text-foreground">{totalActive}</strong></span>
+      </div>
+
+      {pending.length === 0 && reviewed.length > 0 && (
+        <div className="text-center py-10 space-y-2">
+          <p className="text-3xl">✅</p>
+          <p className="font-semibold">今日复习已完成！</p>
+          <p className="text-sm text-muted-foreground">已练 {reviewed.length} 条</p>
+        </div>
+      )}
+
+      {pending.map((item) => (
+        <div key={item.id} className="rounded-lg border bg-card p-4 space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-base font-medium leading-relaxed flex-1">&ldquo;{item.correct_text}&rdquo;</p>
+            {item.streak_days > 0 && (
+              <span className="text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-600 px-2 py-0.5 rounded-full shrink-0">
+                🔥 {item.streak_days}天
+              </span>
+            )}
+          </div>
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted inline-block">
+            {item.error_type === "grammar" ? "语法" : item.error_type === "vocabulary" ? "用词" : item.error_type === "pronunciation" ? "发音" : "表达"}
+          </span>
+          <div className="flex items-center gap-2">
+            {recording === item.id ? (
+              <button onClick={stopRecording}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500 text-white text-sm animate-pulse">
+                ⏹ 停止录音
+              </button>
+            ) : (
+              <button onClick={() => startRecording(item.id)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted text-sm hover:bg-muted/80">
+                🎤 录音
+              </button>
+            )}
+            {audioUrl && recording === null && (
+              <audio src={audioUrl} controls className="h-8 flex-1" />
+            )}
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button onClick={() => handleReview(item.id, "fluent")}
+              className="flex-1 py-2 rounded-lg bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-600 transition-colors">
+              ✓ 脱口而出了
+            </button>
+            <button onClick={() => handleReview(item.id, "hesitant")}
+              className="flex-1 py-2 rounded-lg bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 transition-colors">
+              ✗ 还要想
+            </button>
+          </div>
+        </div>
+      ))}
+
+      {reviewed.length > 0 && pending.length > 0 && (
+        <div className="pt-3 border-t">
+          <p className="text-xs text-muted-foreground mb-2">今日已复习 ({reviewed.length})</p>
+          {reviewed.map((item) => (
+            <div key={item.id} className="flex items-center gap-2 py-1 text-sm text-muted-foreground">
+              <span>{item.last_result === "fluent" ? "✅" : "❌"}</span>
+              <span className="truncate">{item.correct_text}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SpeakingAddSubTab() {
+  const [mode, setMode] = useState<"single" | "batch">("batch");
+  const [correctText, setCorrectText] = useState("");
+  const [errorType, setErrorType] = useState("grammar");
+  const [batchText, setBatchText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [recentAdded, setRecentAdded] = useState<any[]>([]);
+  const { toast } = useToast();
+
+  const handleAdd = async () => {
+    if (!correctText.trim()) return;
+    setSubmitting(true);
+    try {
+      const item = await api.createSpeakingCorrection(correctText.trim(), errorType);
+      setRecentAdded(prev => [item, ...prev]);
+      setCorrectText("");
+      toast({ title: "已添加", description: "可在今日复习中练习" });
+    } catch {} finally { setSubmitting(false); }
+  };
+
+  const handleBatchImport = async () => {
+    if (!batchText.trim()) return;
+    setSubmitting(true);
+    try {
+      // 同时调用两个导入接口，AI各自识别属于自己的内容
+      const [corrRes, phraseRes] = await Promise.all([
+        api.batchImportSpeakingCorrections(batchText.trim()),
+        api.batchImportSpeakingPhrases(batchText.trim()),
+      ]);
+      const allItems = [
+        ...corrRes.items.map((i: any) => ({ ...i, _type: "correction" })),
+        ...phraseRes.items.map((i: any) => ({ ...i, _type: "phrase" })),
+      ];
+      setRecentAdded(prev => [...allItems, ...prev]);
+      setBatchText("");
+      const parts = [];
+      if (corrRes.imported > 0) parts.push(`${corrRes.imported} 条纠错`);
+      if (phraseRes.imported > 0) parts.push(`${phraseRes.imported} 条降级表达`);
+      toast({ title: "导入成功", description: parts.join(" + ") || "未识别到内容" });
+    } catch {
+      toast({ variant: "destructive", description: "解析失败，请检查格式" });
+    } finally { setSubmitting(false); }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Mode switch */}
+      <div className="flex gap-2">
+        <button onClick={() => setMode("batch")}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${mode === "batch" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+          批量导入
+        </button>
+        <button onClick={() => setMode("single")}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${mode === "single" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+          单条添加
+        </button>
+      </div>
+
+      {mode === "batch" ? (
+        <div className="rounded-lg border bg-card p-4 space-y-3">
+          <h3 className="text-sm font-semibold">智能导入</h3>
+          <p className="text-xs text-muted-foreground">
+            直接粘贴口语练习总结，AI自动识别并分类：纠错→加入纠错复习，降级表达→加入闪卡
+          </p>
+          <textarea
+            value={batchText}
+            onChange={(e) => setBatchText(e.target.value)}
+            placeholder={"粘贴口语练习总结...\n\nAI会自动识别：\n· 纠错（Wrong → Corrected）\n· 降级表达（你想表达 → Natural English）"}
+            className="w-full rounded-lg border p-3 text-sm min-h-[160px] resize-none focus:outline-none focus:ring-2 focus:ring-primary/50 font-mono"
+          />
+          <button onClick={handleBatchImport} disabled={!batchText.trim() || submitting}
+            className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50">
+            {submitting ? "AI解析中..." : "智能导入"}
+          </button>
+        </div>
+      ) : (
+        <div className="rounded-lg border bg-card p-4 space-y-3">
+          <h3 className="text-sm font-semibold">录入正确表达</h3>
+          <textarea
+            value={correctText}
+            onChange={(e) => setCorrectText(e.target.value)}
+            placeholder="输入正确的英文表达..."
+            className="w-full rounded-lg border p-3 text-sm min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
+          />
+          <div className="flex items-center gap-3">
+            <label className="text-xs text-muted-foreground">错误类型:</label>
+            <select value={errorType} onChange={(e) => setErrorType(e.target.value)}
+              className="rounded-lg border px-3 py-1.5 text-sm bg-background">
+              <option value="grammar">语法错误</option>
+              <option value="vocabulary">用词错误</option>
+              <option value="pronunciation">发音错误</option>
+              <option value="expression">表达不地道</option>
+            </select>
+          </div>
+          <button onClick={handleAdd} disabled={!correctText.trim() || submitting}
+            className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50">
+            {submitting ? "添加中..." : "添加纠错"}
+          </button>
+        </div>
+      )}
+
+      {recentAdded.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">已添加 ({recentAdded.length}):</p>
+          {recentAdded.map((item) => (
+            <div key={item.id} className="rounded-lg border bg-card px-3 py-2 text-sm flex items-center gap-2">
+              <span className="text-emerald-500">✓</span>
+              <span className="flex-1 truncate">{item.correct_text || item.cn}</span>
+              <span className="text-[10px] text-muted-foreground">
+                {item._type === "phrase" || item.cn
+                  ? `💬 ${item.category || ""}`
+                  : item.error_type === "grammar" ? "语法" : item.error_type === "vocabulary" ? "用词" : item.error_type === "pronunciation" ? "发音" : "表达"}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SpeakingPassedSubTab() {
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.getSpeakingCorrections("passed")
+      .then(setItems)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="text-center py-10 text-muted-foreground animate-pulse">加载中...</div>;
+
+  if (items.length === 0) {
+    return (
+      <div className="text-center py-16 space-y-2">
+        <p className="text-3xl">🏆</p>
+        <p className="text-muted-foreground">还没有过关的条目</p>
+        <p className="text-xs text-muted-foreground">连续3天脱口而出即可过关</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground mb-2">已过关 {items.length} 条</p>
+      {items.map((item) => (
+        <div key={item.id} className="rounded-lg border bg-card px-4 py-3 flex items-center gap-3">
+          <span className="text-emerald-500 shrink-0">✅</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm truncate">{item.correct_text}</p>
+            <p className="text-[10px] text-muted-foreground">
+              {item.error_type === "grammar" ? "语法" : item.error_type === "vocabulary" ? "用词" : item.error_type === "pronunciation" ? "发音" : "表达"}
+              {item.passed_at && ` · 过关于 ${new Date(item.passed_at).toLocaleDateString("zh-CN", { month: "numeric", day: "numeric" })}`}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SpeakingPhrasesSubTab() {
+  const [pending, setPending] = useState<any[]>([]);
+  const [reviewed, setReviewed] = useState<any[]>([]);
+  const [totalActive, setTotalActive] = useState(0);
+  const [newRemaining, setNewRemaining] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [flipped, setFlipped] = useState(false);
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [seeding, setSeeding] = useState(false);
+
+  const fetchToday = useCallback(async () => {
+    try {
+      const data = await api.getSpeakingPhrasesToday();
+      setPending(data.pending);
+      setReviewed(data.reviewed);
+      setTotalActive(data.total_active);
+      setNewRemaining((data as any).new_remaining || 0);
+      setPending(data.pending);
+      setReviewed(data.reviewed);
+      setTotalActive(data.total_active);
+      setCurrentIdx(0);
+      setFlipped(false);
+    } catch {
+      // If 404 or empty, try seeding
+      if (totalActive === 0) {
+        setSeeding(true);
+        try {
+          await api.seedSpeakingPhrases();
+          const data2 = await api.getSpeakingPhrasesToday();
+          setPending(data2.pending);
+          setReviewed(data2.reviewed);
+          setTotalActive(data2.total_active);
+        } catch {}
+        setSeeding(false);
+      }
+    } finally { setLoading(false); }
+  }, [totalActive]);
+
+  useEffect(() => { fetchToday(); }, [fetchToday]);
+
+  const current = pending[currentIdx];
+
+  const handleReview = async (result: string) => {
+    if (!current) return;
+    try {
+      await api.reviewSpeakingPhrase(current.id, result);
+      setFlipped(false);
+      if (currentIdx < pending.length - 1) {
+        setCurrentIdx(currentIdx + 1);
+      } else {
+        // Refresh
+        fetchToday();
+      }
+    } catch {}
+  };
+
+  const categoryLabels: Record<string, string> = {
+    feelings: "感受评价", reasons: "原因影响", people: "描述人",
+    places: "地点环境", changes: "变化对比", opinions: "观点态度",
+    frequency: "频率程度", habits: "喜好习惯", difficulties: "困难问题", filler: "填充拖时间",
+  };
+
+  if (loading || seeding) return <div className="text-center py-10 text-muted-foreground animate-pulse">{seeding ? "初始化词库..." : "加载中..."}</div>;
+
+  if (pending.length === 0 && totalActive === 0) {
+    return (
+      <div className="text-center py-16 space-y-3">
+        <p className="text-3xl">💬</p>
+        <p className="text-muted-foreground">词库为空</p>
+        <button onClick={async () => { setSeeding(true); await api.seedSpeakingPhrases(); fetchToday(); setSeeding(false); }}
+          className="text-sm text-primary hover:underline">导入口语降级表达词库</button>
+      </div>
+    );
+  }
+
+  if (pending.length === 0) {
+    return (
+      <div className="text-center py-12 space-y-2">
+        <p className="text-3xl">✅</p>
+        <p className="font-semibold">今日闪卡复习完成！</p>
+        <p className="text-sm text-muted-foreground">已复习 {reviewed.length} 条 · 总活跃 {totalActive} 条</p>
+        {newRemaining > 0 && <p className="text-xs text-muted-foreground">剩余未学 {newRemaining} 条（每天新学5条）</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Progress */}
+      <div className="flex gap-3 text-xs text-muted-foreground flex-wrap">
+        <span>今日 <strong className="text-foreground">{currentIdx + 1}/{pending.length}</strong></span>
+        <span>已过 <strong className="text-foreground">{reviewed.length}</strong></span>
+        <span>活跃 <strong className="text-foreground">{totalActive}</strong></span>
+        {newRemaining > 0 && <span>未学 <strong className="text-amber-600">{newRemaining}</strong></span>}
+      </div>
+
+      {/* Flashcard */}
+      {current && (
+        <div
+          onClick={() => setFlipped(!flipped)}
+          className="rounded-xl border-2 bg-card p-8 min-h-[200px] flex flex-col items-center justify-center cursor-pointer select-none transition-all hover:shadow-md"
+        >
+          {!flipped ? (
+            <>
+              <span className="text-[10px] text-muted-foreground mb-3">{categoryLabels[current.category] || current.category}</span>
+              <p className="text-2xl font-bold text-center">{current.cn}</p>
+              <p className="text-xs text-muted-foreground mt-4">👆 点击翻面</p>
+            </>
+          ) : (
+            <>
+              <span className="text-[10px] text-muted-foreground mb-3">{current.cn}</span>
+              <p className="text-xl font-medium text-center text-primary">{current.en}</p>
+              {current.streak_days > 0 && (
+                <span className="text-xs text-orange-500 mt-2">🔥 连续 {current.streak_days} 天</span>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Review buttons (only when flipped) */}
+      {flipped && (
+        <div className="flex gap-3">
+          <button onClick={() => handleReview("fluent")}
+            className="flex-1 py-3 rounded-lg bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-600 transition-colors">
+            ✓ 1秒内说出 — 过
+          </button>
+          <button onClick={() => handleReview("hesitant")}
+            className="flex-1 py-3 rounded-lg bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 transition-colors">
+            ✗ 超过1秒 — 没过
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SpeakingStatsSubTab() {
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.getSpeakingCorrectionStats()
+      .then(setStats)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="text-center py-10 text-muted-foreground animate-pulse">加载中...</div>;
+  if (!stats) return null;
+
+  const typeLabels: Record<string, string> = { grammar: "语法", vocabulary: "用词", pronunciation: "发音", expression: "表达" };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-lg border bg-card p-3 text-center">
+          <p className="text-2xl font-bold">{stats.total}</p>
+          <p className="text-[10px] text-muted-foreground">总条目</p>
+        </div>
+        <div className="rounded-lg border bg-card p-3 text-center">
+          <p className="text-2xl font-bold text-amber-500">{stats.active}</p>
+          <p className="text-[10px] text-muted-foreground">待复习</p>
+        </div>
+        <div className="rounded-lg border bg-card p-3 text-center">
+          <p className="text-2xl font-bold text-emerald-500">{stats.passed}</p>
+          <p className="text-[10px] text-muted-foreground">已过关</p>
+        </div>
+      </div>
+
+      {stats.avg_pass_days > 0 && (
+        <div className="rounded-lg border bg-card p-4">
+          <p className="text-sm text-muted-foreground">平均过关天数</p>
+          <p className="text-xl font-bold">{stats.avg_pass_days} 天</p>
+        </div>
+      )}
+
+      {stats.by_type && Object.keys(stats.by_type).length > 0 && (
+        <div className="rounded-lg border bg-card p-4 space-y-2">
+          <h3 className="text-sm font-semibold">错误类型分布</h3>
+          {Object.entries(stats.by_type).map(([type, count]) => (
+            <div key={type} className="flex items-center gap-2">
+              <span className="text-xs w-12">{typeLabels[type] || type}</span>
+              <div className="flex-1 h-4 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary/70 rounded-full"
+                  style={{ width: `${((count as number) / stats.total) * 100}%` }}
+                />
+              </div>
+              <span className="text-xs text-muted-foreground w-6 text-right">{count as number}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

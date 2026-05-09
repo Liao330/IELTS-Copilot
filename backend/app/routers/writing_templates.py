@@ -7,9 +7,12 @@ from datetime import datetime, timedelta, timezone
 _CST = timezone(timedelta(hours=8))  # 中国标准时间
 
 def _today_start_cst() -> datetime:
-    """返回今天 CST 0:00 对应的 UTC 时间（用于查询'今天'的记录）"""
+    """返回今天 CST 8:00 对应的 UTC 时间（系统以每天8点为新的一天）"""
     now_cst = datetime.now(_CST)
-    today_cst = now_cst.replace(hour=0, minute=0, second=0, microsecond=0)
+    # 如果现在还没到8点，算昨天的
+    if now_cst.hour < 8:
+        now_cst = now_cst - timedelta(days=1)
+    today_cst = now_cst.replace(hour=8, minute=0, second=0, microsecond=0)
     return today_cst.astimezone(timezone.utc).replace(tzinfo=None)
 from typing import Optional, List
 
@@ -86,6 +89,7 @@ class StatsOut(BaseModel):
     new_count: int  # mastery 0
     due_today: int
     tomorrow_due: int
+    tomorrow_due_dictation: int  # mastery >= 2 的明日待复习
     learned_today: int  # 今日已学数
     category_stats: dict  # {category: {total, mastered, due, remaining_new}}
 
@@ -135,15 +139,19 @@ async def get_due_templates(
     limit: int = Query(20, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
 ):
-    """获取今日待复习的句型（间隔重复到期）— 今天CST内到期的都算"""
-    # 用今天CST结束时间（即明天CST 0:00对应的UTC）作为截止
+    """获取今日待复习的句型（间隔重复到期）— 到今天结束前（次日8:00）到期的都算"""
+    # 今天结束 = 明天CST 8:00 对应的UTC
     now_cst = datetime.now(_CST)
-    today_end_cst = now_cst.replace(hour=23, minute=59, second=59, microsecond=0)
+    if now_cst.hour < 8:
+        today_end_cst = now_cst.replace(hour=8, minute=0, second=0, microsecond=0)
+    else:
+        today_end_cst = (now_cst + timedelta(days=1)).replace(hour=8, minute=0, second=0, microsecond=0)
     today_end_utc = today_end_cst.astimezone(timezone.utc).replace(tzinfo=None)
     stmt = (
         select(WritingTemplate)
         .where(
             WritingTemplate.review_count > 0,
+            WritingTemplate.mastery_level >= 1,
             or_(
                 WritingTemplate.next_review_at.is_(None),
                 WritingTemplate.next_review_at <= today_end_utc,
@@ -348,10 +356,10 @@ async def check_answer(template_id: str, body: CheckRequest, db: AsyncSession = 
 6. 允许省略选项符号如"/"，只写其中一个选项也算对
 
 输出严格 JSON：
-{{"score": 80, "correct": true, "feedback": "核心搭配正确，注意原文还有soared/surged等词也要掌握"}}
+{{"score": 80, "correct": true, "feedback": "核心搭配正确，minor问题说明"}}
 
 score >= {pass_threshold} 则 correct=true。
-feedback要求：中文不超过60字；如果学生用了同义替换虽算对但要指出原词让学生积累；指出遗漏的重要词汇。
+feedback要求：中文不超过60字；只指出学生答案中实际存在的错误或遗漏，不要凭空推荐学生没涉及的词汇。
 只输出JSON。"""
     else:
         prompt = f"""你是雅思写作句型检验助手。学生需要背诵一个英文句型模板，现在默写了一个版本，请判断是否正确。
@@ -369,13 +377,13 @@ feedback要求：中文不超过60字；如果学生用了同义替换虽算对�
 6. 不要求标点和大小写完全一致
 
 输出严格 JSON 格式：
-{{"score": 85, "correct": true, "feedback": "核心结构正确。注意标准答案还有soared/surged等表达也要记住"}}
+{{"score": 85, "correct": true, "feedback": "核心结构正确，具体问题说明"}}
 
 score >= {pass_threshold} 则 correct=true，否则 correct=false。
 feedback要求：
 - 用中文，不超过60字
-- 如果学生用了同义替换算对，但feedback中要指出标准答案里的原词让学生多积累
-- 指出学生遗漏的重要词汇/搭配
+- 只指出学生答案中实际存在的错误、遗漏或拼写问题
+- 不要凭空推荐学生没涉及的词汇或额外表达
 只输出JSON。"""
 
     try:
@@ -477,10 +485,13 @@ async def review_template(template_id: str, body: ReviewRequest, db: AsyncSessio
 async def get_stats(db: AsyncSession = Depends(get_db)):
     now = datetime.utcnow()
     today_start = _today_start_cst()
-    # 今天CST结束时间对应的UTC
+    # 今天结束 = 明天8:00 CST 对应的 UTC
     now_cst = datetime.now(_CST)
-    today_end_utc = now_cst.replace(hour=23, minute=59, second=59).astimezone(timezone.utc).replace(tzinfo=None)
-    # 明天CST结束时间对应的UTC
+    if now_cst.hour < 8:
+        today_end_utc = now_cst.replace(hour=8, minute=0, second=0, microsecond=0).astimezone(timezone.utc).replace(tzinfo=None)
+    else:
+        today_end_utc = (now_cst + timedelta(days=1)).replace(hour=8, minute=0, second=0, microsecond=0).astimezone(timezone.utc).replace(tzinfo=None)
+    # 明天结束 = 后天8:00
     tomorrow_end_utc = today_end_utc + timedelta(days=1)
 
     total = (await db.execute(select(func.count()).select_from(WritingTemplate))).scalar() or 0
@@ -489,10 +500,17 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
     new_count = (await db.execute(select(func.count()).select_from(WritingTemplate).where(WritingTemplate.review_count == 0))).scalar() or 0
     due_today = (await db.execute(select(func.count()).select_from(WritingTemplate).where(
         WritingTemplate.review_count > 0,
+        WritingTemplate.mastery_level >= 1,
         or_(WritingTemplate.next_review_at.is_(None), WritingTemplate.next_review_at <= today_end_utc),
     ))).scalar() or 0
     tomorrow_due = (await db.execute(select(func.count()).select_from(WritingTemplate).where(
         WritingTemplate.review_count > 0,
+        WritingTemplate.next_review_at > today_end_utc,
+        WritingTemplate.next_review_at <= tomorrow_end_utc,
+    ))).scalar() or 0
+    tomorrow_due_dictation = (await db.execute(select(func.count()).select_from(WritingTemplate).where(
+        WritingTemplate.review_count > 0,
+        WritingTemplate.mastery_level >= 2,
         WritingTemplate.next_review_at > today_end_utc,
         WritingTemplate.next_review_at <= tomorrow_end_utc,
     ))).scalar() or 0
@@ -518,6 +536,7 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
     return StatsOut(
         total=total, mastered=mastered, learning=learning,
         new_count=new_count, due_today=due_today, tomorrow_due=tomorrow_due,
+        tomorrow_due_dictation=tomorrow_due_dictation,
         learned_today=learned_today, category_stats=category_stats,
     )
 

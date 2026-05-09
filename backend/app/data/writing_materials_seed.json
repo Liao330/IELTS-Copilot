@@ -57,8 +57,10 @@
       "stance_label": "正方",
       "angle": "个人灵活性",
       "angle_index": 1,
-      "reasoning_chain": "不受时间地点限制 → 学生可自定步调学习 → 适合不同学习风格和节奏",
-      "example": "Coursera/Khan Academy让全球数百万人免费学习顶尖大学课程"
+      "reasoning_chain": "不受时间地点限制 → 学生可在最高效的时间段学习 → 学习效率和完成度提升",
+      "example": "上班族利用通勤/深夜时间在Coursera完成学位课程，传统大学做不到",
+      "reasoning_chain_en": "No fixed schedule or location → students can study at their most productive time → learning efficiency improves",
+      "example_en": "Working adults complete degree courses on Coursera during commutes or late at night — impossible with traditional universities"
     },
     {
       "topic": "education",
@@ -69,8 +71,9 @@
       "stance_label": "正方",
       "angle": "资源平等化",
       "angle_index": 2,
-      "reasoning_chain": "优质课程可无限复制 → 偏远地区学生也能获取名师资源 → 缩小教育地域差距",
-      "example": "中国「双师课堂」模式让农村学生听到城市名校教师授课"
+      "reasoning_chain": "优质课程可无限复制传播 → 偏远地区学生也能获取名师资源 → 这些学生的成绩和升学率因此提升",
+      "example": "中国「双师课堂」模式让农村学生听到城市名校教师授课",
+      "reasoning_chain_en": null
     },
     {
       "topic": "education",
@@ -141,8 +144,9 @@
       "stance_label": "反方",
       "angle": "实际工作需求",
       "angle_index": 2,
-      "reasoning_chain": "现代工作以团队项目为主 → 合作能力比个人成绩更重要 → 学校应优先培养沟通协调能力",
-      "example": "Google等科技公司招聘最看重团队协作能力而非个人分数"
+      "reasoning_chain": "现代工作以团队项目为主 → 合作能力比个人成绩更重要 → 只强调竞争的学生进入职场后难以融入团队、影响职业发展",
+      "example": "Google等科技公司招聘最看重团队协作能力而非个人分数",
+      "reasoning_chain_en": null
     },
     {
       "topic": "technology",
@@ -225,8 +229,9 @@
       "stance_label": "反方",
       "angle": "历史规律",
       "angle_index": 1,
-      "reasoning_chain": "每次技术革命都淘汰旧岗位但创造更多新岗位 → 人类总是能适应 → 关键在于教育转型而非抵制技术",
-      "example": "工业革命淘汰了手工织布，但创造了更多工厂管理和工程岗位"
+      "reasoning_chain": "每次技术革命都淘汰旧岗位但创造更多新岗位 → 人类通过学习新技能实现了转型 → AI时代同样会催生大量目前无法想象的新职业",
+      "example": "工业革命淘汰了手工织布，但创造了更多工厂管理和工程岗位",
+      "reasoning_chain_en": null
     },
     {
       "topic": "technology",
@@ -273,8 +278,9 @@
       "stance_label": "反方",
       "angle": "学习工具",
       "angle_index": 1,
-      "reasoning_chain": "教育类App/视频使抽象知识可视化 → 提高学习兴趣和效率 → 是传统教材的有效补充",
-      "example": "芬兰将编程纳入小学课程，儿童通过平板学习逻辑思维"
+      "reasoning_chain": "教育类App使抽象知识可视化 → 提高学习兴趣和效率 → 学生理解更快、成绩提升更明显",
+      "example": "芬兰将编程纳入小学课程，儿童通过平板学习逻辑思维",
+      "reasoning_chain_en": null
     },
     {
       "topic": "technology",
@@ -297,8 +303,9 @@
       "stance_label": "正方",
       "angle": "规模和力度",
       "angle_index": 1,
-      "reasoning_chain": "环境问题是系统性的 → 需要立法/政策/资金投入 → 只有政府有能力推动大规模改变",
-      "example": "欧盟碳排放交易体系使工业排放量10年下降35%，远超个人行为改变的效果"
+      "reasoning_chain": "环境问题涉及整个工业体系 → 个人无权关停污染工厂或制定排放标准 → 没有政府强制介入，污染企业不会主动改变",
+      "example": "欧盟碳排放交易体系使工业排放量10年下降35%，远超个人行为改变的效果",
+      "reasoning_chain_en": null
     },
     {
       "topic": "environment",
@@ -309,8 +316,10 @@
       "stance_label": "正方",
       "angle": "个人影响有限",
       "angle_index": 2,
-      "reasoning_chain": "个人减排量微不足道 → 80%碳排放来自工业和能源企业 → 不从源头管控则个人努力无意义",
-      "example": "全球100家企业贡献了71%的温室气体排放（CDP报告）"
+      "reasoning_chain": "个人减排量微不足道（如少开一次车节省的碳排放不到1kg）→ 而一家工厂一天排放数百吨 → 个人行为对全球变暖几乎没有实质影响",
+      "example": "一个人全年不开车节省约2吨碳排放，而一家钢铁厂一天排放数千吨——个人行为对全局几乎无影响",
+      "reasoning_chain_en": null,
+      "example_en": null
     },
     {
       "topic": "environment",
@@ -345,8 +354,9 @@
       "stance_label": "正方",
       "angle": "绿色经济",
       "angle_index": 1,
-      "reasoning_chain": "清洁能源/环保产业本身创造就业和GDP → 经济增长不必依赖高污染 → 二者可以双赢",
-      "example": "中国新能源产业（光伏/电动车）成为经济增长新引擎，出口全球领先"
+      "reasoning_chain": "清洁能源产业本身创造大量就业和GDP → 国家在环保的同时经济也在增长 → 证明经济发展和环保并非对立关系",
+      "example": "中国新能源产业（光伏/电动车）成为经济增长新引擎，出口全球领先",
+      "reasoning_chain_en": null
     },
     {
       "topic": "environment",
@@ -357,8 +367,9 @@
       "stance_label": "正方",
       "angle": "长期利益",
       "angle_index": 2,
-      "reasoning_chain": "环境破坏的经济代价更高（洪灾/干旱/医疗支出）→ 环保本质上是在保护经济基础",
-      "example": "世界银行估算气候变化到2030年将使全球GDP损失5%以上"
+      "reasoning_chain": "环境破坏引发洪灾/干旱/疾病 → 灾后重建和医疗支出远超前期环保投入 → 不环保反而花更多钱、经济损失更大",
+      "example": "世界银行估算气候变化到2030年将使全球GDP损失5%以上",
+      "reasoning_chain_en": null
     },
     {
       "topic": "environment",
@@ -369,8 +380,9 @@
       "stance_label": "反方",
       "angle": "发展阶段限制",
       "angle_index": 1,
-      "reasoning_chain": "贫困国家首要任务是解决温饱 → 强制环保标准会阻碍工业化 → 对穷国不公平",
-      "example": "非洲国家仍有数亿人用不上电，限制化石能源等于限制他们脱贫"
+      "reasoning_chain": "贫困国家首要任务是解决温饱 → 强制高环保标准大幅增加生产成本 → 工厂无法盈利、工业化停滞、人民持续贫困",
+      "example": "非洲国家仍有数亿人用不上电，限制化石能源等于限制他们脱贫",
+      "reasoning_chain_en": null
     },
     {
       "topic": "environment",
@@ -417,8 +429,10 @@
       "stance_label": "反方",
       "angle": "个人自由与便利",
       "angle_index": 1,
-      "reasoning_chain": "私家车是合法财产 → 限制使用侵犯个人选择权 → 且对家庭出行（老人/孩子）必要性高",
-      "example": "美国郊区/农村地区几乎没有公交系统，居民100%依赖私家车"
+      "reasoning_chain": "老人/孩子/残障人士无法使用公共交通 → 私家车是他们唯一的出行方式 → 限车直接导致这些群体出行困难甚至无法就医",
+      "example": "老年人、孕妇、残障人士无法挤公交/骑车，限车后这些群体连就医都成问题",
+      "reasoning_chain_en": null,
+      "example_en": null
     },
     {
       "topic": "environment",
@@ -429,8 +443,9 @@
       "stance_label": "反方",
       "angle": "替代方案不成熟",
       "angle_index": 2,
-      "reasoning_chain": "许多城市公共交通覆盖不足 → 贸然限车导致出行困难 → 应先完善替代方案再逐步限制",
-      "example": "部分城市限行后「打车难」「公交爆满」，反而降低了生活质量"
+      "reasoning_chain": "许多城市公共交通覆盖不足 → 贸然限车后居民无替代出行方式 → 通勤时间暴增、生活质量严重下降",
+      "example": "部分城市限行后「打车难」「公交爆满」，反而降低了生活质量",
+      "reasoning_chain_en": null
     },
     {
       "topic": "health",
@@ -453,8 +468,9 @@
       "stance_label": "正方",
       "angle": "减轻医疗负担",
       "angle_index": 2,
-      "reasoning_chain": "不健康饮食导致的慢性病 → 占用大量公共医疗资源 → 征税收入可用于补贴健康食品或医疗系统",
-      "example": "英国糖税实施后，饮料公司主动降低产品含糖量以避税"
+      "reasoning_chain": "不健康饮食导致慢性病大量增加 → 公共医疗系统不堪重负 → 征税可降低消费量，从源头减轻医疗支出压力",
+      "example": "英国糖税实施后，饮料公司主动降低产品含糖量以避税",
+      "reasoning_chain_en": null
     },
     {
       "topic": "health",
@@ -465,8 +481,9 @@
       "stance_label": "反方",
       "angle": "个人自由",
       "angle_index": 1,
-      "reasoning_chain": "饮食是个人选择 → 政府无权通过税收干预公民生活方式 → 属于「保姆式」管理",
-      "example": "丹麦曾征收脂肪税，因民众强烈反对和效果不明显，一年后被迫取消"
+      "reasoning_chain": "饮食是个人选择 → 政府用税收强行干预会引发公众反感 → 民众抵触情绪导致政策执行困难甚至被迫取消",
+      "example": "丹麦曾征收脂肪税，因民众强烈反对和效果不明显，一年后被迫取消",
+      "reasoning_chain_en": null
     },
     {
       "topic": "health",
@@ -501,8 +518,9 @@
       "stance_label": "正方",
       "angle": "社会效益",
       "angle_index": 2,
-      "reasoning_chain": "体育活动增强社区凝聚力 → 减少青少年犯罪 → 社会更和谐",
-      "example": "英国社区体育项目使参与区域的青少年犯罪率下降了40%"
+      "reasoning_chain": "体育活动给青少年提供消耗精力的出口 → 减少无所事事导致的打架斗殴 → 社区治安改善、居民安全感提升",
+      "example": "英国社区体育项目使参与区域的青少年犯罪率下降了40%",
+      "reasoning_chain_en": null
     },
     {
       "topic": "health",
@@ -513,8 +531,9 @@
       "stance_label": "反方",
       "angle": "个人选择权",
       "angle_index": 1,
-      "reasoning_chain": "运动方式和频率是个人自由 → 强制执行引发反感 → 效果适得其反",
-      "example": "调查显示被强制参加体育课的学生成年后反而更不愿运动"
+      "reasoning_chain": "强制规定运动时间和方式 → 人们对运动产生抵触心理 → 反而更不愿主动运动，参与率下降",
+      "example": "调查显示被强制参加体育课的学生成年后反而更不愿运动",
+      "reasoning_chain_en": null
     },
     {
       "topic": "health",
@@ -525,8 +544,9 @@
       "stance_label": "反方",
       "angle": "资源优先级",
       "angle_index": 2,
-      "reasoning_chain": "政府资金有限 → 体育设施建设挤占教育/医疗预算 → 不如直接投入医疗系统",
-      "example": "许多城市建了大量体育场馆却利用率很低，造成财政浪费"
+      "reasoning_chain": "政府资金有限 → 大量投入体育设施会挤占教育/医疗预算 → 其他更紧迫的公共服务质量下降",
+      "example": "许多城市建了大量体育场馆却利用率很低，造成财政浪费",
+      "reasoning_chain_en": null
     },
     {
       "topic": "health",
@@ -561,8 +581,9 @@
       "stance_label": "反方",
       "angle": "职业发展阶段",
       "angle_index": 1,
-      "reasoning_chain": "年轻时拼搏积累 → 为未来奠定基础 → 适度牺牲短期平衡换取长期稳定合情合理",
-      "example": "许多成功创业者在早期每周工作80+小时，才建立起后来的事业"
+      "reasoning_chain": "年轻时拼搏积累技能和人脉 → 30-40岁时拥有更高收入和职位 → 中年后反而有更多自由支配时间和经济保障",
+      "example": "许多成功创业者在早期每周工作80+小时，才建立起后来的事业",
+      "reasoning_chain_en": null
     },
     {
       "topic": "health",
@@ -573,8 +594,9 @@
       "stance_label": "反方",
       "angle": "经济现实",
       "angle_index": 2,
-      "reasoning_chain": "生活成本高（房贷/子女教育）→ 不加班收入不够 →「平衡」是经济宽裕者的奢侈品",
-      "example": "发展中国家的工薪阶层如果追求「平衡」，可能连基本生活都无法维持"
+      "reasoning_chain": "生活成本高（房贷/子女教育）→ 不加班收入无法覆盖基本开支 → 低收入者被迫加班，根本没有选择“平衡”的余地",
+      "example": "发展中国家的工薪阶层如果追求「平衡」，可能连基本生活都无法维持",
+      "reasoning_chain_en": null
     },
     {
       "topic": "government",
@@ -609,8 +631,9 @@
       "stance_label": "反方",
       "angle": "基本需求优先",
       "angle_index": 1,
-      "reasoning_chain": "没有健康就无法学习和工作 → 医疗是一切发展的前提 → 应至少保障基本医疗",
-      "example": "非洲疟疾高发地区的儿童因反复患病缺课率极高，教育投资效果大打折扣"
+      "reasoning_chain": "没有健康就无法学习和工作 → 如果国民连基本医疗都没有，教育投资的效果会被疾病抵消 → 培养出的人才因健康问题无法产出，教育投入被浪费",
+      "example": "非洲疟疾高发地区的儿童因反复患病缺课率极高，教育投资效果大打折扣",
+      "reasoning_chain_en": null
     },
     {
       "topic": "government",
@@ -621,8 +644,9 @@
       "stance_label": "反方",
       "angle": "教育需要基础设施支撑",
       "angle_index": 2,
-      "reasoning_chain": "道路不通/电力不足 → 学校建了也没人能到达 → 基建是教育发挥作用的前提条件",
-      "example": "印度农村通电通网后，在线教育参与率大幅上升"
+      "reasoning_chain": "道路不通/电力不足 → 学校建了学生也无法到达或正常上课 → 教育投资因基础设施缺失而无法产生效果",
+      "example": "印度农村通电通网后，在线教育参与率大幅上升",
+      "reasoning_chain_en": null
     },
     {
       "topic": "government",
@@ -633,8 +657,9 @@
       "stance_label": "正方",
       "angle": "成本效益",
       "angle_index": 1,
-      "reasoning_chain": "预防成本远低于关押犯人 → 一个囚犯每年花费纳税人数万美元 → 预防更省钱",
-      "example": "美国每年监狱支出超800亿美元，但再犯率高达76%"
+      "reasoning_chain": "一个囚犯每年花费纳税人数万美元 → 同样的钱用于教育/就业培训可帮助数十人不走上犯罪道路 → 预防性投入的社会回报远高于监禁",
+      "example": "美国每年监狱支出超800亿美元，但再犯率高达76%",
+      "reasoning_chain_en": null
     },
     {
       "topic": "government",
@@ -657,8 +682,9 @@
       "stance_label": "反方",
       "angle": "威慑作用",
       "angle_index": 1,
-      "reasoning_chain": "严厉惩罚 → 潜在犯罪者因恐惧而放弃 → 起到社会震慑效果",
-      "example": "新加坡严刑峻法（鞭刑/死刑），犯罪率极低，社会治安全球领先"
+      "reasoning_chain": "严厉惩罚的案例被媒体报道 → 潜在犯罪者看到后果而放弃犯罪念头 → 整体犯罪率因此下降",
+      "example": "新加坡严刑峻法（鞭刑/死刑），犯罪率极低，社会治安全球领先",
+      "reasoning_chain_en": null
     },
     {
       "topic": "government",
@@ -693,8 +719,9 @@
       "stance_label": "正方",
       "angle": "机会公平",
       "angle_index": 2,
-      "reasoning_chain": "富人子女享有更好资源 → 阶层固化 → 穷人无论多努力都无法突破 → 违背公平原则",
-      "example": "美国顶尖大学学生中来自最富有20%家庭的比例超过70%"
+      "reasoning_chain": "富人子女享有更好的教育和人脉资源 → 阶层固化，穷人后代无论多努力都难以突破 → 社会丧失活力，底层人才被浪费，整体创新力下降",
+      "example": "美国顶尖大学学生中来自最富有20%家庭的比例超过70%",
+      "reasoning_chain_en": null
     },
     {
       "topic": "government",
@@ -729,8 +756,9 @@
       "stance_label": "正方",
       "angle": "个人发展",
       "angle_index": 1,
-      "reasoning_chain": "城市提供更多就业和教育机会 → 年轻人能实现更大职业发展 → 个人理性选择无可厚非",
-      "example": "中国一线城市平均工资是农村的3-5倍，吸引大量人才流入"
+      "reasoning_chain": "城市提供更多就业和教育机会 → 年轻人能获得更高收入和更快的职业成长 → 个人和家庭的生活水平显著提升",
+      "example": "中国一线城市平均工资是农村的3-5倍，吸引大量人才流入",
+      "reasoning_chain_en": null
     },
     {
       "topic": "urbanisation",
@@ -777,8 +805,9 @@
       "stance_label": "正方",
       "angle": "丰富个人选择",
       "angle_index": 1,
-      "reasoning_chain": "接触多元文化 → 个人视野和生活体验更丰富 → 人们有更多选择而非更少",
-      "example": "全球各城市都能吃到各国美食、看到各国电影，生活多样性前所未有"
+      "reasoning_chain": "接触多元文化 → 个人视野和审美更加开阔 → 在饮食/艺术/生活方式上有了更多选择，生活满意度提升",
+      "example": "全球各城市都能吃到各国美食、看到各国电影，生活多样性前所未有",
+      "reasoning_chain_en": null
     },
     {
       "topic": "urbanisation",
@@ -813,8 +842,9 @@
       "stance_label": "反方",
       "angle": "经济不平等",
       "angle_index": 2,
-      "reasoning_chain": "文化产业利润流向发达国家 → 发展中国家成为被动消费者 → 文化殖民的另一种形式",
-      "example": "好莱坞占据全球70%以上电影市场份额，本土电影产业在多数国家难以生存"
+      "reasoning_chain": "文化产业利润流向发达国家 → 发展中国家本土文化产业无法获得市场和资金 → 本国创作者流失、文化产业长期无法壮大",
+      "example": "好莱坞占据全球70%以上电影市场份额，本土电影产业在多数国家难以生存",
+      "reasoning_chain_en": null
     },
     {
       "topic": "urbanisation",

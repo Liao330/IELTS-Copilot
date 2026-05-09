@@ -2,8 +2,9 @@
 Phase 3 Study Plan Generator (May 6 → June 28, 54 days)
 
 Generates daily study tasks based on the user's schedule:
-- Workdays: office time (句型+精听), gym (单词), evening (写作/口语交替)
-- Weekends: full sessions (套题+复盘+写作+口语)
+- Workdays: office time (句型+精听), gym (单词), evening (听力/阅读为主)
+- Weekends: full sessions (套题+复盘)
+- Writing essays: only from June 7 onwards (last 3 weeks before exam)
 - Sprint (last 10 days): intensive full-day schedule
 """
 
@@ -21,6 +22,9 @@ WORKDAY_OVERRIDES: set[date] = {
 }
 # 工作日放假（按周末安排）
 HOLIDAY_OVERRIDES: set[date] = set()
+
+# 写作整篇练习开始日期（考前3周）
+WRITING_ESSAY_START = date(2026, 6, 7)
 
 
 def generate_phase3_tasks(
@@ -56,6 +60,8 @@ def generate_phase3_tasks(
             is_weekend = weekday >= 5
         is_sprint = current >= sprint_start
         is_monday = weekday == 0
+        # 是否已到写作整篇练习阶段
+        writing_essays_active = current >= WRITING_ESSAY_START
         date_str = current.isoformat()
 
         day_tasks: List[Dict[str, Any]] = []
@@ -91,17 +97,14 @@ def generate_phase3_tasks(
             )
             # Update counters based on sprint day pattern
             if sprint_day in (1, 4, 7):
-                # Mock day: L + R + W + S (no new numbered essays, just timed practice)
                 pass
             elif sprint_day in (2, 5, 8):
-                # L+W day
                 listening_test += 1
                 if essay_big < 25:
                     essay_big += 1
                 elif essay_small < 12:
                     essay_small += 1
             elif sprint_day in (3, 6, 9):
-                # R+S day
                 reading_test += 1
                 speaking_rec += 1
 
@@ -116,14 +119,23 @@ def generate_phase3_tasks(
                 add("听力精听复盘", "listening", "10:00", 90,
                     "复盘错题答案句 → 标记障碍词 → 生成练习")
 
-                # Afternoon: writing
-                _wt = _add_writing_task(add, essay_big, essay_small, "14:00", 90, template_day)
-                if _wt == "big":
-                    essay_big += 1
-                elif _wt == "small":
-                    essay_small += 1
-                add("写作完成 & 上传作业库", "writing", "15:30", 60,
-                    "上传作业库存档，发给老师等批改反馈")
+                # Afternoon: writing (only if active) or reading
+                if writing_essays_active:
+                    _wt = _add_writing_task(add, essay_big, essay_small, "14:00", 90, template_day)
+                    if _wt == "big":
+                        essay_big += 1
+                    elif _wt == "small":
+                        essay_small += 1
+                    add("写作完成 & 上传作业库", "writing", "15:30", 60,
+                        "上传作业库存档，发给老师等批改反馈")
+                else:
+                    # 写作未启动 → 阅读专项
+                    reading_test += 1
+                    add(f"阅读套题练习 #{reading_test}", "reading", "14:00", 60,
+                        "完整套题计时，目标7分",
+                        f"阅读套题#{reading_test}")
+                    add("阅读错题分析", "reading", "15:00", 60,
+                        "分析错误原因，积累同义替换")
 
                 # Evening: speaking
                 speaking_rec += 1
@@ -141,20 +153,24 @@ def generate_phase3_tasks(
                 add("阅读错题分析", "reading", "10:00", 60,
                     "分析错误原因，积累同义替换")
 
-                # Afternoon: reading intensive + some listening
+                # Afternoon: reading intensive + listening
                 add("阅读薄弱题型专项", "reading", "14:00", 90,
                     "针对错误率高的题型集中练习")
                 add("听力精听 + 练习句听写", "listening", "15:30", 90,
                     "复盘本周精听障碍词，做听写练习")
 
-                # Evening: review + writing
+                # Evening: review + writing (if active) or listening
                 add("本周学习回顾", "other", "19:00", 60,
                     "查看完成情况，调整下周计划")
-                _wt = _add_writing_task(add, essay_big, essay_small, "20:00", 60, template_day)
-                if _wt == "big":
-                    essay_big += 1
-                elif _wt == "small":
-                    essay_small += 1
+                if writing_essays_active:
+                    _wt = _add_writing_task(add, essay_big, essay_small, "20:00", 60, template_day)
+                    if _wt == "big":
+                        essay_big += 1
+                    elif _wt == "small":
+                        essay_small += 1
+                else:
+                    add("听力P1+P4专项复习", "listening", "20:00", 60,
+                        "复盘本周听力错题，强化薄弱Section")
 
             # Both weekend days: vocabulary
             add("背单词", "vocabulary", None, 60, "手机 APP 刷词")
@@ -176,16 +192,27 @@ def generate_phase3_tasks(
                     "全量复习巩固，默写测试")
                 add("素材复习 + 默写", "writing", "10:30", 10,
                     "闪卡复习 + 理由链默写测试")
-            add("精听练习句听写", "listening", "10:35", 15,
-                "对已生成的练习句做听写训练")
 
             # Lunch break (12:30-13:00) — 看着学习
             add("午间学习", "listening", "12:30", 30,
                 "精听复盘 / 看错题笔记 / 背单词")
 
-            # Afternoon office (14:00-15:00)
-            add("精听复盘", "listening", "14:00", 60,
-                "复盘错句，标记障碍词，AI生成梯度练习")
+            # Afternoon office (14:00-15:00) — 根据前一天晚间活动决定
+            # 周一（前天周日=阅读套题）→ 阅读复盘
+            # 周二（前天周一晚=听力P1+P4）→ 精听复盘
+            # 周三（前天周二晚=口语）→ 精听复盘
+            # 周四（前天周三晚=阅读）→ 阅读复盘
+            # 周五（前天周四晚=口语）→ 小作文练习（数据描述句型mastery>=2后）/ 精听复盘
+            if weekday == 4:  # 周五
+                add("小作文练习 / 精听复盘", "writing", "14:00", 60,
+                    "数据描述句型mastery≥2后开启小作文；否则精听复盘",
+                    f"小作文周练")
+            elif weekday in (0, 3):  # 周一（前天周日阅读）、周四（前天周三阅读）
+                add("阅读复盘", "reading", "14:00", 60,
+                    "复盘阅读错题，积累同义替换+长难句")
+            else:  # 周二、周三
+                add("精听复盘", "listening", "14:00", 60,
+                    "复盘错句 + 练习句听写 + 标记障碍词")
 
             # Dinner (19:00-19:20) — 晚餐背诵
             add("晚餐背诵", "vocabulary", "19:00", 20,
@@ -194,13 +221,28 @@ def generate_phase3_tasks(
             # Gym: vocabulary
             add("背单词 (健身房)", "vocabulary", None, 60, "手机 APP 刷词")
 
+            # Late evening: 口语朗读复习 (Mon/Wed/Fri 没有口语录音，加朗读)
+            if weekday in (0, 2, 4):
+                add("口语朗读复习", "speaking", "22:00", 5,
+                    "朗读累积纠错条目，脱口而出=过关")
+
             # Late evening (23:00-24:00): alternating
-            if weekday in (0, 2, 4):  # Mon/Wed/Fri — writing
-                _wt = _add_writing_task(add, essay_big, essay_small, "23:00", 60, template_day)
-                if _wt == "big":
-                    essay_big += 1
-                elif _wt == "small":
-                    essay_small += 1
+            if weekday in (0, 2, 4):  # Mon/Wed/Fri
+                if writing_essays_active:
+                    # 写作阶段：练整篇
+                    _wt = _add_writing_task(add, essay_big, essay_small, "23:00", 60, template_day)
+                    if _wt == "big":
+                        essay_big += 1
+                    elif _wt == "small":
+                        essay_small += 1
+                else:
+                    # 前期：听力和阅读交替（Mon/Fri 听力P1+P4，Wed 阅读）
+                    if weekday in (0, 4):  # Mon/Fri — 听力
+                        add("听力P1+P4专项", "listening", "23:00", 60,
+                            "做一套P1+P4，复盘错题答案句")
+                    else:  # Wed — 阅读
+                        add("阅读复盘 / 错题精读", "reading", "23:00", 60,
+                            "复盘近期阅读套题错题，积累同义替换+长难句")
             else:  # Tue/Thu — speaking
                 speaking_rec += 1
                 part_num = ((speaking_part - 1) % 3) + 1

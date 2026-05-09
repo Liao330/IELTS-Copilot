@@ -352,6 +352,14 @@ async def generate_for_sentence(
         # 若该句带有用户上下文笔记（例如"听成了 camb"、"拼写错误"），作为额外提示给 LLM
         # 让梯度例句更贴合用户真实错题
         user_note = (sentence.note or "").strip() if sentence.note else ""
+        # 也收集 blocker_words 上的 note（如"听成了food"）
+        blocker_data = json.loads(sentence.blocker_words) if sentence.blocker_words else []
+        blocker_notes = []
+        for b in blocker_data:
+            if b.get("note") and b["word"].lower() in [w.lower() for w in missing]:
+                blocker_notes.append(f"{b['word']}: {b['note']}")
+        if blocker_notes:
+            user_note = (user_note + "; " if user_note else "") + "; ".join(blocker_notes)
         if user_note:
             payload["user_context"] = user_note
 
@@ -366,10 +374,15 @@ async def generate_for_sentence(
         sess = session_q.scalar_one_or_none()
         is_extension = bool(sess and sess.note and "延伸" in sess.note)
 
-        # 确定生成数量：max_examples 参数 > 延伸模式 > 默认3句
+        # 确定生成数量：max_examples 参数 > 延伸模式 > 根据障碍词数量自动调整 > 默认3句
         effective_max = max_examples
         if effective_max is None and is_extension:
             effective_max = 1
+        # 障碍词多时（>=3个），每个词只生成1句，节省练习时间
+        if effective_max is None and len(missing) >= 3:
+            effective_max = 1
+        elif effective_max is None and len(missing) == 2:
+            effective_max = 2
 
         system_prompt = LISTENING_PRACTICE_GENERATE_PROMPT
         if effective_max == 1:

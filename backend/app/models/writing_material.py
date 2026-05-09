@@ -53,6 +53,7 @@ class WritingMaterialKeyword(Base):
     direction_index: Mapped[int] = mapped_column(Integer, nullable=False)
     cn: Mapped[str] = mapped_column(String, nullable=False)
     en: Mapped[str] = mapped_column(Text, nullable=False)
+    level: Mapped[str] = mapped_column(String, default="basic")  # basic / advanced
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
 
     # SM-2 (3级)

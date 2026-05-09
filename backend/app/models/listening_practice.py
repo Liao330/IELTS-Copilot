@@ -19,6 +19,8 @@ class ListeningPracticeSession(Base):
     note: Mapped[Optional[str]] = mapped_column(Text)
     cleanup_summary: Mapped[Optional[str]] = mapped_column(Text)  # AI 复盘总结
     study_duration_seconds: Mapped[int] = mapped_column(Integer, default=0)  # 累计学习时长（秒）
+    duration_snapshot: Mapped[int] = mapped_column(Integer, default=0)  # 当天开始时的累计时长快照
+    snapshot_date: Mapped[Optional[str]] = mapped_column(String)  # 快照对应日期 YYYY-MM-DD（CST）
 
     homework_id: Mapped[Optional[str]] = mapped_column(String, ForeignKey("homeworks.id", ondelete="SET NULL"), nullable=True)
 

@@ -92,6 +92,8 @@ export default function ListeningPracticeListPage() {
 
   const totalSentences = sessions.reduce((sum, s) => sum + s.sentence_count, 0);
   const totalBlockers = sessions.reduce((sum, s) => sum + s.blocker_count, 0);
+  // 练习套数排除示例session
+  const realSessionCount = sessions.filter(s => !s.is_demo).length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -119,7 +121,7 @@ export default function ListeningPracticeListPage() {
       <main className="container mx-auto px-4 py-6 max-w-5xl">
         {/* 统计条 */}
         <div className="mb-6 grid grid-cols-4 gap-3">
-          <StatBadge icon="🎧" label="练习套数" value={sessions.length} />
+          <StatBadge icon="🎧" label="练习套数" value={realSessionCount} />
           <StatBadge icon="📝" label="答案句数" value={totalSentences} />
           <StatBadge icon="🎯" label="障碍词累计" value={totalBlockers} />
           <StatBadge icon="⏱" label="总学习时长" value={(() => {

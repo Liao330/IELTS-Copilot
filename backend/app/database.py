@@ -25,6 +25,8 @@ async def init_db():
     from app.models.schedule import ScheduleTask  # noqa
     from app.models.writing_template import WritingTemplate  # noqa
     from app.models.writing_material import WritingMaterial, WritingMaterialKeyword, DowngradeAttempt  # noqa
+    from app.models.speaking_correction import SpeakingCorrection  # noqa
+    from app.models.speaking_phrase import SpeakingPhrase  # noqa
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         # Add new columns if they don't exist (SQLite doesn't support IF NOT EXISTS for columns)
@@ -74,6 +76,9 @@ async def _migrate_add_columns(conn):
         ("listening_practice_sentences", "translation", "TEXT"),
         ("writing_materials", "reasoning_chain_en", "TEXT"),
         ("writing_materials", "example_en", "TEXT"),
+        ("listening_practice_sessions", "duration_snapshot", "INTEGER DEFAULT 0"),
+        ("listening_practice_sessions", "snapshot_date", "TEXT"),
+        ("writing_material_keywords", "level", "TEXT DEFAULT 'basic'"),
     ]
     for table, column, col_type in new_columns:
         try:

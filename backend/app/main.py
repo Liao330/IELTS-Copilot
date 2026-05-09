@@ -18,7 +18,7 @@ from app.prompts.speaking_feedback import SPEAKING_FEEDBACK_PROMPT, SPEAKING_FEE
 from app.prompts.reading_assistant import READING_ASSISTANT_PROMPT, READING_ASSISTANT_WELCOME
 from app.prompts.listening_assistant import LISTENING_ASSISTANT_PROMPT, LISTENING_ASSISTANT_WELCOME
 from app.prompts.copilot_router import COPILOT_ROUTER_PROMPT, COPILOT_WELCOME
-from app.routers import agents, conversations, messages, files, notes, settings, homeworks, vocabulary, listening_practice, speech, dictation, feedback, schedule, writing_templates, reports, study_plan, writing_materials
+from app.routers import agents, conversations, messages, files, notes, settings, homeworks, vocabulary, listening_practice, speech, dictation, feedback, schedule, writing_templates, reports, study_plan, writing_materials, speaking_corrections, speaking_phrases
 
 
 async def seed_data():
@@ -233,6 +233,8 @@ app.include_router(writing_templates.router)
 app.include_router(reports.router)
 app.include_router(study_plan.router)
 app.include_router(writing_materials.router)
+app.include_router(speaking_corrections.router)
+app.include_router(speaking_phrases.router)
 
 
 @app.get("/api/health")

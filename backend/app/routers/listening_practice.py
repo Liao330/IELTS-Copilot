@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, desc, func, and_
@@ -393,7 +393,7 @@ async def update_session(session_id: str, data: SessionUpdate, db: AsyncSession 
 
 @router.post("/sessions/{session_id}/study-time")
 async def add_study_time(session_id: str, body: dict, db: AsyncSession = Depends(get_db)):
-    """累加学习时长（秒）。前端定期调用上报活跃时间。"""
+    """累加学习时长（秒）。前端定期调用上报活跃时间。同时维护每日快照。"""
     seconds = body.get("seconds", 0)
     if not isinstance(seconds, int) or seconds <= 0 or seconds > 600:
         return {"ok": True}  # ignore invalid
@@ -403,9 +403,75 @@ async def add_study_time(session_id: str, body: dict, db: AsyncSession = Depends
     session = q.scalar_one_or_none()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+
+    # 维护每日快照：如果 snapshot_date 不是今天，先把当前总时长设为今天的起点
+    today_date_str = _today_date_cst()
+    if session.snapshot_date != today_date_str:
+        session.duration_snapshot = session.study_duration_seconds or 0
+        session.snapshot_date = today_date_str
+
     session.study_duration_seconds = (session.study_duration_seconds or 0) + seconds
     await db.commit()
     return {"ok": True, "total_seconds": session.study_duration_seconds}
+
+
+def _today_date_cst() -> str:
+    """返回系统'今天'的日期字符串 YYYY-MM-DD（以CST 8:00为分界）"""
+    cst = timezone(timedelta(hours=8))
+    now_cst = datetime.now(cst)
+    if now_cst.hour < 8:
+        now_cst = now_cst - timedelta(days=1)
+    return now_cst.strftime("%Y-%m-%d")
+
+
+def _today_start_cst() -> datetime:
+    """系统以每天CST 8:00为新的一天"""
+    cst = timezone(timedelta(hours=8))
+    now_cst = datetime.now(cst)
+    if now_cst.hour < 8:
+        now_cst = now_cst - timedelta(days=1)
+    start_cst = now_cst.replace(hour=8, minute=0, second=0, microsecond=0)
+    return start_cst.astimezone(timezone.utc).replace(tzinfo=None)
+
+
+@router.get("/today-stats")
+async def get_today_stats(db: AsyncSession = Depends(get_db)):
+    """返回今日精听总学习时长（秒）。
+
+    逻辑：每个 session 的今日时长 = study_duration_seconds - duration_snapshot
+    （仅当 snapshot_date == 今天时有效，否则该 session 今天无活动）。
+    """
+    today_date_str = _today_date_cst()
+
+    # 查所有 snapshot_date == 今天的 session（今天有过活动的）
+    result = await db.execute(
+        select(ListeningPracticeSession).where(
+            ListeningPracticeSession.snapshot_date == today_date_str
+        )
+    )
+    sessions = result.scalars().all()
+
+    today_seconds = 0
+    for s in sessions:
+        delta = (s.study_duration_seconds or 0) - (s.duration_snapshot or 0)
+        if delta > 0:
+            today_seconds += delta
+
+    # 统计今天新增句子数
+    today_start = _today_start_cst()
+    from app.models.listening_practice import ListeningPracticeSentence
+    sent_result = await db.execute(
+        select(func.count(ListeningPracticeSentence.id)).where(
+            ListeningPracticeSentence.created_at >= today_start
+        )
+    )
+    today_sentences = sent_result.scalar() or 0
+
+    return {
+        "today_seconds": today_seconds,
+        "today_sessions": len(sessions),
+        "today_sentences": today_sentences,
+    }
 
 
 @router.delete("/sessions/{session_id}")
@@ -978,6 +1044,7 @@ async def _match_extension_words(db: AsyncSession, session_id: str):
         raise HTTPException(status_code=400, detail="没有延伸障碍词")
 
     dw_list = [w.word for w in discovered_words]
+    dw_notes = {w.word.lower(): w.note for w in discovered_words if w.note}
 
     sent_q = await db.execute(
         select(ListeningPracticeSentence).where(
@@ -1026,7 +1093,7 @@ async def _match_extension_words(db: AsyncSession, session_id: str):
 
     orphan_words = [w for w in dw_list if w not in word_to_sentence]
 
-    return orig_session, sentence_to_words, orphan_words, dw_list
+    return orig_session, sentence_to_words, orphan_words, dw_list, dw_notes
 
 
 @router.get("/sessions/{session_id}/preview-extension")
@@ -1034,7 +1101,7 @@ async def preview_extension_session(session_id: str, db: AsyncSession = Depends(
     """预览延伸 session：返回匹配结果但不创建"""
     import re as _re
 
-    orig_session, sentence_to_words, orphan_words, dw_list = await _match_extension_words(db, session_id)
+    orig_session, sentence_to_words, orphan_words, dw_list, dw_notes = await _match_extension_words(db, session_id)
 
     preview_sentences = []
     for sent, words in sentence_to_words.items():
@@ -1064,7 +1131,7 @@ async def create_extension_session(session_id: str, db: AsyncSession = Depends(g
     """从已有 session 的延伸障碍词创建新 session，自动匹配来源练习句并预标障碍词"""
     import re as _re
 
-    orig_session, sentence_to_words, orphan_words, dw_list = await _match_extension_words(db, session_id)
+    orig_session, sentence_to_words, orphan_words, dw_list, dw_notes = await _match_extension_words(db, session_id)
 
     # 创建新 session
     new_session = ListeningPracticeSession(
@@ -1082,9 +1149,21 @@ async def create_extension_session(session_id: str, db: AsyncSession = Depends(g
             pattern = _re.compile(r"\b" + _re.escape(w) + r"\b", _re.IGNORECASE)
             match = pattern.search(sent)
             if match:
-                blockers.append({"word": w, "start": match.start(), "end": match.end(), "vocab_word_id": None})
+                word_note = dw_notes.get(w.lower())
+                blocker_entry = {"word": w, "start": match.start(), "end": match.end(), "vocab_word_id": None}
+                if word_note:
+                    blocker_entry["note"] = word_note
+                blockers.append(blocker_entry)
 
-        note = "；".join([f"{w}: 听写时漏听/误写" for w in words])
+        # 用实际备注（如"听成了food"）而不是通用文本
+        note_parts = []
+        for w in words:
+            actual_note = dw_notes.get(w.lower())
+            if actual_note:
+                note_parts.append(f"{w}: {actual_note}")
+            else:
+                note_parts.append(f"{w}: 听写时漏听/误写")
+        note = "；".join(note_parts)
 
         sentence = ListeningPracticeSentence(
             id=str(uuid.uuid4()),

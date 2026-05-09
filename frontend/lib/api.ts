@@ -145,6 +145,8 @@ export const api = {
     request<{ ok: boolean; total_seconds: number }>(`/api/listening-practice/sessions/${sessionId}/study-time`, {
       method: "POST", body: JSON.stringify({ seconds }),
     }),
+  getListeningTodayStats: () =>
+    request<{ today_seconds: number; today_sessions: number; today_sentences: number }>("/api/listening-practice/today-stats"),
   translateSentences: (sessionId: string) =>
     request<{ translated: number; message: string }>(`/api/listening-practice/sessions/${sessionId}/translate-sentences`, { method: "POST" }),
   batchGenerateSummaries: () =>
@@ -202,6 +204,51 @@ export const api = {
   checkDowngrade: (chinese: string, answer: string, source_material_id?: string | null) =>
     request<any>("/api/writing-materials/downgrade-check", {
       method: "POST", body: JSON.stringify({ chinese, answer, source_material_id: source_material_id || null }),
+    }),
+
+  // Speaking Corrections
+  createSpeakingCorrection: (correct_text: string, error_type: string) =>
+    request<any>("/api/speaking-corrections", {
+      method: "POST", body: JSON.stringify({ correct_text, error_type }),
+    }),
+  getSpeakingCorrections: (status?: string) =>
+    request<any[]>(`/api/speaking-corrections${status ? `?status=${status}` : ""}`),
+  getSpeakingToday: () =>
+    request<{ pending: any[]; reviewed: any[]; total_active: number }>("/api/speaking-corrections/today"),
+  reviewSpeakingCorrection: (id: string, result: string) =>
+    request<any>(`/api/speaking-corrections/${id}/review`, {
+      method: "POST", body: JSON.stringify({ result }),
+    }),
+  deleteSpeakingCorrection: (id: string) =>
+    request<any>(`/api/speaking-corrections/${id}`, { method: "DELETE" }),
+  batchImportSpeakingCorrections: (text: string) =>
+    request<{ imported: number; items: any[] }>("/api/speaking-corrections/batch-import", {
+      method: "POST", body: JSON.stringify({ text }),
+    }),
+  getSpeakingCorrectionStats: () =>
+    request<any>("/api/speaking-corrections/stats"),
+
+  // Speaking Phrases (降级表达闪卡)
+  getSpeakingPhrasesToday: () =>
+    request<{ pending: any[]; reviewed: any[]; total_active: number }>("/api/speaking-phrases/today"),
+  reviewSpeakingPhrase: (id: string, result: string) =>
+    request<any>(`/api/speaking-phrases/${id}/review`, {
+      method: "POST", body: JSON.stringify({ result }),
+    }),
+  getSpeakingPhrases: (category?: string, status?: string) => {
+    const params = new URLSearchParams();
+    if (category) params.set("category", category);
+    if (status) params.set("status", status);
+    const qs = params.toString();
+    return request<any[]>(`/api/speaking-phrases${qs ? `?${qs}` : ""}`);
+  },
+  getSpeakingPhrasesStats: () =>
+    request<any>("/api/speaking-phrases/stats"),
+  seedSpeakingPhrases: () =>
+    request<any>("/api/speaking-phrases/seed", { method: "POST" }),
+  batchImportSpeakingPhrases: (text: string) =>
+    request<{ imported: number; items: any[] }>("/api/speaking-phrases/batch-import", {
+      method: "POST", body: JSON.stringify({ text }),
     }),
 
   // Vocabulary - Words

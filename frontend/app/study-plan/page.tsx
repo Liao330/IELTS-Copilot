@@ -50,17 +50,19 @@ export default function StudyPlanPage() {
 
   // Use string-based date calc to avoid object identity issues
   const totalWeeks = useMemo(() => {
-    const s = new Date(PLAN_START_STR + "T00:00:00");
-    const e = new Date(PLAN_END_STR + "T00:00:00");
+    const s = new Date(PLAN_START_STR + "T12:00:00Z");
+    const e = new Date(PLAN_END_STR + "T12:00:00Z");
     return Math.ceil(((e.getTime() - s.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1);
   }, [PLAN_START_STR, PLAN_END_STR]);
 
   const getWeekStartStr = useCallback((offset: number) => {
-    const start = new Date(PLAN_START_STR + "T00:00:00");
-    const dayOfWeek = start.getDay();
+    // Use UTC to avoid timezone shifts
+    const start = new Date(PLAN_START_STR + "T12:00:00Z");
+    const dayOfWeek = start.getUTCDay();
     const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-    start.setDate(start.getDate() + mondayOffset + offset * 7);
-    return start.toISOString().split("T")[0];
+    const monday = new Date(start);
+    monday.setUTCDate(monday.getUTCDate() + mondayOffset + offset * 7);
+    return monday.toISOString().split("T")[0];
   }, [PLAN_START_STR]);
 
   const effectiveWeekOffset = weekOffset >= 0 ? weekOffset : 0;
@@ -68,10 +70,10 @@ export default function StudyPlanPage() {
 
   const weekDates = useMemo(() => {
     const dates: string[] = [];
-    const ws = new Date(weekStartStr + "T00:00:00");
+    const ws = new Date(weekStartStr + "T12:00:00Z");
     for (let i = 0; i < 7; i++) {
       const d = new Date(ws);
-      d.setDate(d.getDate() + i);
+      d.setUTCDate(d.getUTCDate() + i);
       dates.push(d.toISOString().split("T")[0]);
     }
     return dates;
@@ -95,10 +97,11 @@ export default function StudyPlanPage() {
 
       // Set initial week offset based on current day
       if (!initialized && st.exists) {
-        const planS = new Date(st.start_date + "T00:00:00");
+        const planS = new Date(st.start_date + "T12:00:00Z");
         const today = new Date();
-        const diff = Math.floor((today.getTime() - planS.getTime()) / (7 * 24 * 60 * 60 * 1000));
-        const tw = Math.ceil(((new Date(st.end_date + "T00:00:00").getTime() - planS.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1);
+        const todayUTC = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12, 0, 0);
+        const diff = Math.floor((todayUTC.getTime() - planS.getTime()) / (7 * 24 * 60 * 60 * 1000));
+        const tw = Math.ceil(((new Date(st.end_date + "T12:00:00Z").getTime() - planS.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1);
         setWeekOffset(Math.max(0, Math.min(diff, tw - 1)));
         // Set selectedDate to today if within plan range, otherwise plan start
         const todayStr = today.toISOString().split("T")[0];
@@ -117,6 +120,16 @@ export default function StudyPlanPage() {
       setLoading(false);
     }
   }, [initialized]);
+
+  // Scroll week tab into view when weekOffset changes or initialized
+  useEffect(() => {
+    if (initialized && weekOffset >= 0) {
+      setTimeout(() => {
+        const el = document.getElementById(`week-tab-${weekOffset}`);
+        if (el) el.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      }, 200);
+    }
+  }, [weekOffset, initialized]);
 
   useEffect(() => {
     fetchAll();
@@ -139,8 +152,9 @@ export default function StudyPlanPage() {
   // Current week index for highlighting "today's week"
   const currentWeekOfPlan = useMemo(() => {
     const today = new Date();
-    const s = new Date(PLAN_START_STR + "T00:00:00");
-    const diff = Math.floor((today.getTime() - s.getTime()) / (7 * 24 * 60 * 60 * 1000));
+    const todayNoon = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12, 0, 0);
+    const s = new Date(PLAN_START_STR + "T12:00:00Z");
+    const diff = Math.floor((todayNoon.getTime() - s.getTime()) / (7 * 24 * 60 * 60 * 1000));
     return Math.max(0, Math.min(diff, totalWeeks - 1));
   }, [PLAN_START_STR, totalWeeks]);
 
@@ -288,16 +302,17 @@ export default function StudyPlanPage() {
         )}
 
         {/* Week Tabs */}
-        <div className="flex items-center gap-1 mb-4 overflow-x-auto pb-1">
+        <div className="flex items-center gap-1 mb-4 overflow-x-auto pb-1" id="week-tabs-container">
           {Array.from({ length: totalWeeks }, (_, i) => (
             <button
               key={i}
+              id={`week-tab-${i}`}
               onClick={() => {
                 setWeekOffset(i);
                 // If this week contains today, select today; otherwise select first day of that week
                 const weekFirstDay = getWeekStartStr(i);
                 const todayStr = new Date().toISOString().split("T")[0];
-                const weekLastDay = (() => { const d = new Date(weekFirstDay + "T00:00:00"); d.setDate(d.getDate() + 6); return d.toISOString().split("T")[0]; })();
+                const weekLastDay = (() => { const d = new Date(weekFirstDay + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + 6); return d.toISOString().split("T")[0]; })();
                 if (todayStr >= weekFirstDay && todayStr <= weekLastDay) {
                   setSelectedDate(todayStr);
                 } else {
