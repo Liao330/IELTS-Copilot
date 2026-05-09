@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
@@ -18,15 +18,18 @@ router = APIRouter(prefix="/api/reports", tags=["reports"])
 
 
 def _report_cutoff_today() -> date:
-    """Return the 'report date' based on a 10:00 AM cutoff.
+    """Return the 'report date' based on CST 8:00 AM cutoff.
 
-    Before 10 AM → report date is yesterday.
-    After  10 AM → report date is today.
+    Before CST 8 AM → report date is yesterday.
+    After CST 8 AM → report date is today.
+    
+    This aligns with the system's convention that a new day starts at CST 8:00.
     """
-    now = datetime.now()
-    if now.time() < time(10, 0):
-        return now.date()  # still show today's date, but cache key uses today
-    return now.date()
+    _CST = timezone(timedelta(hours=8))
+    now_cst = datetime.now(_CST)
+    if now_cst.hour < 8:
+        return (now_cst - timedelta(days=1)).date()
+    return now_cst.date()
 
 
 @router.get("/homework-summary")

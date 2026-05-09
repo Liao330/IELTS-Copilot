@@ -20,8 +20,11 @@ _CST = timezone(timedelta(hours=8))
 
 
 def _today_start_cst() -> datetime:
+    """系统以每天CST 8:00为新的一天"""
     now_cst = datetime.now(_CST)
-    today_cst = now_cst.replace(hour=0, minute=0, second=0, microsecond=0)
+    if now_cst.hour < 8:
+        now_cst = now_cst - timedelta(days=1)
+    today_cst = now_cst.replace(hour=8, minute=0, second=0, microsecond=0)
     return today_cst.astimezone(timezone.utc).replace(tzinfo=None)
 
 
@@ -184,9 +187,12 @@ async def list_materials(
 async def get_stats(db: AsyncSession = Depends(get_db)):
     now = datetime.utcnow()
     today_start = _today_start_cst()
-    # 今天/明天CST结束对应的UTC
+    # 今天结束 = 明天CST 8:00 对应的UTC
     now_cst = datetime.now(_CST)
-    today_end_utc = now_cst.replace(hour=23, minute=59, second=59).astimezone(timezone.utc).replace(tzinfo=None)
+    if now_cst.hour < 8:
+        today_end_utc = now_cst.replace(hour=8, minute=0, second=0, microsecond=0).astimezone(timezone.utc).replace(tzinfo=None)
+    else:
+        today_end_utc = (now_cst + timedelta(days=1)).replace(hour=8, minute=0, second=0, microsecond=0).astimezone(timezone.utc).replace(tzinfo=None)
     tomorrow_end_utc = today_end_utc + timedelta(days=1)
 
     total = (await db.execute(select(func.count()).select_from(WritingMaterial))).scalar() or 0
@@ -256,12 +262,18 @@ async def get_learned_today(db: AsyncSession = Depends(get_db)):
 
 @router.get("/due", response_model=List[MaterialOut])
 async def get_due(limit: int = Query(20), db: AsyncSession = Depends(get_db)):
-    now = datetime.utcnow()
+    """获取今日待复习素材（到今天结束前到期的都算）"""
+    now_cst = datetime.now(_CST)
+    if now_cst.hour < 8:
+        today_end_cst = now_cst.replace(hour=8, minute=0, second=0, microsecond=0)
+    else:
+        today_end_cst = (now_cst + timedelta(days=1)).replace(hour=8, minute=0, second=0, microsecond=0)
+    today_end_utc = today_end_cst.astimezone(timezone.utc).replace(tzinfo=None)
     stmt = (
         select(WritingMaterial)
         .where(
             WritingMaterial.review_count > 0,
-            or_(WritingMaterial.next_review_at.is_(None), WritingMaterial.next_review_at <= now),
+            or_(WritingMaterial.next_review_at.is_(None), WritingMaterial.next_review_at <= today_end_utc),
         )
         .order_by(WritingMaterial.next_review_at.asc().nullsfirst())
         .limit(limit)
@@ -401,12 +413,19 @@ async def list_keywords(
 
 @router.get("/keywords/due", response_model=List[KeywordOut])
 async def get_keywords_due(limit: int = Query(20), db: AsyncSession = Depends(get_db)):
-    now = datetime.utcnow()
+    """获取今日待复习关键词（到今天结束前到期的都算）"""
+    # Calculate today_end_utc using CST 8:00 boundary (same as /due endpoint)
+    now_cst = datetime.now(_CST)
+    if now_cst.hour < 8:
+        today_end_utc = now_cst.replace(hour=8, minute=0, second=0, microsecond=0).astimezone(timezone.utc).replace(tzinfo=None)
+    else:
+        today_end_utc = (now_cst + timedelta(days=1)).replace(hour=8, minute=0, second=0, microsecond=0).astimezone(timezone.utc).replace(tzinfo=None)
+    
     stmt = (
         select(WritingMaterialKeyword)
         .where(
             WritingMaterialKeyword.review_count > 0,
-            or_(WritingMaterialKeyword.next_review_at.is_(None), WritingMaterialKeyword.next_review_at <= now),
+            or_(WritingMaterialKeyword.next_review_at.is_(None), WritingMaterialKeyword.next_review_at <= today_end_utc),
         )
         .order_by(WritingMaterialKeyword.next_review_at.asc().nullsfirst())
         .limit(limit)
@@ -567,24 +586,36 @@ class DowngradeCheckResponse(BaseModel):
     correct: bool
     feedback: str
     reference_answer: str
+    corrected_answer: str = ""  # 基于用户答案的修正版（未通过时提供）
     steps: dict  # {core_meaning, keywords, simple_sentence}
 
 
 @router.get("/downgrade-sentences", response_model=List[DowngradeSentenceOut])
 async def get_downgrade_sentences(db: AsyncSession = Depends(get_db)):
-    """返回5条降级练习句子：从素材理由链 + 12条常用表达中随机抽取"""
+    """返回今日剩余降级练习句子（每天上限5条，已练过的扣除）"""
+    # 计算今日已练数量
+    today_start = _today_start_cst()
+    today_done = (await db.execute(
+        select(func.count()).select_from(DowngradeAttempt)
+        .where(DowngradeAttempt.created_at >= today_start)
+    )).scalar() or 0
+
+    remaining = max(0, 5 - today_done)
+    if remaining == 0:
+        return []
+
     sentences: List[DowngradeSentenceOut] = []
 
     # 从素材理由链抽取
+    material_count = min(3, remaining)
     result = await db.execute(
         select(WritingMaterial).where(WritingMaterial.review_count > 0).order_by(func.random()).limit(10)
     )
     materials = result.scalars().all()
 
     for m in materials:
-        if len(sentences) >= 3:
+        if len(sentences) >= material_count:
             break
-        # 理由链格式: "A → B → C", 取整条链作为一个中文练习句
         chain = m.reasoning_chain
         if chain:
             sentences.append(DowngradeSentenceOut(
@@ -594,21 +625,22 @@ async def get_downgrade_sentences(db: AsyncSession = Depends(get_db)):
                 hint=f"话题：{m.topic_cn}",
             ))
 
-    # 从12条常用表达中补充
-    remaining = 5 - len(sentences)
-    picked_exprs = random.sample(DOWNGRADE_EXPRESSIONS, min(remaining, len(DOWNGRADE_EXPRESSIONS)))
-    for expr in picked_exprs:
-        sentences.append(DowngradeSentenceOut(
-            id=expr["id"],
-            chinese=expr["chinese"],
-            source_material_id=None,
-            hint=None,  # 不给提示，避免暴露答案
-        ))
+    # 从常用表达中补充
+    expr_count = remaining - len(sentences)
+    if expr_count > 0:
+        picked_exprs = random.sample(DOWNGRADE_EXPRESSIONS, min(expr_count, len(DOWNGRADE_EXPRESSIONS)))
+        for expr in picked_exprs:
+            sentences.append(DowngradeSentenceOut(
+                id=expr["id"],
+                chinese=expr["chinese"],
+                source_material_id=None,
+                hint=None,
+            ))
 
-    # 如果还不够5条，再从素材补
-    if len(sentences) < 5:
+    # 如果还不够，再从素材补
+    if len(sentences) < remaining:
         extra_result = await db.execute(
-            select(WritingMaterial).order_by(func.random()).limit(5 - len(sentences))
+            select(WritingMaterial).order_by(func.random()).limit(remaining - len(sentences))
         )
         for m in extra_result.scalars().all():
             if m.reasoning_chain:
@@ -620,7 +652,7 @@ async def get_downgrade_sentences(db: AsyncSession = Depends(get_db)):
                 ))
 
     random.shuffle(sentences)
-    return sentences[:5]
+    return sentences[:remaining]
 
 
 @router.post("/downgrade-check", response_model=DowngradeCheckResponse)
@@ -629,7 +661,7 @@ async def check_downgrade(body: DowngradeCheckRequest, db: AsyncSession = Depend
     from app.services.llm_service import complete_chat
     from app.utils.llm_config import get_llm_config
 
-    # 查找相关关键词作为参考词汇（用于参考答案，不作为评分硬性标准）
+    # 查找相关关键词作为参考词汇
     recommended_vocab = ""
     if body.source_material_id:
         mat = await db.get(WritingMaterial, body.source_material_id)
@@ -642,30 +674,44 @@ async def check_downgrade(body: DowngradeCheckRequest, db: AsyncSession = Depend
             )
             kws = kw_result.scalars().all()
             if kws:
-                vocab_pairs = [f"{kw.cn} = {kw.en}" for kw in kws]
-                recommended_vocab = "\n\n【该话题的标准词汇对照（供参考答案使用，但不作为评分硬性标准）】：\n" + "\n".join(vocab_pairs)
+                basic_pairs = [f"  {kw.cn} = {kw.en}" for kw in kws if (kw.level or "basic") == "basic"]
+                advanced_pairs = [f"  {kw.cn} = {kw.en}" for kw in kws if (kw.level or "basic") == "advanced"]
+                vocab_parts = []
+                if basic_pairs:
+                    vocab_parts.append("【基础词汇（参考答案必须使用这些词）】：\n" + "\n".join(basic_pairs))
+                if advanced_pairs:
+                    vocab_parts.append("【进阶词汇（学生用到可额外加分）】：\n" + "\n".join(advanced_pairs))
+                recommended_vocab = "\n\n" + "\n\n".join(vocab_parts)
 
-    prompt = f"""你是一位雅思写作教练，帮助学生练习"降级表达法"——把复杂中文用清晰、正确的英语表达。
+    prompt = f"""你是一位雅思写作教练，帮助学生练习"降级表达法"——把复杂中文用清晰、正确的简单英语表达。
 
-关键规则——参考答案的长度和复杂度必须匹配输入：
-- 如果输入是短语/词组（如"沦为受害者""适得其反"）→ 参考答案也只给对应的英文短语（如 "become a victim" "have the opposite effect"），不要编造背景
-- 如果输入是因果链（A → B → C）→ 参考答案用1-2句体现因果逻辑，用which/leading to/therefore连接
+核心理念：降级表达 = 用最简单的词把意思说清楚。不追求华丽词汇，追求清晰和正确。
+
+关键规则——参考答案必须是完整的英文句子：
+- 如果输入是短语/词组（如"沦为受害者""适得其反"）→ 参考答案给对应的英文短语（如 "become a victim" "have the opposite effect"）
+- 如果输入是因果链（A → B → C）→ 参考答案必须是一个完整句子，用 so / which means / leading to / thereby 把各步串成一句话。绝对禁止在参考答案中使用箭头(→/->)！
 - 如果输入是完整句子 → 参考答案给等长度的英文句子
+- 参考答案应使用基础词汇（如提供了词汇列表）
 
-绝对禁止：参考答案比输入长3倍以上、自己编造输入中没有的信息
+绝对禁止：参考答案中出现箭头(→/->/→)、参考答案比输入长3倍以上、自己编造输入中没有的信息、堆砌高级词汇
 
 中文原句：{body.chinese}
 学生答案：{body.answer}{recommended_vocab}
 
+重要规则：
+- 参考答案必须使用基础词汇列表中的词
+- 如果学生使用了进阶词汇列表中的词，评分时给予额外加分（+5~10分）
+- 评判标准是：意思是否完整清晰表达出来了 + 语法是否正确 + 能否将分散的单词组拼成完整句子
+
 评分标准：
-- 90-100: 意思准确 + 语法正确 + 长度适当
-- 70-89: 意思到位 + 语法正确
-- 50-69: 意思部分对 或 语法错误
-- 30-49: 偏差大
-- 0-29: 偏题
+- 90-100: 意思准确 + 语法正确 + 使用了进阶词汇
+- 75-89: 意思完整 + 语法正确（用简单词也OK）
+- 60-74: 意思基本对 但语法有错或表达不完整
+- 40-59: 意思部分对 或 逻辑断裂
+- 0-39: 偏题或无法理解
 
 输出格式（只输出JSON）：
-{{"score": 数字, "correct": true/false, "feedback": "简短点评（一两句话，不要长篇大论）", "reference_answer": "参考英文（长度匹配输入，不要过度发挥）", "steps": {{"core_meaning": "核心意思（5字）", "keywords": "关键词英文", "simple_sentence": "最终表达（匹配输入长度）"}}}}"""
+{{"score": 数字, "correct": true/false(>=70为true), "feedback": "简短点评（一两句话）", "reference_answer": "一个完整英文句子（禁止箭头，用连接词串成一句话）", "corrected_answer": "基于学生答案的修正版（保留学生的表达习惯和句式，只修正错误部分；如果学生答对了则留空字符串）", "steps": {{"core_meaning": "核心意思（5字）", "keywords": "关键词英文", "simple_sentence": "最终完整句子（和reference_answer一致）"}}}}"""
 
     model, api_key, api_base = await get_llm_config(db)
     raw = await complete_chat(
@@ -688,6 +734,7 @@ async def check_downgrade(body: DowngradeCheckRequest, db: AsyncSession = Depend
         correct = data.get("correct", score >= 70)
         feedback = data.get("feedback", "")
         reference_answer = data.get("reference_answer", "")
+        corrected_answer = data.get("corrected_answer", "") if not correct else ""
         steps = data.get("steps", {"core_meaning": "", "keywords": "", "simple_sentence": ""})
     except (json.JSONDecodeError, ValueError):
         score_match = re.search(r'"score"\s*:\s*(\d+)', cleaned)
@@ -695,6 +742,7 @@ async def check_downgrade(body: DowngradeCheckRequest, db: AsyncSession = Depend
         correct = score >= 70
         feedback = "评分解析异常，请重试"
         reference_answer = ""
+        corrected_answer = ""
         steps = {"core_meaning": "", "keywords": "", "simple_sentence": ""}
 
     # 保存练习记录
@@ -716,6 +764,7 @@ async def check_downgrade(body: DowngradeCheckRequest, db: AsyncSession = Depend
         correct=correct,
         feedback=feedback,
         reference_answer=reference_answer,
+        corrected_answer=corrected_answer,
         steps=steps,
     )
 
