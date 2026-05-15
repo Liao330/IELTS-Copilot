@@ -34,7 +34,9 @@ class TemplateOut(BaseModel):
     category: str
     sub_category: str
     scene_cn: str
+    scene_detail: Optional[str]
     template_en: str
+    template_cn: Optional[str]
     example_en: Optional[str]
     note: Optional[str]
     difficulty: int
@@ -362,28 +364,35 @@ score >= {pass_threshold} 则 correct=true。
 feedback要求：中文不超过60字；只指出学生答案中实际存在的错误或遗漏，不要凭空推荐学生没涉及的词汇。
 只输出JSON。"""
     else:
+        # 提供 example 和 scene_detail 作为参考
+        ref_example = t.example_en or ""
+        scene_detail = t.scene_detail or t.scene_cn
+
         prompt = f"""你是雅思写作句型检验助手。学生需要背诵一个英文句型模板，现在默写了一个版本，请判断是否正确。
 
-标准答案：{t.template_en}
+标准模板：{t.template_en}
+参考例句：{ref_example}
+场景描述：{scene_detail}
 学生答案：{body.answer}
-场景提示：{t.scene_cn}
 
-评分规则（完整默写，要求更严格）：
+评分规则（完整默写）：
 1. 核心结构正确（主要句式骨架一致）：50分
 2. 关键词覆盖（重要的动词/连接词/固定搭配到位）：30分
 3. 语法和拼写无误：20分
-4. 允许占位符不同（如[主语]写成具体词也行）
-5. 允许同义替换（如 dramatic→sharp, rise→increase）
-6. 不要求标点和大小写完全一致
+
+重要说明：
+- 模板中的[占位符]（如[主语][数字][时间段]）可以用任何具体词替代，只要合理就不扣分
+- "over the decade" 填充 [时间段] 是完全正确的
+- 允许同义替换（dramatic→sharp, rise→increase, declined→fell→dropped等）
+- 如果学生用具体数据填充了模板（如参考例句那样），这是正确的做法
+- 拼写错误要准确指出具体拼错了哪个词（对比学生实际写的和正确拼写）
+- 不要凭空编造学生没犯的错误
 
 输出严格 JSON 格式：
-{{"score": 85, "correct": true, "feedback": "核心结构正确，具体问题说明"}}
+{{"score": 85, "correct": true, "feedback": "简短中文点评"}}
 
 score >= {pass_threshold} 则 correct=true，否则 correct=false。
-feedback要求：
-- 用中文，不超过60字
-- 只指出学生答案中实际存在的错误、遗漏或拼写问题
-- 不要凭空推荐学生没涉及的词汇或额外表达
+feedback要求：中文不超过60字，只指出实际存在的问题。
 只输出JSON。"""
 
     try:
@@ -441,10 +450,16 @@ feedback要求：
 
     await db.commit()
 
+    # 构建标准答案：展示模板 + 具体例句（如有）
+    expected_parts = [t.template_en]
+    if t.example_en:
+        expected_parts.append(f"例：{t.example_en}")
+    expected_text = "\n".join(expected_parts)
+
     return CheckResponse(
         correct=correct,
         score=score,
-        expected=t.template_en,
+        expected=expected_text,
         feedback=feedback,
         mastery_level=t.mastery_level,
         interval_days=t.interval_days,
@@ -475,6 +490,32 @@ async def review_template(template_id: str, body: ReviewRequest, db: AsyncSessio
     else:
         # 会了(2/3)：正常 SM-2 pass，mastery 封顶2
         _sm2_update(t, 3, cap_mastery=2)
+
+    await db.commit()
+    await db.refresh(t)
+    return t
+
+
+class TemplateUpdateRequest(BaseModel):
+    scene_cn: Optional[str] = None
+    scene_detail: Optional[str] = None
+    template_en: Optional[str] = None
+    template_cn: Optional[str] = None
+    example_en: Optional[str] = None
+    note: Optional[str] = None
+
+
+@router.patch("/{template_id}", response_model=TemplateOut)
+async def update_template(template_id: str, body: TemplateUpdateRequest, db: AsyncSession = Depends(get_db)):
+    """手动编辑句型内容"""
+    t = await db.get(WritingTemplate, template_id)
+    if not t:
+        raise HTTPException(status_code=404, detail="句型不存在")
+
+    for field in ("scene_cn", "scene_detail", "template_en", "template_cn", "example_en", "note"):
+        val = getattr(body, field, None)
+        if val is not None:
+            setattr(t, field, val)
 
     await db.commit()
     await db.refresh(t)
@@ -577,3 +618,260 @@ def _sm2_update(t: WritingTemplate, quality: int, cap_mastery: int = 3):
     # 首次学习时记录
     if not t.first_learned_at:
         t.first_learned_at = now
+
+
+# ─── Backfill scene_detail ─────────────────────────────────
+
+@router.post("/backfill-scene-detail")
+async def backfill_scene_detail(force: bool = Query(False), db: AsyncSession = Depends(get_db)):
+    """从seed数据回填scene_detail字段"""
+    import os
+    seed_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "writing_templates_seed.json")
+    with open(seed_path, "r", encoding="utf-8") as f:
+        seed_data = json.load(f)
+
+    # Build lookup: (category, sub_category, scene_cn) -> (scene_detail, example_en, template_cn)
+    lookup = {}
+    for item in seed_data:
+        key = (item["category"], item["sub_category"], item["scene_cn"])
+        lookup[key] = (item.get("scene_detail"), item.get("example_en"), item.get("template_cn"))
+
+    if force:
+        result = await db.execute(select(WritingTemplate))
+    else:
+        result = await db.execute(
+            select(WritingTemplate).where(
+                or_(WritingTemplate.scene_detail.is_(None), WritingTemplate.scene_detail == "")
+            )
+        )
+    items = result.scalars().all()
+    count = 0
+    for t in items:
+        key = (t.category, t.sub_category, t.scene_cn)
+        if key in lookup:
+            sd, ex, tcn = lookup[key]
+            if sd:
+                t.scene_detail = sd
+            if ex:
+                t.example_en = ex
+            if tcn:
+                t.template_cn = tcn
+            count += 1
+
+    await db.commit()
+    return {"backfilled": count, "total": len(items)}
+
+
+# ─── Sample Essay Breakdowns (范文拆解) ──────────────────
+
+SAMPLE_BREAKDOWNS = [
+    {
+        "id": "map-sample-1",
+        "category": "map",
+        "title": "地图题范文拆解：小镇 Newtown 1980 vs 2020",
+        "description": "一道典型的两个时间点对比地图题，展示句型如何组合成完整答案",
+        "paragraphs": [
+            {
+                "label": "开头段",
+                "sentences": [
+                    {
+                        "text": "The maps illustrate the significant development of Newtown over a 40-year period, from 1980 to 2020.",
+                        "template_scene": "通用万能开头",
+                        "template_en": "The maps illustrate the (significant) development of [地名] over a [X]-year period, from [年份1] to [年份2].",
+                        "role": "开头句：交代地图内容、地点、时间跨度"
+                    }
+                ]
+            },
+            {
+                "label": "概述段",
+                "sentences": [
+                    {
+                        "text": "Overall, Newtown has undergone significant redevelopment. The most noticeable change is that the once farmland area has been transformed into a commercial zone, while the old church remains unchanged in the centre of the town.",
+                        "template_scene": "地图题概述 + 旧区域变新区域 + 保持不变",
+                        "template_en": "Overall, [地名] has undergone significant redevelopment. The most noticeable change is that [最大变化], while [次要变化].",
+                        "role": "概述句：概括最大变化 + 不变的部分。[最大变化]槽位填入了「旧区域变新区域」句型"
+                    }
+                ]
+            },
+            {
+                "label": "主体段1（西侧变化）",
+                "sentences": [
+                    {
+                        "text": "Looking first at the western section, several notable changes can be observed.",
+                        "template_scene": "主体段1引导句",
+                        "template_en": "Looking first at the [western/northern/left-hand] section, ...",
+                        "role": "分区引导：告诉考官你先描述哪个区域"
+                    },
+                    {
+                        "text": "The row of houses that formerly lined Oak Street has been demolished and replaced by a shopping centre.",
+                        "template_scene": "拆除+重建",
+                        "template_en": "The [旧物] that formerly [位置描述] has been demolished and replaced by [新物].",
+                        "role": "细节描写：具体说某个旧事物被拆了变成了什么"
+                    },
+                    {
+                        "text": "A new car park has been constructed to the south of the town, where open farmland previously existed.",
+                        "template_scene": "新建",
+                        "template_en": "A new [新物] has been constructed/built [方位], where [旧物/旧状态] previously existed.",
+                        "role": "细节描写：某个位置新建了什么"
+                    }
+                ]
+            },
+            {
+                "label": "主体段2（东侧变化）",
+                "sentences": [
+                    {
+                        "text": "Turning to the eastern side, the changes are equally significant.",
+                        "template_scene": "主体段2引导句",
+                        "template_en": "Turning to the [eastern/southern/opposite] side, ...",
+                        "role": "转区引导：过渡到另一个区域"
+                    },
+                    {
+                        "text": "The hospital has been significantly extended to the east, nearly doubling in size.",
+                        "template_scene": "扩建",
+                        "template_en": "The [原物] has been significantly extended/expanded to the [方向].",
+                        "role": "细节描写：某个建筑扩大了"
+                    },
+                    {
+                        "text": "The bus station has been relocated from the town centre to the outskirts.",
+                        "template_scene": "迁移",
+                        "template_en": "The [原物] has been relocated from [旧位置] to [新位置].",
+                        "role": "细节描写：某个设施搬了位置"
+                    },
+                    {
+                        "text": "The library has been modernised, though it retains its original function.",
+                        "template_scene": "翻新保留功能",
+                        "template_en": "The [原物] has been renovated/modernised, though it retains its original function.",
+                        "role": "细节描写：外观变了但功能没变"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "id": "process-sample-1",
+        "category": "process",
+        "title": "流程图范文拆解：巧克力制作流程",
+        "description": "一道典型的线性流程图，展示流程句型如何串联成完整答案",
+        "paragraphs": [
+            {
+                "label": "开头+概述",
+                "sentences": [
+                    {
+                        "text": "Overall, the process involves eight main stages, beginning with the harvesting of cocoa beans and culminating in the production of chocolate bars.",
+                        "template_scene": "流程图概述",
+                        "template_en": "Overall, the process involves [数字] main stages, beginning with [初始阶段] and culminating in [最终结果].",
+                        "role": "概述句：说明总共几步、从什么开始到什么结束"
+                    }
+                ]
+            },
+            {
+                "label": "主体段1（前半流程）",
+                "sentences": [
+                    {
+                        "text": "The process begins when farmers harvest cocoa beans in tropical regions.",
+                        "template_scene": "第1步",
+                        "template_en": "The process begins when.../In the first stage,.../Initially,...",
+                        "role": "第1步：用 begins when 引出起点"
+                    },
+                    {
+                        "text": "Following this, the cocoa beans are fermented and then dried in the sun.",
+                        "template_scene": "第2-3步",
+                        "template_en": "Following this,.../After that,.../The next step involves.../Once this is done,...",
+                        "role": "第2-3步：用 Following this 衔接后续步骤"
+                    },
+                    {
+                        "text": "Once dried, the beans are roasted at high temperatures.",
+                        "template_scene": "被动句型②承接上步",
+                        "template_en": "Once/After + [前一步], [物质] is/are + 过去分词.",
+                        "role": "承接：用 Once + 过去分词 引出下一步"
+                    },
+                    {
+                        "text": "The grinding process produces a fine powder, which is then transferred to a storage container.",
+                        "template_scene": "被动句型③产生结果",
+                        "template_en": "This results in/produces + [结果], which is/are then + 过去分词.",
+                        "role": "产生结果：这一步产生了什么，然后怎么处理"
+                    }
+                ]
+            },
+            {
+                "label": "主体段2（后半流程）",
+                "sentences": [
+                    {
+                        "text": "At this point, the cocoa powder is mixed with sugar and milk.",
+                        "template_scene": "中间步骤",
+                        "template_en": "Subsequently,.../At this point,.../The [材料] is/are then [动词过去分词].../Thereafter,...",
+                        "role": "中间步骤：用 At this point 标记流程中段"
+                    },
+                    {
+                        "text": "The mixture is heated to 200°C in a large oven.",
+                        "template_scene": "被动句型①基础",
+                        "template_en": "[物质/材料] is/are + 过去分词 + (方式/地点/目的).",
+                        "role": "基础被动：物质 + is + 过去分词 + 方式/地点"
+                    },
+                    {
+                        "text": "In the final stage, the chocolate is poured into moulds and left to cool and solidify.",
+                        "template_scene": "最后一步",
+                        "template_en": "In the final stage,.../Finally,.../The process concludes when.../Lastly,...",
+                        "role": "最后一步：用 In the final stage 收尾"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "id": "process-sample-2",
+        "category": "process",
+        "title": "流程图范文拆解：水循环（循环流程）",
+        "description": "一道有循环特征的流程图，展示如何用循环句型收尾",
+        "paragraphs": [
+            {
+                "label": "开头+概述",
+                "sentences": [
+                    {
+                        "text": "The process is cyclical, with the final stage of evaporation feeding back into the rainfall stage.",
+                        "template_scene": "有循环的流程",
+                        "template_en": "The process is cyclical, with the final stage feeding back into [某阶段].",
+                        "role": "概述句（循环版）：点明这是闭环流程"
+                    }
+                ]
+            },
+            {
+                "label": "主体段",
+                "sentences": [
+                    {
+                        "text": "Initially, water falls as rain and collects in rivers and lakes.",
+                        "template_scene": "第1步",
+                        "template_en": "The process begins when.../In the first stage,.../Initially,...",
+                        "role": "第1步：用 Initially 开头"
+                    },
+                    {
+                        "text": "Following this, the water flows downstream and is absorbed into the ground.",
+                        "template_scene": "第2-3步",
+                        "template_en": "Following this,.../After that,.../The next step involves.../Once this is done,...",
+                        "role": "衔接步骤"
+                    },
+                    {
+                        "text": "Subsequently, groundwater is drawn up by plant roots or flows into the ocean.",
+                        "template_scene": "中间步骤",
+                        "template_en": "Subsequently,.../At this point,.../The [材料] is/are then [动词过去分词].../Thereafter,...",
+                        "role": "中间步骤：用 Subsequently 推进"
+                    },
+                    {
+                        "text": "The water is then heated by the sun and evaporates, after which the process returns to the rainfall stage, and the cycle repeats.",
+                        "template_scene": "流程循环",
+                        "template_en": "...after which the process returns to [某阶段], and the cycle repeats.",
+                        "role": "循环收尾：...and the cycle repeats"
+                    }
+                ]
+            }
+        ]
+    }
+]
+
+
+@router.get("/sample-breakdowns")
+async def get_sample_breakdowns(category: Optional[str] = None):
+    """返回范文拆解数据"""
+    if category:
+        return [s for s in SAMPLE_BREAKDOWNS if s["category"] == category]
+    return SAMPLE_BREAKDOWNS

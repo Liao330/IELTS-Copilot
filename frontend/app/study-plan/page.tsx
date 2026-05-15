@@ -98,13 +98,26 @@ export default function StudyPlanPage() {
       // Set initial week offset based on current day
       if (!initialized && st.exists) {
         const planS = new Date(st.start_date + "T12:00:00Z");
+        // Calculate Monday of plan start week
+        const planDow = planS.getUTCDay();
+        const planMondayOffset = planDow === 0 ? -6 : 1 - planDow;
+        const planMonday = new Date(planS);
+        planMonday.setUTCDate(planMonday.getUTCDate() + planMondayOffset);
+
+        // Calculate Monday of current week
         const today = new Date();
-        const todayUTC = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12, 0, 0);
-        const diff = Math.floor((todayUTC.getTime() - planS.getTime()) / (7 * 24 * 60 * 60 * 1000));
+        const todayStr = today.toISOString().split("T")[0];
+        const todayUTC = new Date(todayStr + "T12:00:00Z");
+        const todayDow = todayUTC.getUTCDay();
+        const todayMondayOffset = todayDow === 0 ? -6 : 1 - todayDow;
+        const todayMonday = new Date(todayUTC);
+        todayMonday.setUTCDate(todayMonday.getUTCDate() + todayMondayOffset);
+
+        // Week offset = difference in weeks between the two Mondays
+        const diff = Math.round((todayMonday.getTime() - planMonday.getTime()) / (7 * 24 * 60 * 60 * 1000));
         const tw = Math.ceil(((new Date(st.end_date + "T12:00:00Z").getTime() - planS.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1);
         setWeekOffset(Math.max(0, Math.min(diff, tw - 1)));
-        // Set selectedDate to today if within plan range, otherwise plan start
-        const todayStr = today.toISOString().split("T")[0];
+        // Set selectedDate to today if within plan range
         if (todayStr >= st.start_date && todayStr <= st.end_date) {
           setSelectedDate(todayStr);
         } else if (todayStr < st.start_date) {

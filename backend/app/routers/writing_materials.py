@@ -40,10 +40,13 @@ class MaterialOut(BaseModel):
     stance_label: str
     angle: str
     angle_index: int
+    topic_sentence: Optional[str]
+    topic_sentence_en: Optional[str]
     reasoning_chain: str
     reasoning_chain_en: Optional[str]
     example: str
     example_en: Optional[str]
+    memory_anchor: Optional[str]
     sort_order: int
     mastery_level: int
     review_count: int
@@ -56,6 +59,15 @@ class MaterialOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class MaterialUpdateRequest(BaseModel):
+    topic_sentence: Optional[str] = None
+    topic_sentence_en: Optional[str] = None
+    reasoning_chain: Optional[str] = None
+    reasoning_chain_en: Optional[str] = None
+    example: Optional[str] = None
+    example_en: Optional[str] = None
 
 
 class KeywordOut(BaseModel):
@@ -183,6 +195,95 @@ async def list_materials(
     return result.scalars().all()
 
 
+@router.patch("/{material_id}", response_model=MaterialOut)
+async def update_material(material_id: str, body: MaterialUpdateRequest, db: AsyncSession = Depends(get_db)):
+    """手动编辑素材内容（观点句、理由链、例子的中英文）"""
+    m = await db.get(WritingMaterial, material_id)
+    if not m:
+        raise HTTPException(404, "素材不存在")
+
+    for field in ("topic_sentence", "topic_sentence_en", "reasoning_chain", "reasoning_chain_en", "example", "example_en"):
+        val = getattr(body, field, None)
+        if val is not None:
+            setattr(m, field, val)
+
+    await db.commit()
+    await db.refresh(m)
+    return m
+
+
+@router.post("/batch-generate-topic-sentences")
+async def batch_generate_topic_sentences(db: AsyncSession = Depends(get_db)):
+    """批量使用 qwen-max 为素材生成观点句（TEE结构中的T）"""
+    from app.services.llm_service import complete_chat
+    from app.utils.llm_config import get_llm_config
+
+    result = await db.execute(
+        select(WritingMaterial).where(
+            or_(WritingMaterial.topic_sentence.is_(None), WritingMaterial.topic_sentence == "")
+        ).order_by(WritingMaterial.sort_order).limit(10)
+    )
+    items = result.scalars().all()
+    if not items:
+        return {"generated": 0, "message": "全部素材已有观点句", "remaining": 0}
+
+    _, api_key, api_base = await get_llm_config(db)
+    model = "openai/qwen-max"  # 使用语言表达能力最强的模型
+
+    prompt = """你是一位雅思写作教练。我正在整理大作文素材库，每条素材采用 TEE 结构：
+- T (Topic Sentence): 观点句，段落首句，概括该角度的核心论点
+- E (Explanation): 理由链，用 → 连接的逻辑推理
+- E (Example): 具体例子
+
+现在需要你为以下素材生成 Topic Sentence（观点句）。要求：
+1. 观点句应简洁有力，一句话概括该角度的核心论点
+2. 适合作为雅思大作文段落的首句
+3. 同时给出中文和英文版本
+4. 英文版本要求语法正确、表达地道，适合 6.5-7.5 分水平
+
+素材列表：
+"""
+    for i, m in enumerate(items):
+        prompt += f"\n{i+1}. 话题：{m.topic_cn} · {m.direction}\n   立场：{m.stance_label} · 角度：{m.angle}\n   理由链(Explanation)：{m.reasoning_chain}\n   例子(Example)：{m.example}\n"
+
+    prompt += '\n\n请输出 JSON 数组，格式：[{"topic_sentence": "中文观点句", "topic_sentence_en": "English topic sentence"}, ...]'
+
+    raw = await complete_chat(
+        model=model, api_key=api_key, api_base=api_base,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.3,
+    )
+
+    cleaned = raw.strip()
+    if cleaned.startswith("```"):
+        lines = cleaned.split("\n")
+        lines = [l for l in lines if not l.strip().startswith("```")]
+        cleaned = "\n".join(lines).strip()
+
+    try:
+        results_data = json.loads(cleaned)
+    except (json.JSONDecodeError, ValueError):
+        return {"generated": 0, "message": "AI response parse failed", "raw": cleaned[:300]}
+
+    count = 0
+    for i, m in enumerate(items):
+        if i < len(results_data):
+            t = results_data[i]
+            if t.get("topic_sentence"):
+                m.topic_sentence = t["topic_sentence"]
+            if t.get("topic_sentence_en"):
+                m.topic_sentence_en = t["topic_sentence_en"]
+            count += 1
+
+    await db.commit()
+    remaining = (await db.execute(
+        select(func.count()).select_from(WritingMaterial).where(
+            or_(WritingMaterial.topic_sentence.is_(None), WritingMaterial.topic_sentence == "")
+        )
+    )).scalar() or 0
+    return {"generated": count, "remaining": remaining}
+
+
 @router.get("/stats", response_model=StatsOut)
 async def get_stats(db: AsyncSession = Depends(get_db)):
     now = datetime.utcnow()
@@ -289,11 +390,11 @@ async def review_material(material_id: str, body: ReviewRequest, db: AsyncSessio
         raise HTTPException(404, "素材不存在")
 
     q = body.quality
-    # mastery 升级有阶段限制
-    # mastery 0→1: 点已看 (quality=2/3)
-    # mastery 1→2: 闪卡理由链 (quality=2/3, cap at 2)
-    # mastery 2→3: 闪卡关键词 (quality=2/3, cap at 3)
-    # mastery 3→4 和 4→5: 只能通过 check 端点
+    # mastery 升级体系（新版）:
+    # 0→1: 今日学习点已看
+    # 1→2: L1角度回忆通过（通过 l1-pass 端点批量升级）
+    # 2→3: 素材闪卡通过 (quality>=2, cap at 3)
+    # 3→4 和 4→5: 只能通过 check 端点（默写测试）
     cap = min(3, max((m.mastery_level or 0) + 1, 1))
     _sm2_update_material(m, q, max_mastery=cap)
 
@@ -412,15 +513,16 @@ async def list_keywords(
 
 
 @router.get("/keywords/due", response_model=List[KeywordOut])
-async def get_keywords_due(limit: int = Query(20), db: AsyncSession = Depends(get_db)):
-    """获取今日待复习关键词（到今天结束前到期的都算）"""
+async def get_keywords_due(limit: int = Query(20), include_new: int = Query(5), db: AsyncSession = Depends(get_db)):
+    """获取今日待复习关键词（到今天结束前到期的都算）+ 新词"""
     # Calculate today_end_utc using CST 8:00 boundary (same as /due endpoint)
     now_cst = datetime.now(_CST)
     if now_cst.hour < 8:
         today_end_utc = now_cst.replace(hour=8, minute=0, second=0, microsecond=0).astimezone(timezone.utc).replace(tzinfo=None)
     else:
         today_end_utc = (now_cst + timedelta(days=1)).replace(hour=8, minute=0, second=0, microsecond=0).astimezone(timezone.utc).replace(tzinfo=None)
-    
+
+    # 已学过且到期的
     stmt = (
         select(WritingMaterialKeyword)
         .where(
@@ -431,7 +533,29 @@ async def get_keywords_due(limit: int = Query(20), db: AsyncSession = Depends(ge
         .limit(limit)
     )
     result = await db.execute(stmt)
-    return result.scalars().all()
+    items = list(result.scalars().all())
+
+    # 补充新词（未学过的），但今天新学总数不超过 include_new
+    if include_new > 0:
+        today_start = _today_start_cst()
+        new_learned_today = (await db.execute(
+            select(func.count()).select_from(WritingMaterialKeyword).where(
+                WritingMaterialKeyword.first_learned_at >= today_start
+            )
+        )).scalar() or 0
+        new_quota = max(0, include_new - new_learned_today)
+        if new_quota > 0 and len(items) < limit:
+            new_limit = min(new_quota, limit - len(items))
+            new_stmt = (
+                select(WritingMaterialKeyword)
+                .where(WritingMaterialKeyword.review_count == 0)
+                .order_by(WritingMaterialKeyword.sort_order)
+                .limit(new_limit)
+            )
+            new_result = await db.execute(new_stmt)
+            items.extend(new_result.scalars().all())
+
+    return items
 
 
 @router.post("/keywords/{keyword_id}/review", response_model=KeywordOut)
@@ -531,6 +655,11 @@ async def seed_materials(db: AsyncSession = Depends(get_db)):
             angle_index=item["angle_index"],
             reasoning_chain=item["reasoning_chain"],
             example=item["example"],
+            topic_sentence=item.get("topic_sentence"),
+            topic_sentence_en=item.get("topic_sentence_en"),
+            reasoning_chain_en=item.get("reasoning_chain_en"),
+            example_en=item.get("example_en"),
+            memory_anchor=item.get("memory_anchor"),
             sort_order=sort,
         ))
 
@@ -548,6 +677,199 @@ async def seed_materials(db: AsyncSession = Depends(get_db)):
 
     await db.commit()
     return {"message": f"导入完成", "imported_materials": sort, "imported_keywords": kw_sort}
+
+
+@router.post("/backfill-topic-sentences")
+async def backfill_topic_sentences(force: bool = Query(False), db: AsyncSession = Depends(get_db)):
+    """回填已有素材的观点句（从seed数据匹配）。force=true时覆盖已有观点句"""
+    from app.data.writing_materials_seed import MATERIALS_DATA
+
+    # Build lookup: (topic, direction_index, stance, angle_index) -> topic_sentence
+    lookup = {}
+    for item in MATERIALS_DATA:
+        key = (item["topic"], item["direction_index"], item["stance"], item["angle_index"])
+        lookup[key] = (item.get("topic_sentence"), item.get("topic_sentence_en"))
+
+    if force:
+        result = await db.execute(select(WritingMaterial))
+    else:
+        result = await db.execute(
+            select(WritingMaterial).where(
+                or_(WritingMaterial.topic_sentence.is_(None), WritingMaterial.topic_sentence == "")
+            )
+        )
+    items = result.scalars().all()
+    count = 0
+    for m in items:
+        key = (m.topic, m.direction_index, m.stance, m.angle_index)
+        if key in lookup:
+            ts, ts_en = lookup[key]
+            if ts:
+                m.topic_sentence = ts
+            if ts_en:
+                m.topic_sentence_en = ts_en
+            count += 1
+
+    await db.commit()
+    return {"backfilled": count, "total": len(items)}
+
+
+@router.post("/backfill-memory-anchors")
+async def backfill_memory_anchors(db: AsyncSession = Depends(get_db)):
+    """从 seed JSON 回填 memory_anchor 到已有素材"""
+    from app.data.writing_materials_seed import MATERIALS_DATA
+
+    lookup: dict[tuple, str] = {}
+    for item in MATERIALS_DATA:
+        key = (item["topic"], item["direction_index"], item["stance"], item["angle_index"])
+        anchor = item.get("memory_anchor")
+        if anchor:
+            lookup[key] = anchor
+
+    result = await db.execute(select(WritingMaterial))
+    items = result.scalars().all()
+    count = 0
+    for m in items:
+        key = (m.topic, m.direction_index, m.stance, m.angle_index)
+        if key in lookup:
+            m.memory_anchor = lookup[key]
+            count += 1
+
+    await db.commit()
+    return {"backfilled": count, "total": len(items)}
+
+
+# ─── L1 Angle Recall (角度回忆卡) ────────────────────────
+
+class AngleInfo(BaseModel):
+    stance: str
+    stance_label: str
+    angle: str
+    angle_index: int
+    topic_sentence: Optional[str]
+    topic_sentence_en: Optional[str]
+    min_mastery: int  # 该角度下素材的最低mastery
+
+class DirectionL1Out(BaseModel):
+    topic: str
+    topic_cn: str
+    direction: str
+    direction_index: int
+    memory_anchor: Optional[str]
+    pro_angles: list[AngleInfo]
+    con_angles: list[AngleInfo]
+    pro_min_mastery: int  # 正方所有素材的最低mastery
+    con_min_mastery: int  # 反方所有素材的最低mastery
+
+
+@router.get("/l1-directions", response_model=List[DirectionL1Out])
+async def get_l1_directions(db: AsyncSession = Depends(get_db)):
+    """返回所有方向的 L1 数据，按 direction 分组"""
+    result = await db.execute(
+        select(WritingMaterial).order_by(
+            WritingMaterial.topic, WritingMaterial.direction_index, WritingMaterial.stance, WritingMaterial.angle_index
+        )
+    )
+    materials = result.scalars().all()
+
+    # Group by (topic, direction_index)
+    from collections import defaultdict
+    groups: dict[tuple, list] = defaultdict(list)
+    for m in materials:
+        groups[(m.topic, m.direction_index)].append(m)
+
+    directions: list[DirectionL1Out] = []
+    for (_topic, _di), items in groups.items():
+        first = items[0]
+        pro_angles = []
+        con_angles = []
+        pro_masteries = []
+        con_masteries = []
+
+        for m in items:
+            info = AngleInfo(
+                stance=m.stance,
+                stance_label=m.stance_label,
+                angle=m.angle,
+                angle_index=m.angle_index,
+                topic_sentence=m.topic_sentence,
+                topic_sentence_en=m.topic_sentence_en,
+                min_mastery=m.mastery_level or 0,
+            )
+            if m.stance == "pro":
+                pro_angles.append(info)
+                pro_masteries.append(m.mastery_level or 0)
+            else:
+                con_angles.append(info)
+                con_masteries.append(m.mastery_level or 0)
+
+        directions.append(DirectionL1Out(
+            topic=first.topic,
+            topic_cn=first.topic_cn,
+            direction=first.direction,
+            direction_index=first.direction_index,
+            memory_anchor=first.memory_anchor,
+            pro_angles=pro_angles,
+            con_angles=con_angles,
+            pro_min_mastery=min(pro_masteries) if pro_masteries else 0,
+            con_min_mastery=min(con_masteries) if con_masteries else 0,
+        ))
+
+    return directions
+
+
+class L1PassRequest(BaseModel):
+    topic: str
+    direction_index: int
+    stance: str  # "pro" or "con"
+
+
+@router.post("/l1-pass")
+async def l1_pass(body: L1PassRequest, db: AsyncSession = Depends(get_db)):
+    """L1角度回忆通过：将指定方向+立场下 mastery=1 的素材升级为 mastery=2，使用SM-2计算下次复习时间"""
+    now = datetime.utcnow()
+
+    stmt = select(WritingMaterial).where(
+        WritingMaterial.topic == body.topic,
+        WritingMaterial.direction_index == body.direction_index,
+        WritingMaterial.stance == body.stance,
+        WritingMaterial.mastery_level == 1,
+    )
+    result = await db.execute(stmt)
+    items = result.scalars().all()
+
+    count = 0
+    for m in items:
+        # Use SM-2 with cap at mastery 2 (L1→L2 transition)
+        _sm2_update_material(m, quality=2, max_mastery=2)
+        count += 1
+
+    await db.commit()
+    return {"promoted": count, "topic": body.topic, "direction_index": body.direction_index, "stance": body.stance}
+
+
+@router.post("/l1-fail")
+async def l1_fail(body: L1PassRequest, db: AsyncSession = Depends(get_db)):
+    """L1角度回忆失败：重置间隔，明天再来"""
+    now = datetime.utcnow()
+
+    stmt = select(WritingMaterial).where(
+        WritingMaterial.topic == body.topic,
+        WritingMaterial.direction_index == body.direction_index,
+        WritingMaterial.stance == body.stance,
+        WritingMaterial.mastery_level == 1,
+    )
+    result = await db.execute(stmt)
+    items = result.scalars().all()
+
+    count = 0
+    for m in items:
+        # SM-2 with quality=1 (模糊): interval resets to 1, stays at mastery 1
+        _sm2_update_material(m, quality=1, max_mastery=1)
+        count += 1
+
+    await db.commit()
+    return {"failed": count, "topic": body.topic, "direction_index": body.direction_index, "stance": body.stance}
 
 
 # ─── Downgrade Practice (降级练习) ────────────────────────
@@ -592,7 +914,9 @@ class DowngradeCheckResponse(BaseModel):
 
 @router.get("/downgrade-sentences", response_model=List[DowngradeSentenceOut])
 async def get_downgrade_sentences(db: AsyncSession = Depends(get_db)):
-    """返回今日剩余降级练习句子（每天上限5条，已练过的扣除）"""
+    """返回今日剩余降级练习句子（每天上限5条，已练过的扣除）
+    来源：仅限通用表达短语（素材的英文输出由L3默写测试负责）
+    """
     # 计算今日已练数量
     today_start = _today_start_cst()
     today_done = (await db.execute(
@@ -606,50 +930,15 @@ async def get_downgrade_sentences(db: AsyncSession = Depends(get_db)):
 
     sentences: List[DowngradeSentenceOut] = []
 
-    # 从素材理由链抽取
-    material_count = min(3, remaining)
-    result = await db.execute(
-        select(WritingMaterial).where(WritingMaterial.review_count > 0).order_by(func.random()).limit(10)
-    )
-    materials = result.scalars().all()
-
-    for m in materials:
-        if len(sentences) >= material_count:
-            break
-        chain = m.reasoning_chain
-        if chain:
-            sentences.append(DowngradeSentenceOut(
-                id=f"mat-{m.id[:8]}",
-                chinese=chain,
-                source_material_id=m.id,
-                hint=f"话题：{m.topic_cn}",
-            ))
-
-    # 从常用表达中补充
-    expr_count = remaining - len(sentences)
-    if expr_count > 0:
-        picked_exprs = random.sample(DOWNGRADE_EXPRESSIONS, min(expr_count, len(DOWNGRADE_EXPRESSIONS)))
-        for expr in picked_exprs:
-            sentences.append(DowngradeSentenceOut(
-                id=expr["id"],
-                chinese=expr["chinese"],
-                source_material_id=None,
-                hint=None,
-            ))
-
-    # 如果还不够，再从素材补
-    if len(sentences) < remaining:
-        extra_result = await db.execute(
-            select(WritingMaterial).order_by(func.random()).limit(remaining - len(sentences))
-        )
-        for m in extra_result.scalars().all():
-            if m.reasoning_chain:
-                sentences.append(DowngradeSentenceOut(
-                    id=f"mat-{m.id[:8]}",
-                    chinese=m.reasoning_chain,
-                    source_material_id=m.id,
-                    hint=f"{m.topic_cn} · {m.angle}",
-                ))
+    # 只从通用表达中抽取
+    picked_exprs = random.sample(DOWNGRADE_EXPRESSIONS, min(remaining, len(DOWNGRADE_EXPRESSIONS)))
+    for expr in picked_exprs:
+        sentences.append(DowngradeSentenceOut(
+            id=expr["id"],
+            chinese=expr["chinese"],
+            source_material_id=None,
+            hint=expr.get("hint"),
+        ))
 
     random.shuffle(sentences)
     return sentences[:remaining]
@@ -709,6 +998,8 @@ async def check_downgrade(body: DowngradeCheckRequest, db: AsyncSession = Depend
 - 60-74: 意思基本对 但语法有错或表达不完整
 - 40-59: 意思部分对 或 逻辑断裂
 - 0-39: 偏题或无法理解
+
+⚠️ 特别注意：如果学生的答案与中文原句的意思完全无关（比如写了"I don't know"、随便写了几个无关的词、或者答案完全没有尝试表达原句的含义），必须给0分且correct为false。不要因为学生写了语法正确的英文就给分——必须判断答案是否在表达原句的意思。
 
 输出格式（只输出JSON）：
 {{"score": 数字, "correct": true/false(>=70为true), "feedback": "简短点评（一两句话）", "reference_answer": "一个完整英文句子（禁止箭头，用连接词串成一句话）", "corrected_answer": "基于学生答案的修正版（保留学生的表达习惯和句式，只修正错误部分；如果学生答对了则留空字符串）", "steps": {{"core_meaning": "核心意思（5字）", "keywords": "关键词英文", "simple_sentence": "最终完整句子（和reference_answer一致）"}}}}"""

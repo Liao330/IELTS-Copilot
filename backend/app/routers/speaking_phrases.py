@@ -204,6 +204,28 @@ async def seed_phrases(db: AsyncSession = Depends(get_db)):
     return {"message": f"Imported {len(items)} phrases.", "imported": len(items)}
 
 
+@router.post("/backfill-cn")
+async def backfill_cn(db: AsyncSession = Depends(get_db)):
+    """用 seed 数据的最新 cn 覆盖数据库中已有的短语（按 en 匹配）"""
+    seed_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "speaking_phrases_seed.json")
+    with open(seed_path, "r", encoding="utf-8") as f:
+        items = _json.load(f)
+
+    # Build lookup by en -> cn
+    lookup = {item["en"]: item["cn"] for item in items}
+
+    result = await db.execute(select(SpeakingPhrase))
+    all_phrases = result.scalars().all()
+    count = 0
+    for p in all_phrases:
+        if p.en in lookup and p.cn != lookup[p.en]:
+            p.cn = lookup[p.en]
+            count += 1
+
+    await db.commit()
+    return {"updated": count, "total": len(all_phrases)}
+
+
 class BatchImportPhrasesBody(BaseModel):
     text: str
 

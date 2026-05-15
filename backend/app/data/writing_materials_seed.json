@@ -10,7 +10,12 @@
       "angle": "社会公平",
       "angle_index": 1,
       "reasoning_chain": "消除经济障碍 → 寒门子弟也能读大学 → 缩小贫富差距、促进阶层流动",
-      "example": "北欧国家（瑞典、挪威）免学费，社会流动性指标全球领先"
+      "reasoning_chain_en": "Remove financial barriers → students from poor families can attend university → narrow the wealth gap and promote social mobility",
+      "example": "北欧国家（瑞典、挪威）免学费，社会流动性指标全球领先",
+      "example_en": "Nordic countries (Sweden, Norway) charge no tuition, and their social mobility indices lead the world",
+      "topic_sentence": "免费大学教育有助于促进社会公平。",
+      "topic_sentence_en": "Free university education helps promote social equality.",
+      "memory_anchor": "正方想\"谁受益\"（穷人=公平、国家=发展）；反方想\"谁受损\"（政府钱包=财政、学生自己=动力）"
     },
     {
       "topic": "education",
@@ -22,7 +27,12 @@
       "angle": "国家发展",
       "angle_index": 2,
       "reasoning_chain": "更多人接受高等教育 → 劳动力素质整体提升 → 推动科技创新和经济增长",
-      "example": "德国免学费后STEM专业毕业生持续增长，制造业竞争力增强"
+      "reasoning_chain_en": "More people receive higher education → overall workforce quality improves → drives technological innovation and economic growth",
+      "example": "德国免学费后STEM专业毕业生持续增长，制造业竞争力增强",
+      "example_en": "After Germany abolished tuition fees, STEM graduates grew steadily and manufacturing competitiveness strengthened",
+      "topic_sentence": "免费高等教育能有力推动国家经济发展。",
+      "topic_sentence_en": "Free higher education can significantly boost national economic development.",
+      "memory_anchor": "正方想\"谁受益\"（穷人=公平、国家=发展）；反方想\"谁受损\"（政府钱包=财政、学生自己=动力）"
     },
     {
       "topic": "education",
@@ -34,7 +44,12 @@
       "angle": "财政压力",
       "angle_index": 1,
       "reasoning_chain": "政府预算有限 → 免学费挤占医疗/基建支出 → 其他公共服务质量下降",
-      "example": "部分国家免费后大学经费不足，师生比恶化，教学质量下滑"
+      "reasoning_chain_en": "Government budgets are limited → free tuition diverts funds from healthcare/infrastructure → quality of other public services declines",
+      "example": "英国部分地方政府因教育开支激增，被迫削减NHS医疗预算和社区服务拨款",
+      "example_en": "Some UK local governments were forced to cut NHS healthcare budgets and community service funding due to surging education spending",
+      "topic_sentence": "免费大学教育会给政府财政带来沉重负担。",
+      "topic_sentence_en": "Free university education would place an unsustainable burden on government finances.",
+      "memory_anchor": "正方想\"谁受益\"（穷人=公平、国家=发展）；反方想\"谁受损\"（政府钱包=财政、学生自己=动力）"
     },
     {
       "topic": "education",
@@ -45,8 +60,13 @@
       "stance_label": "反方",
       "angle": "学习动力",
       "angle_index": 2,
-      "reasoning_chain": "免费 → 学生不珍惜机会 → 辍学率上升、学习态度松懈",
-      "example": "对比数据显示收费制大学毕业率普遍高于免费制大学"
+      "reasoning_chain": "免费意味着学生没有经济投入 → 没有沉没成本就容易不珍惜机会 → 辍学率上升、学习态度松懈",
+      "reasoning_chain_en": "Free means no financial investment by students → without sunk costs they are less likely to value the opportunity → dropout rates rise and study attitudes become lax",
+      "example": "对比数据显示收费制大学毕业率普遍高于免费制大学",
+      "example_en": "Comparative data show that tuition-charging universities generally have higher graduation rates than tuition-free ones",
+      "topic_sentence": "免费教育可能削弱学生的学习动力。",
+      "topic_sentence_en": "Free education may undermine students' motivation to learn.",
+      "memory_anchor": "正方想\"谁受益\"（穷人=公平、国家=发展）；反方想\"谁受损\"（政府钱包=财政、学生自己=动力）"
     },
     {
       "topic": "education",
@@ -57,10 +77,13 @@
       "stance_label": "正方",
       "angle": "个人灵活性",
       "angle_index": 1,
-      "reasoning_chain": "不受时间地点限制 → 学生可在最高效的时间段学习 → 学习效率和完成度提升",
+      "reasoning_chain": "不受时间地点限制 → 学生可在最高效的时间段学习 → 兼顾工作/家庭的同时完成学业",
+      "reasoning_chain_en": "No fixed schedule or location → students can study at their most productive time → completing studies while balancing work and family",
       "example": "上班族利用通勤/深夜时间在Coursera完成学位课程，传统大学做不到",
-      "reasoning_chain_en": "No fixed schedule or location → students can study at their most productive time → learning efficiency improves",
-      "example_en": "Working adults complete degree courses on Coursera during commutes or late at night — impossible with traditional universities"
+      "example_en": "Working adults complete degree courses on Coursera during commutes or late at night — impossible with traditional universities",
+      "topic_sentence": "网络课程为学生提供了无可比拟的学习灵活性。",
+      "topic_sentence_en": "Online courses offer students unmatched learning flexibility.",
+      "memory_anchor": "正方想\"网课的优势\"（随时随地=灵活、人人可学=平等）；反方想\"屏幕的代价\"（管不住自己=效果差、没有同学=社交缺失）"
     },
     {
       "topic": "education",
@@ -71,9 +94,13 @@
       "stance_label": "正方",
       "angle": "资源平等化",
       "angle_index": 2,
-      "reasoning_chain": "优质课程可无限复制传播 → 偏远地区学生也能获取名师资源 → 这些学生的成绩和升学率因此提升",
+      "reasoning_chain": "优质课程可无限复制传播 → 偏远地区学生也能获取名师资源 → 教育资源地区差距因此缩小",
+      "reasoning_chain_en": "Quality courses can be replicated and distributed without limit → students in remote areas gain access to top teachers → regional gaps in educational resources are narrowed",
       "example": "中国「双师课堂」模式让农村学生听到城市名校教师授课",
-      "reasoning_chain_en": null
+      "example_en": "China's 'dual-teacher classroom' model lets rural students attend lessons taught by top urban school teachers",
+      "topic_sentence": "网课能有效缩小教育资源的地区差距。",
+      "topic_sentence_en": "Online learning can effectively narrow regional gaps in educational resources.",
+      "memory_anchor": "正方想\"网课的优势\"（随时随地=灵活、人人可学=平等）；反方想\"屏幕的代价\"（管不住自己=效果差、没有同学=社交缺失）"
     },
     {
       "topic": "education",
@@ -85,7 +112,12 @@
       "angle": "学习效果",
       "angle_index": 1,
       "reasoning_chain": "缺乏面对面监督 → 自制力不足的学生容易分心 → 完课率和学习深度远低于线下",
-      "example": "数据显示MOOC平均完课率不到10%，远低于传统大学"
+      "reasoning_chain_en": "Lack of face-to-face supervision → students with poor self-discipline are easily distracted → completion rates and learning depth are far lower than offline",
+      "example": "数据显示MOOC平均完课率不到10%，远低于传统大学",
+      "example_en": "Data show that the average MOOC completion rate is below 10%, far lower than traditional universities",
+      "topic_sentence": "网课的学习效果明显不如传统课堂。",
+      "topic_sentence_en": "Online learning is significantly less effective than traditional classroom instruction.",
+      "memory_anchor": "正方想\"网课的优势\"（随时随地=灵活、人人可学=平等）；反方想\"屏幕的代价\"（管不住自己=效果差、没有同学=社交缺失）"
     },
     {
       "topic": "education",
@@ -96,8 +128,13 @@
       "stance_label": "反方",
       "angle": "社交发展",
       "angle_index": 2,
-      "reasoning_chain": "校园是社交场所 → 网课剥夺了同伴互动机会 → 影响团队协作能力和社交技能发展",
-      "example": "疫情期间长期网课导致青少年孤独感和心理问题显著上升"
+      "reasoning_chain": "校园是社交场所 → 网课剥夺了同伴互动机会 → 学生的社交技能和心理健康受损",
+      "reasoning_chain_en": "Campus is a social environment → online classes deprive students of peer interaction → students' social skills and mental health suffer",
+      "example": "疫情期间长期网课导致青少年孤独感和心理问题显著上升",
+      "example_en": "Prolonged online learning during the pandemic led to a significant rise in adolescent loneliness and mental health issues",
+      "topic_sentence": "网课不利于学生社交能力的发展。",
+      "topic_sentence_en": "Online learning hinders the development of students' social skills.",
+      "memory_anchor": "正方想\"网课的优势\"（随时随地=灵活、人人可学=平等）；反方想\"屏幕的代价\"（管不住自己=效果差、没有同学=社交缺失）"
     },
     {
       "topic": "education",
@@ -109,7 +146,12 @@
       "angle": "激发个人潜能",
       "angle_index": 1,
       "reasoning_chain": "排名/考试压力 → 激励学生更加努力 → 挖掘个人最大潜力",
-      "example": "新加坡精英教育体制培养出大量高素质人才，国际学术排名领先"
+      "reasoning_chain_en": "Ranking and exam pressure → motivate students to work harder → unlock their full potential",
+      "example": "新加坡精英教育体制培养出大量高素质人才，国际学术排名领先",
+      "example_en": "Singapore's elite education system produces large numbers of high-calibre graduates and leads international academic rankings",
+      "topic_sentence": "适度竞争有助于激发学生的个人潜能。",
+      "topic_sentence_en": "Healthy competition helps students reach their full potential.",
+      "memory_anchor": "正方想\"竞争的好处\"（逼出潜力=个人、适应社会=职场）；反方想\"竞争的坏处\"（压力大=心理、实际工作靠团队=需求）"
     },
     {
       "topic": "education",
@@ -121,7 +163,12 @@
       "angle": "为社会现实做准备",
       "angle_index": 2,
       "reasoning_chain": "职场本质是竞争环境 → 学校培养竞争意识 → 学生毕业后适应力更强",
-      "example": "调查显示有竞争经验的毕业生在求职中表现更突出"
+      "reasoning_chain_en": "The workplace is inherently competitive → schools that foster a competitive mindset → produce graduates who adapt more quickly",
+      "example": "许多企业HR反映，缺乏竞争经验的毕业生进入职场后难以承受绩效考核压力，试用期离职率明显偏高",
+      "example_en": "Many HR managers report that graduates lacking competitive experience struggle with performance reviews and have notably higher resignation rates during probation",
+      "topic_sentence": "竞争教育能帮助学生更好地适应职场。",
+      "topic_sentence_en": "Competitive education better prepares students for the workplace.",
+      "memory_anchor": "正方想\"竞争的好处\"（逼出潜力=个人、适应社会=职场）；反方想\"竞争的坏处\"（压力大=心理、实际工作靠团队=需求）"
     },
     {
       "topic": "education",
@@ -133,7 +180,12 @@
       "angle": "心理健康",
       "angle_index": 1,
       "reasoning_chain": "过度竞争 → 焦虑和自我否定 → 厌学甚至心理疾病",
-      "example": "韩国/日本学生因升学压力导致的心理问题和自杀率数据"
+      "reasoning_chain_en": "Excessive competition → anxiety and self-doubt → aversion to learning or even mental illness",
+      "example": "韩国/日本学生因升学压力导致的心理问题和自杀率数据",
+      "example_en": "Data on mental health problems and suicide rates among South Korean and Japanese students caused by academic pressure",
+      "topic_sentence": "过度竞争严重损害学生的心理健康。",
+      "topic_sentence_en": "Excessive competition seriously harms students' mental health.",
+      "memory_anchor": "正方想\"竞争的好处\"（逼出潜力=个人、适应社会=职场）；反方想\"竞争的坏处\"（压力大=心理、实际工作靠团队=需求）"
     },
     {
       "topic": "education",
@@ -145,8 +197,12 @@
       "angle": "实际工作需求",
       "angle_index": 2,
       "reasoning_chain": "现代工作以团队项目为主 → 合作能力比个人成绩更重要 → 只强调竞争的学生进入职场后难以融入团队、影响职业发展",
+      "reasoning_chain_en": "Modern work revolves around team projects → collaborative skills matter more than individual grades → students trained only in competition struggle to work in teams and their careers suffer",
       "example": "Google等科技公司招聘最看重团队协作能力而非个人分数",
-      "reasoning_chain_en": null
+      "example_en": "Tech companies like Google prioritise teamwork skills over individual grades when hiring",
+      "topic_sentence": "合作能力比竞争意识对职业发展更为重要。",
+      "topic_sentence_en": "Collaborative skills are more important than competitiveness for career success.",
+      "memory_anchor": "正方想\"竞争的好处\"（逼出潜力=个人、适应社会=职场）；反方想\"竞争的坏处\"（压力大=心理、实际工作靠团队=需求）"
     },
     {
       "topic": "technology",
@@ -158,7 +214,12 @@
       "angle": "人际连接",
       "angle_index": 1,
       "reasoning_chain": "打破地理限制 → 维系远距离关系/认识志同道合的人 → 减少孤独感、扩大社交圈",
-      "example": "疫情期间社交媒体成为人们维持社交的主要方式，缓解了隔离带来的孤独"
+      "reasoning_chain_en": "Break geographical barriers → maintain long-distance relationships and meet like-minded people → reduce loneliness and expand social circles",
+      "example": "疫情期间社交媒体成为人们维持社交的主要方式，缓解了隔离带来的孤独",
+      "example_en": "During the pandemic, social media became the main way people maintained social contact, alleviating isolation-induced loneliness",
+      "topic_sentence": "社交媒体有效促进了人际连接。",
+      "topic_sentence_en": "Social media effectively strengthens interpersonal connections.",
+      "memory_anchor": "正方想\"连接\"（连接人=社交、连接机会=创业）；反方想\"毒害\"（毒害心理=抑郁、毒害信息=假新闻）"
     },
     {
       "topic": "technology",
@@ -170,7 +231,12 @@
       "angle": "信息与机会",
       "angle_index": 2,
       "reasoning_chain": "信息传播极快 → 普通人也能获得曝光和商业机会 → 催生了自媒体经济和小微创业",
-      "example": "大量年轻人通过Instagram/抖音创业成功，无需传统资本门槛"
+      "reasoning_chain_en": "Information spreads extremely fast → ordinary people can gain exposure and business opportunities → giving rise to the creator economy and micro-entrepreneurship",
+      "example": "大量年轻人通过Instagram/抖音创业成功，无需传统资本门槛",
+      "example_en": "Many young people have built successful businesses through Instagram/TikTok without traditional capital barriers",
+      "topic_sentence": "社交媒体为普通人创造了前所未有的机会。",
+      "topic_sentence_en": "Social media creates unprecedented opportunities for ordinary people.",
+      "memory_anchor": "正方想\"连接\"（连接人=社交、连接机会=创业）；反方想\"毒害\"（毒害心理=抑郁、毒害信息=假新闻）"
     },
     {
       "topic": "technology",
@@ -182,7 +248,12 @@
       "angle": "心理健康",
       "angle_index": 1,
       "reasoning_chain": "算法推送极端内容 → 用户沉迷/焦虑/社交比较 → 抑郁和自我认同问题增加",
-      "example": "研究显示每日使用社交媒体超3小时的青少年，抑郁风险翻倍"
+      "reasoning_chain_en": "Algorithms push extreme content → users become addicted, anxious, and engage in social comparison → depression and identity issues increase",
+      "example": "Instagram的「点赞」和「滤镜美颜」功能导致青少年不断与理想化形象对比，引发严重的外貌焦虑和饮食障碍",
+      "example_en": "Instagram's 'like' counts and beauty filters cause teenagers to constantly compare themselves with idealised images, triggering severe body anxiety and eating disorders",
+      "topic_sentence": "社交媒体严重威胁用户的心理健康。",
+      "topic_sentence_en": "Social media poses a serious threat to users' mental health.",
+      "memory_anchor": "正方想\"连接\"（连接人=社交、连接机会=创业）；反方想\"毒害\"（毒害心理=抑郁、毒害信息=假新闻）"
     },
     {
       "topic": "technology",
@@ -193,8 +264,13 @@
       "stance_label": "反方",
       "angle": "信息质量",
       "angle_index": 2,
-      "reasoning_chain": "假新闻传播速度远超辟谣 → 公众判断力下降 → 社会信任被侵蚀、舆论极化",
-      "example": "美国大选/疫情期间大量虚假信息通过Facebook传播，造成严重社会分裂"
+      "reasoning_chain": "假新闻传播速度远超辟谣 → 公众被大量真假混杂的信息淹没、难以分辨 → 社会信任被侵蚀、舆论极化",
+      "reasoning_chain_en": "Fake news spreads far faster than corrections → the public is flooded with mixed true and false information and cannot tell them apart → social trust is eroded and public opinion polarises",
+      "example": "美国大选/疫情期间大量虚假信息通过Facebook传播，造成严重社会分裂",
+      "example_en": "During U.S. elections and the pandemic, massive misinformation spread via Facebook, causing serious social division",
+      "topic_sentence": "社交媒体加速了虚假信息的传播，侵蚀社会信任。",
+      "topic_sentence_en": "Social media accelerates the spread of misinformation and erodes public trust.",
+      "memory_anchor": "正方想\"连接\"（连接人=社交、连接机会=创业）；反方想\"毒害\"（毒害心理=抑郁、毒害信息=假新闻）"
     },
     {
       "topic": "technology",
@@ -206,7 +282,12 @@
       "angle": "大规模失业",
       "angle_index": 1,
       "reasoning_chain": "AI自动化 → 重复性岗位大量消失 → 低技能劳动者失业且难以转型",
-      "example": "自动驾驶技术威胁全球数百万卡车司机/出租车司机的生计"
+      "reasoning_chain_en": "AI automation → massive loss of repetitive jobs → low-skilled workers become unemployed and struggle to retrain",
+      "example": "自动驾驶技术威胁全球数百万卡车司机/出租车司机的生计",
+      "example_en": "Self-driving technology threatens the livelihoods of millions of truck and taxi drivers worldwide",
+      "topic_sentence": "人工智能的发展可能导致大规模失业。",
+      "topic_sentence_en": "The development of AI may lead to mass unemployment.",
+      "memory_anchor": "正方想\"AI抢走了什么\"（抢工作=失业、抢财富=不平等）；反方想\"人类怎么赢\"（历史证明=新岗位、人与AI合作=工作升级）"
     },
     {
       "topic": "technology",
@@ -217,8 +298,13 @@
       "stance_label": "正方",
       "angle": "社会不平等",
       "angle_index": 2,
-      "reasoning_chain": "AI带来的利润集中在科技公司和资本持有者手中 → 普通劳动者收入下降 → 贫富差距进一步扩大",
-      "example": "全球前10大科技公司市值暴涨，同期中产阶级收入增长停滞"
+      "reasoning_chain": "AI自动化取代大量岗位 → 普通劳动者议价能力下降、收入减少 → 而AI利润集中在科技公司和资本持有者手中 → 贫富差距进一步扩大",
+      "reasoning_chain_en": "AI automation replaces many jobs → ordinary workers lose bargaining power and income falls → AI profits concentrate in tech companies and capital holders → the wealth gap widens further",
+      "example": "全球前10大科技公司市值暴涨，同期中产阶级收入增长停滞",
+      "example_en": "The market value of the world's top 10 tech companies has soared while middle-class income growth has stagnated over the same period",
+      "topic_sentence": "人工智能可能进一步加剧社会贫富分化。",
+      "topic_sentence_en": "AI may further widen the gap between the rich and the poor.",
+      "memory_anchor": "正方想\"AI抢走了什么\"（抢工作=失业、抢财富=不平等）；反方想\"人类怎么赢\"（历史证明=新岗位、人与AI合作=工作升级）"
     },
     {
       "topic": "technology",
@@ -230,8 +316,12 @@
       "angle": "历史规律",
       "angle_index": 1,
       "reasoning_chain": "每次技术革命都淘汰旧岗位但创造更多新岗位 → 人类通过学习新技能实现了转型 → AI时代同样会催生大量目前无法想象的新职业",
+      "reasoning_chain_en": "Every technological revolution has eliminated old jobs but created even more new ones → humans adapted by learning new skills → the AI era will likewise spawn many new professions we cannot yet imagine",
       "example": "工业革命淘汰了手工织布，但创造了更多工厂管理和工程岗位",
-      "reasoning_chain_en": null
+      "example_en": "The Industrial Revolution eliminated hand-weaving, but created far more factory management and engineering jobs",
+      "topic_sentence": "人工智能将创造更多新就业机会而非导致失业。",
+      "topic_sentence_en": "AI will create more new jobs rather than cause mass unemployment.",
+      "memory_anchor": "正方想\"AI抢走了什么\"（抢工作=失业、抢财富=不平等）；反方想\"人类怎么赢\"（历史证明=新岗位、人与AI合作=工作升级）"
     },
     {
       "topic": "technology",
@@ -240,10 +330,15 @@
       "direction_index": 2,
       "stance": "con",
       "stance_label": "反方",
-      "angle": "新岗位创造",
+      "angle": "人机协作",
       "angle_index": 2,
-      "reasoning_chain": "AI处理重复劳动 → 人类转向创意/情感/决策类工作 → 工作质量反而提升",
-      "example": "AI普及后数据标注师/AI训练师/提示工程师等全新职业涌现"
+      "reasoning_chain": "AI接管重复性劳动 → 人类得以转向创意/情感/决策类工作 → 工作内容更有意义，职业满意度和产出质量提升",
+      "reasoning_chain_en": "AI takes over repetitive labour → humans shift to creative, emotional, and decision-making work → job content becomes more meaningful, and job satisfaction and output quality improve",
+      "example": "会计师从繁琐的记账工作中解放出来，转而为客户提供财务战略咨询，工作满意度和收入均提升",
+      "example_en": "Accountants are freed from tedious bookkeeping and instead provide clients with financial strategy consulting, improving both job satisfaction and income",
+      "topic_sentence": "人工智能能提升人类工作的质量和价值。",
+      "topic_sentence_en": "AI can improve the quality and value of human work.",
+      "memory_anchor": "正方想\"AI抢走了什么\"（抢工作=失业、抢财富=不平等）；反方想\"人类怎么赢\"（历史证明=新岗位、人与AI合作=工作升级）"
     },
     {
       "topic": "technology",
@@ -255,7 +350,12 @@
       "angle": "身心健康",
       "angle_index": 1,
       "reasoning_chain": "长时间屏幕暴露 → 视力下降/睡眠紊乱/运动不足 → 儿童身体发育受损",
-      "example": "WHO建议5岁以下儿童每日屏幕时间不超过1小时；中国青少年近视率已超60%"
+      "reasoning_chain_en": "Prolonged screen exposure → deteriorating eyesight, disrupted sleep, and lack of exercise → children's physical development is harmed",
+      "example": "WHO建议5岁以下儿童每日屏幕时间不超过1小时；中国青少年近视率已超60%",
+      "example_en": "The WHO recommends no more than 1 hour of daily screen time for children under 5; China's youth myopia rate already exceeds 60%",
+      "topic_sentence": "过度使用电子设备损害儿童的身体健康。",
+      "topic_sentence_en": "Excessive use of electronic devices harms children's physical health.",
+      "memory_anchor": "正方想\"屏幕伤了什么\"（伤身体=近视肥胖、伤大脑=注意力）；反方想\"屏幕给了什么\"（给学习工具=教育App、给未来技能=数字素养）"
     },
     {
       "topic": "technology",
@@ -267,7 +367,12 @@
       "angle": "学习能力",
       "angle_index": 2,
       "reasoning_chain": "碎片化信息浏览 → 注意力持续时间缩短 → 深度阅读和思考能力退化",
-      "example": "研究显示频繁使用短视频的儿童在持续注意力测试中表现显著更差"
+      "reasoning_chain_en": "Browsing fragmented information → attention span shortens → ability for deep reading and thinking deteriorates",
+      "example": "许多小学老师反映，习惯刷短视频的学生在课堂上无法专注超过10分钟，阅读整本书的能力明显退化",
+      "example_en": "Many primary school teachers report that students accustomed to short videos cannot focus for more than 10 minutes in class, and their ability to read entire books has noticeably declined",
+      "topic_sentence": "电子设备削弱儿童的注意力和深度思考能力。",
+      "topic_sentence_en": "Electronic devices weaken children's attention spans and capacity for deep thinking.",
+      "memory_anchor": "正方想\"屏幕伤了什么\"（伤身体=近视肥胖、伤大脑=注意力）；反方想\"屏幕给了什么\"（给学习工具=教育App、给未来技能=数字素养）"
     },
     {
       "topic": "technology",
@@ -279,8 +384,12 @@
       "angle": "学习工具",
       "angle_index": 1,
       "reasoning_chain": "教育类App使抽象知识可视化 → 提高学习兴趣和效率 → 学生理解更快、成绩提升更明显",
+      "reasoning_chain_en": "Educational apps visualise abstract knowledge → increase learning interest and efficiency → students understand faster and achieve better grades",
       "example": "芬兰将编程纳入小学课程，儿童通过平板学习逻辑思维",
-      "reasoning_chain_en": null
+      "example_en": "Finland has incorporated coding into the primary school curriculum, with children learning logical thinking through tablets",
+      "topic_sentence": "电子设备是提升儿童学习效果的有力工具。",
+      "topic_sentence_en": "Electronic devices are powerful tools for enhancing children's learning.",
+      "memory_anchor": "正方想\"屏幕伤了什么\"（伤身体=近视肥胖、伤大脑=注意力）；反方想\"屏幕给了什么\"（给学习工具=教育App、给未来技能=数字素养）"
     },
     {
       "topic": "technology",
@@ -292,7 +401,12 @@
       "angle": "未来竞争力",
       "angle_index": 2,
       "reasoning_chain": "数字技能是未来必备素养 → 从小接触培养数字直觉 → 长大后更具职业竞争力",
-      "example": "早期接触科技的孩子在STEM领域的长期表现优于同龄人"
+      "reasoning_chain_en": "Digital skills are essential future competencies → early exposure builds digital intuition → greater career competitiveness in adulthood",
+      "example": "早期接触科技的孩子在STEM领域的长期表现优于同龄人",
+      "example_en": "Children with early exposure to technology outperform their peers in STEM fields in the long run",
+      "topic_sentence": "早期接触电子设备有助于培养儿童的未来竞争力。",
+      "topic_sentence_en": "Early exposure to electronic devices helps build children's future competitiveness.",
+      "memory_anchor": "正方想\"屏幕伤了什么\"（伤身体=近视肥胖、伤大脑=注意力）；反方想\"屏幕给了什么\"（给学习工具=教育App、给未来技能=数字素养）"
     },
     {
       "topic": "environment",
@@ -304,8 +418,12 @@
       "angle": "规模和力度",
       "angle_index": 1,
       "reasoning_chain": "环境问题涉及整个工业体系 → 个人无权关停污染工厂或制定排放标准 → 没有政府强制介入，污染企业不会主动改变",
+      "reasoning_chain_en": "Environmental problems involve the entire industrial system → individuals have no power to shut down polluting factories or set emission standards → without government enforcement, polluting companies will not change voluntarily",
       "example": "欧盟碳排放交易体系使工业排放量10年下降35%，远超个人行为改变的效果",
-      "reasoning_chain_en": null
+      "example_en": "The EU Emissions Trading System reduced industrial emissions by 35% over 10 years, far exceeding the impact of individual behaviour changes",
+      "topic_sentence": "环境保护主要是政府的责任。",
+      "topic_sentence_en": "Environmental protection is primarily the government's responsibility.",
+      "memory_anchor": "正方（政府）想\"个人太弱\"（规模大=需要政府强制、个人影响=微不足道）；反方（个人）想\"消费者有力量\"（用钱投票=市场驱动、星星之火=集体运动）"
     },
     {
       "topic": "environment",
@@ -317,9 +435,12 @@
       "angle": "个人影响有限",
       "angle_index": 2,
       "reasoning_chain": "个人减排量微不足道（如少开一次车节省的碳排放不到1kg）→ 而一家工厂一天排放数百吨 → 个人行为对全球变暖几乎没有实质影响",
-      "example": "一个人全年不开车节省约2吨碳排放，而一家钢铁厂一天排放数千吨——个人行为对全局几乎无影响",
-      "reasoning_chain_en": null,
-      "example_en": null
+      "reasoning_chain_en": "Individual emission reductions are negligible (e.g. skipping one car trip saves less than 1 kg of CO₂) → while a single factory emits hundreds of tonnes per day → individual actions have virtually no real impact on global warming",
+      "example": "即使全英国所有家庭都完美执行垃圾分类，减少的碳排放也不到全国工业排放总量的1%",
+      "example_en": "Even if every household in the UK sorted waste perfectly, the reduction in carbon emissions would be less than 1% of total national industrial emissions",
+      "topic_sentence": "个人行为对解决环境问题的作用微乎其微。",
+      "topic_sentence_en": "Individual actions have a negligible impact on solving environmental problems.",
+      "memory_anchor": "正方（政府）想\"个人太弱\"（规模大=需要政府强制、个人影响=微不足道）；反方（个人）想\"消费者有力量\"（用钱投票=市场驱动、星星之火=集体运动）"
     },
     {
       "topic": "environment",
@@ -330,8 +451,13 @@
       "stance_label": "反方",
       "angle": "消费驱动生产",
       "angle_index": 1,
-      "reasoning_chain": "消费者选择决定市场方向 → 如果人人拒绝高污染产品 → 企业被迫转型",
-      "example": "消费者对塑料袋的抵制推动了多国「限塑令」的出台"
+      "reasoning_chain": "消费者选择决定市场方向 → 如果人人拒绝高污染产品，这些产品销量就会暴跌 → 企业利润受损，被迫转向清洁生产",
+      "reasoning_chain_en": "Consumer choices determine market direction → if everyone rejects high-pollution products, sales will plummet → companies lose profits and are forced to shift to clean production",
+      "example": "越来越多消费者选择环保品牌（如Patagonia），迫使快时尚品牌推出可持续产品线以挽回市场份额",
+      "example_en": "Growing numbers of consumers choosing eco-brands like Patagonia have forced fast-fashion brands to launch sustainable product lines to regain market share",
+      "topic_sentence": "个人消费选择能有效推动企业环保转型。",
+      "topic_sentence_en": "Individual consumer choices can effectively drive corporate environmental reform.",
+      "memory_anchor": "正方（政府）想\"个人太弱\"（规模大=需要政府强制、个人影响=微不足道）；反方（个人）想\"消费者有力量\"（用钱投票=市场驱动、星星之火=集体运动）"
     },
     {
       "topic": "environment",
@@ -342,8 +468,13 @@
       "stance_label": "反方",
       "angle": "集体行动力量",
       "angle_index": 2,
-      "reasoning_chain": "个人行为有示范效应 → 影响周围人 → 形成社会风气后反过来推动政策制定",
-      "example": "瑞典「飞行羞耻」运动从个人倡议扩散为全国运动，推动铁路投资增加"
+      "reasoning_chain": "个人环保行为有示范效应 → 影响周围人效仿 → 逐渐形成大规模社会共识和运动 → 反过来推动政府制定环保政策",
+      "reasoning_chain_en": "Individual environmental actions have a demonstration effect → influence others to follow → gradually form large-scale social consensus and movements → which in turn push governments to adopt environmental policies",
+      "example": "瑞典「飞行羞耻」运动从个人倡议扩散为全国运动，推动铁路投资增加",
+      "example_en": "Sweden's 'flight shame' movement spread from individual advocacy to a national campaign, driving increased investment in railways",
+      "topic_sentence": "个人环保行动能汇聚成推动社会变革的强大力量。",
+      "topic_sentence_en": "Individual environmental actions can build into a powerful force for social change.",
+      "memory_anchor": "正方（政府）想\"个人太弱\"（规模大=需要政府强制、个人影响=微不足道）；反方（个人）想\"消费者有力量\"（用钱投票=市场驱动、星星之火=集体运动）"
     },
     {
       "topic": "environment",
@@ -355,8 +486,12 @@
       "angle": "绿色经济",
       "angle_index": 1,
       "reasoning_chain": "清洁能源产业本身创造大量就业和GDP → 国家在环保的同时经济也在增长 → 证明经济发展和环保并非对立关系",
+      "reasoning_chain_en": "The clean energy industry itself creates massive employment and GDP → the economy grows while the environment is protected → proving that economic development and environmental protection are not in conflict",
       "example": "中国新能源产业（光伏/电动车）成为经济增长新引擎，出口全球领先",
-      "reasoning_chain_en": null
+      "example_en": "China's new energy industries (solar panels, electric vehicles) have become a new engine of economic growth, with exports leading the world",
+      "topic_sentence": "经济发展和环境保护完全可以兼顾。",
+      "topic_sentence_en": "Economic development and environmental protection can go hand in hand.",
+      "memory_anchor": "正方想\"双赢\"（绿色产业=赚钱、破坏环境=更贵）；反方想\"现实很骨感\"（穷国先吃饭=阶段、技术太贵=成本）"
     },
     {
       "topic": "environment",
@@ -368,8 +503,12 @@
       "angle": "长期利益",
       "angle_index": 2,
       "reasoning_chain": "环境破坏引发洪灾/干旱/疾病 → 灾后重建和医疗支出远超前期环保投入 → 不环保反而花更多钱、经济损失更大",
+      "reasoning_chain_en": "Environmental destruction causes floods, droughts, and disease → post-disaster reconstruction and healthcare costs far exceed earlier environmental investment → neglecting the environment ends up costing more",
       "example": "世界银行估算气候变化到2030年将使全球GDP损失5%以上",
-      "reasoning_chain_en": null
+      "example_en": "The World Bank estimates that climate change will cause global GDP losses of over 5% by 2030",
+      "topic_sentence": "保护环境从长远来看就是保护经济利益。",
+      "topic_sentence_en": "Protecting the environment is, in the long run, protecting economic interests.",
+      "memory_anchor": "正方想\"双赢\"（绿色产业=赚钱、破坏环境=更贵）；反方想\"现实很骨感\"（穷国先吃饭=阶段、技术太贵=成本）"
     },
     {
       "topic": "environment",
@@ -381,8 +520,12 @@
       "angle": "发展阶段限制",
       "angle_index": 1,
       "reasoning_chain": "贫困国家首要任务是解决温饱 → 强制高环保标准大幅增加生产成本 → 工厂无法盈利、工业化停滞、人民持续贫困",
+      "reasoning_chain_en": "The top priority of poor countries is to feed their people → enforcing high environmental standards greatly raises production costs → factories cannot profit, industrialisation stalls, and people remain in poverty",
       "example": "非洲国家仍有数亿人用不上电，限制化石能源等于限制他们脱贫",
-      "reasoning_chain_en": null
+      "example_en": "Hundreds of millions in African countries still lack electricity; restricting fossil fuels effectively restricts their path out of poverty",
+      "topic_sentence": "对贫困国家而言，环保标准可能阻碍经济发展。",
+      "topic_sentence_en": "For developing countries, strict environmental standards may hinder economic growth.",
+      "memory_anchor": "正方想\"双赢\"（绿色产业=赚钱、破坏环境=更贵）；反方想\"现实很骨感\"（穷国先吃饭=阶段、技术太贵=成本）"
     },
     {
       "topic": "environment",
@@ -394,7 +537,12 @@
       "angle": "成本过高",
       "angle_index": 2,
       "reasoning_chain": "清洁技术成本高 → 中小企业无力承担 → 过快转型导致企业倒闭、失业潮",
-      "example": "欧洲部分传统制造业因碳税过高而外迁至环保标准更低的国家（碳泄漏问题）"
+      "reasoning_chain_en": "Clean technology is expensive → small and medium enterprises cannot afford it → an overly rapid transition leads to business closures and waves of unemployment",
+      "example": "欧洲部分传统制造业因碳税过高而外迁至环保标准更低的国家（碳泄漏问题）",
+      "example_en": "Some traditional European manufacturers have relocated to countries with lower environmental standards due to high carbon taxes (carbon leakage)",
+      "topic_sentence": "过快的绿色转型可能对企业造成毁灭性打击。",
+      "topic_sentence_en": "An overly rapid green transition may devastate businesses.",
+      "memory_anchor": "正方想\"双赢\"（绿色产业=赚钱、破坏环境=更贵）；反方想\"现实很骨感\"（穷国先吃饭=阶段、技术太贵=成本）"
     },
     {
       "topic": "environment",
@@ -405,8 +553,13 @@
       "stance_label": "正方",
       "angle": "环境",
       "angle_index": 1,
-      "reasoning_chain": "汽车尾气是城市空气污染主要来源 → 限制私家车可直接改善空气质量 → 减少呼吸道疾病",
-      "example": "伦敦征收拥堵费后市中心空气质量改善，PM2.5浓度下降"
+      "reasoning_chain": "汽车尾气是城市空气污染主要来源 → 限制私家车可直接减少尾气排放 → 空气质量显著改善",
+      "reasoning_chain_en": "Vehicle exhaust is a major source of urban air pollution → restricting private cars can directly reduce emissions → air quality improves significantly",
+      "example": "伦敦征收拥堵费后市中心空气质量改善，PM2.5浓度下降",
+      "example_en": "After London introduced a congestion charge, air quality in the city centre improved and PM2.5 levels dropped",
+      "topic_sentence": "限制私家车有助于改善城市空气质量。",
+      "topic_sentence_en": "Restricting private cars helps improve urban air quality.",
+      "memory_anchor": "正方想\"城市好处\"（少尾气=环境、少堵车=效率）；反方想\"人的难处\"（弱势群体=出行需求、公交不行=替代不成熟）"
     },
     {
       "topic": "environment",
@@ -418,7 +571,12 @@
       "angle": "城市效率",
       "angle_index": 2,
       "reasoning_chain": "私家车过多 → 交通拥堵严重 → 浪费时间和燃油、降低城市运转效率",
-      "example": "新加坡通过高额车辆拥有证+完善公共交通，拥堵率全球最低之一"
+      "reasoning_chain_en": "Too many private cars → severe traffic congestion → wasted time and fuel, reduced urban efficiency",
+      "example": "新加坡通过高额车辆拥有证+完善公共交通，拥堵率全球最低之一",
+      "example_en": "Singapore uses expensive vehicle ownership certificates and excellent public transport to achieve one of the lowest congestion rates in the world",
+      "topic_sentence": "减少私家车能有效提升城市交通效率。",
+      "topic_sentence_en": "Reducing private cars can significantly improve urban transport efficiency.",
+      "memory_anchor": "正方想\"城市好处\"（少尾气=环境、少堵车=效率）；反方想\"人的难处\"（弱势群体=出行需求、公交不行=替代不成熟）"
     },
     {
       "topic": "environment",
@@ -430,9 +588,12 @@
       "angle": "个人自由与便利",
       "angle_index": 1,
       "reasoning_chain": "老人/孩子/残障人士无法使用公共交通 → 私家车是他们唯一的出行方式 → 限车直接导致这些群体出行困难甚至无法就医",
+      "reasoning_chain_en": "The elderly, children, and disabled people cannot use public transport → private cars are their only means of travel → restricting cars directly causes these groups difficulty getting around or even accessing medical care",
       "example": "老年人、孕妇、残障人士无法挤公交/骑车，限车后这些群体连就医都成问题",
-      "reasoning_chain_en": null,
-      "example_en": null
+      "example_en": "The elderly, pregnant women, and disabled people cannot crowd onto buses or cycle; after car restrictions, these groups struggle even to reach hospitals",
+      "topic_sentence": "限制私家车对弱势群体的基本出行需求造成严重影响。",
+      "topic_sentence_en": "Restricting private cars severely impacts the basic mobility needs of vulnerable groups.",
+      "memory_anchor": "正方想\"城市好处\"（少尾气=环境、少堵车=效率）；反方想\"人的难处\"（弱势群体=出行需求、公交不行=替代不成熟）"
     },
     {
       "topic": "environment",
@@ -444,8 +605,12 @@
       "angle": "替代方案不成熟",
       "angle_index": 2,
       "reasoning_chain": "许多城市公共交通覆盖不足 → 贸然限车后居民无替代出行方式 → 通勤时间暴增、生活质量严重下降",
+      "reasoning_chain_en": "Many cities have inadequate public transport coverage → hasty car restrictions leave residents with no alternative → commute times soar and quality of life drops sharply",
       "example": "部分城市限行后「打车难」「公交爆满」，反而降低了生活质量",
-      "reasoning_chain_en": null
+      "example_en": "After some cities imposed driving restrictions, residents faced difficulties hailing taxis and overcrowded buses, which actually lowered quality of life",
+      "topic_sentence": "在公共交通不完善时限制私家车是不现实的。",
+      "topic_sentence_en": "Restricting private cars is impractical when public transport remains inadequate.",
+      "memory_anchor": "正方想\"城市好处\"（少尾气=环境、少堵车=效率）；反方想\"人的难处\"（弱势群体=出行需求、公交不行=替代不成熟）"
     },
     {
       "topic": "health",
@@ -457,7 +622,12 @@
       "angle": "公共健康",
       "angle_index": 1,
       "reasoning_chain": "加税 → 价格上升 → 消费量下降 → 肥胖率/糖尿病发病率降低",
-      "example": "墨西哥2014年征收含糖饮料税后，含糖饮料销量下降12%"
+      "reasoning_chain_en": "Tax imposed → prices rise → consumption falls → obesity and diabetes rates decline",
+      "example": "墨西哥2014年征收含糖饮料税后，含糖饮料销量下降12%",
+      "example_en": "After Mexico introduced a sugary drink tax in 2014, sales of sugary beverages dropped by 12%",
+      "topic_sentence": "对垃圾食品征税有助于改善公共健康。",
+      "topic_sentence_en": "Taxing junk food can help improve public health.",
+      "memory_anchor": "正方想\"税的好处\"（少吃=健康、少病=省医疗费）；反方想\"税的坏处\"（管太多=自由、穷人更惨=不公平）"
     },
     {
       "topic": "health",
@@ -468,9 +638,13 @@
       "stance_label": "正方",
       "angle": "减轻医疗负担",
       "angle_index": 2,
-      "reasoning_chain": "不健康饮食导致慢性病大量增加 → 公共医疗系统不堪重负 → 征税可降低消费量，从源头减轻医疗支出压力",
+      "reasoning_chain": "不健康饮食导致慢性病大量增加 → 公共医疗系统不堪重负 → 征税促使企业主动降低有害成分含量，从源头减少健康危害",
+      "reasoning_chain_en": "Unhealthy diets cause a surge in chronic diseases → the public healthcare system is overwhelmed → taxation incentivises companies to voluntarily reduce harmful ingredients, cutting health risks at the source",
       "example": "英国糖税实施后，饮料公司主动降低产品含糖量以避税",
-      "reasoning_chain_en": null
+      "example_en": "After the UK sugar tax was implemented, beverage companies voluntarily reduced the sugar content of their products to avoid the tax",
+      "topic_sentence": "垃圾食品税能有效减轻公共医疗系统的负担。",
+      "topic_sentence_en": "A junk food tax can effectively ease the burden on public healthcare systems.",
+      "memory_anchor": "正方想\"税的好处\"（少吃=健康、少病=省医疗费）；反方想\"税的坏处\"（管太多=自由、穷人更惨=不公平）"
     },
     {
       "topic": "health",
@@ -482,8 +656,12 @@
       "angle": "个人自由",
       "angle_index": 1,
       "reasoning_chain": "饮食是个人选择 → 政府用税收强行干预会引发公众反感 → 民众抵触情绪导致政策执行困难甚至被迫取消",
+      "reasoning_chain_en": "Diet is a personal choice → government interference through taxation provokes public resentment → public backlash makes the policy hard to enforce or forces its cancellation",
       "example": "丹麦曾征收脂肪税，因民众强烈反对和效果不明显，一年后被迫取消",
-      "reasoning_chain_en": null
+      "example_en": "Denmark once imposed a fat tax, but strong public opposition and unclear results forced its cancellation after just one year",
+      "topic_sentence": "政府不应通过征税干预公民的饮食自由。",
+      "topic_sentence_en": "Governments should not use taxation to interfere with citizens' dietary freedom.",
+      "memory_anchor": "正方想\"税的好处\"（少吃=健康、少病=省医疗费）；反方想\"税的坏处\"（管太多=自由、穷人更惨=不公平）"
     },
     {
       "topic": "health",
@@ -495,7 +673,12 @@
       "angle": "对穷人不公平",
       "angle_index": 2,
       "reasoning_chain": "穷人食品支出占收入比例更高 → 食品税对低收入群体打击更大 → 加剧社会不平等",
-      "example": "研究显示食品税对低收入家庭的经济压力是高收入家庭的3倍"
+      "reasoning_chain_en": "The poor spend a higher share of income on food → a food tax hits low-income groups harder → worsening social inequality",
+      "example": "墨西哥含糖饮料税实施后，低收入社区居民转而购买更廉价的劣质饮品，健康状况并未改善",
+      "example_en": "After Mexico introduced its sugary drink tax, residents in low-income communities switched to cheaper, lower-quality beverages, and health outcomes did not improve",
+      "topic_sentence": "垃圾食品税对低收入群体不公平。",
+      "topic_sentence_en": "A junk food tax is unfair to low-income groups.",
+      "memory_anchor": "正方想\"税的好处\"（少吃=健康、少病=省医疗费）；反方想\"税的坏处\"（管太多=自由、穷人更惨=不公平）"
     },
     {
       "topic": "health",
@@ -507,7 +690,12 @@
       "angle": "预防疾病",
       "angle_index": 1,
       "reasoning_chain": "规律运动预防心血管病/肥胖/抑郁 → 国民整体健康水平提升 → 医疗支出减少",
-      "example": "日本企业推行「工间操」制度，员工健康指标和工作效率均有改善"
+      "reasoning_chain_en": "Regular exercise prevents cardiovascular disease, obesity, and depression → overall national health improves → healthcare spending decreases",
+      "example": "日本企业推行「工间操」制度，员工健康指标和工作效率均有改善",
+      "example_en": "Japanese companies implement workplace exercise breaks, resulting in improved employee health indicators and work efficiency",
+      "topic_sentence": "政府推广运动有助于预防疾病、提升国民健康。",
+      "topic_sentence_en": "Government-promoted exercise helps prevent disease and improve public health.",
+      "memory_anchor": "正方想\"运动的好处\"（少生病=预防疾病、少犯罪=社会效益）；反方想\"强制的坏处\"（逼人反感=适得其反、钱花错地方=资源浪费）"
     },
     {
       "topic": "health",
@@ -518,9 +706,13 @@
       "stance_label": "正方",
       "angle": "社会效益",
       "angle_index": 2,
-      "reasoning_chain": "体育活动给青少年提供消耗精力的出口 → 减少无所事事导致的打架斗殴 → 社区治安改善、居民安全感提升",
+      "reasoning_chain": "体育活动给青少年提供消耗精力的正面出口 → 同时建立归属感和社交圈，减少无所事事的闲散时间 → 打架斗殴和反社会行为减少，社区治安改善",
+      "reasoning_chain_en": "Sports provide teenagers with a positive outlet for energy → while building a sense of belonging and social circles, reducing idle time → fights and antisocial behaviour decrease, and community safety improves",
       "example": "英国社区体育项目使参与区域的青少年犯罪率下降了40%",
-      "reasoning_chain_en": null
+      "example_en": "A UK community sports programme reduced juvenile crime rates by 40% in participating areas",
+      "topic_sentence": "推广体育活动有助于降低青少年犯罪率。",
+      "topic_sentence_en": "Promoting sports helps reduce juvenile crime rates.",
+      "memory_anchor": "正方想\"运动的好处\"（少生病=预防疾病、少犯罪=社会效益）；反方想\"强制的坏处\"（逼人反感=适得其反、钱花错地方=资源浪费）"
     },
     {
       "topic": "health",
@@ -532,8 +724,12 @@
       "angle": "个人选择权",
       "angle_index": 1,
       "reasoning_chain": "强制规定运动时间和方式 → 人们对运动产生抵触心理 → 反而更不愿主动运动，参与率下降",
-      "example": "调查显示被强制参加体育课的学生成年后反而更不愿运动",
-      "reasoning_chain_en": null
+      "reasoning_chain_en": "Mandating exercise times and forms → people develop resistance toward exercise → they become even less willing to exercise voluntarily, and participation rates drop",
+      "example": "日本部分学校取消强制晨跑后，学生反而自发组建跑步社团，自愿参与率比强制时期更高",
+      "example_en": "After some Japanese schools cancelled mandatory morning runs, students spontaneously formed running clubs, with voluntary participation rates higher than during the compulsory period",
+      "topic_sentence": "强制推广运动可能适得其反，反而降低参与率。",
+      "topic_sentence_en": "Mandatory exercise programmes may backfire and actually reduce participation rates.",
+      "memory_anchor": "正方想\"运动的好处\"（少生病=预防疾病、少犯罪=社会效益）；反方想\"强制的坏处\"（逼人反感=适得其反、钱花错地方=资源浪费）"
     },
     {
       "topic": "health",
@@ -545,8 +741,12 @@
       "angle": "资源优先级",
       "angle_index": 2,
       "reasoning_chain": "政府资金有限 → 大量投入体育设施会挤占教育/医疗预算 → 其他更紧迫的公共服务质量下降",
-      "example": "许多城市建了大量体育场馆却利用率很低，造成财政浪费",
-      "reasoning_chain_en": null
+      "reasoning_chain_en": "Government funds are limited → heavy investment in sports facilities crowds out education/healthcare budgets → quality of other more urgent public services declines",
+      "example": "巴西为世界杯建造大量体育场馆，同期多所公立医院因预算被削减而关闭",
+      "example_en": "Brazil built numerous stadiums for the World Cup while multiple public hospitals closed due to budget cuts during the same period",
+      "topic_sentence": "政府资源应优先投入比体育更紧迫的领域。",
+      "topic_sentence_en": "Government resources should be directed to more urgent areas than sports.",
+      "memory_anchor": "正方想\"运动的好处\"（少生病=预防疾病、少犯罪=社会效益）；反方想\"强制的坏处\"（逼人反感=适得其反、钱花错地方=资源浪费）"
     },
     {
       "topic": "health",
@@ -558,7 +758,12 @@
       "angle": "个人健康",
       "angle_index": 1,
       "reasoning_chain": "长期过劳 → 身心疾病（猝死/抑郁/家庭破裂）→ 最终个人生活质量崩塌",
-      "example": "日本「过劳死」(karoshi)现象引发全球关注，每年数百人因工作猝死"
+      "reasoning_chain_en": "Chronic overwork → physical and mental illness (sudden death, depression, family breakdown) → ultimately personal quality of life collapses",
+      "example": "日本「过劳死」(karoshi)现象引发全球关注，每年数百人因工作猝死",
+      "example_en": "Japan's 'karoshi' (death from overwork) phenomenon has drawn global attention, with hundreds dying from work-related causes each year",
+      "topic_sentence": "工作与生活的平衡对身心健康至关重要。",
+      "topic_sentence_en": "Work-life balance is essential for physical and mental well-being.",
+      "memory_anchor": "正方想\"平衡的好处\"（不猝死=健康、休息好反而干得好=效率）；反方想\"不平衡的理由\"（年轻该拼=阶段、没钱谈什么平衡=现实）"
     },
     {
       "topic": "health",
@@ -570,7 +775,12 @@
       "angle": "工作效率",
       "angle_index": 2,
       "reasoning_chain": "适当休息 → 恢复精力和创造力 → 反而提高工作产出和质量",
-      "example": "微软日本试行四天工作制后，生产力提升了40%"
+      "reasoning_chain_en": "Adequate rest → restores energy and creativity → actually increases work output and quality",
+      "example": "微软日本试行四天工作制后，生产力提升了40%",
+      "example_en": "After Microsoft Japan trialled a four-day work week, productivity rose by 40%",
+      "topic_sentence": "良好的工作生活平衡反而能提高工作效率。",
+      "topic_sentence_en": "A good work-life balance actually improves work productivity.",
+      "memory_anchor": "正方想\"平衡的好处\"（不猝死=健康、休息好反而干得好=效率）；反方想\"不平衡的理由\"（年轻该拼=阶段、没钱谈什么平衡=现实）"
     },
     {
       "topic": "health",
@@ -582,8 +792,12 @@
       "angle": "职业发展阶段",
       "angle_index": 1,
       "reasoning_chain": "年轻时拼搏积累技能和人脉 → 30-40岁时拥有更高收入和职位 → 中年后反而有更多自由支配时间和经济保障",
-      "example": "许多成功创业者在早期每周工作80+小时，才建立起后来的事业",
-      "reasoning_chain_en": null
+      "reasoning_chain_en": "Working hard when young builds skills and networks → by 30-40 one enjoys higher income and positions → in middle age one actually has more free time and financial security",
+      "example": "硅谷工程师普遍在25-35岁高强度工作积累股权，35岁后许多人选择半退休或转为顾问，实现了财务自由",
+      "example_en": "Silicon Valley engineers commonly work intensively from 25 to 35 to accumulate stock options, and many choose semi-retirement or consulting roles after 35, achieving financial freedom",
+      "topic_sentence": "在职业关键期适当牺牲平衡有利于长远发展。",
+      "topic_sentence_en": "Sacrificing some balance during critical career stages benefits long-term development.",
+      "memory_anchor": "正方想\"平衡的好处\"（不猝死=健康、休息好反而干得好=效率）；反方想\"不平衡的理由\"（年轻该拼=阶段、没钱谈什么平衡=现实）"
     },
     {
       "topic": "health",
@@ -594,9 +808,13 @@
       "stance_label": "反方",
       "angle": "经济现实",
       "angle_index": 2,
-      "reasoning_chain": "生活成本高（房贷/子女教育）→ 不加班收入无法覆盖基本开支 → 低收入者被迫加班，根本没有选择“平衡”的余地",
+      "reasoning_chain": "生活成本高（房贷/子女教育）→ 不加班收入无法覆盖基本开支 → 低收入者被迫加班，根本没有选择「平衡」的余地",
+      "reasoning_chain_en": "High living costs (mortgage, children's education) → without overtime, income cannot cover basic expenses → low-income earners are forced to work overtime and have no room to choose 'balance'",
       "example": "发展中国家的工薪阶层如果追求「平衡」，可能连基本生活都无法维持",
-      "reasoning_chain_en": null
+      "example_en": "Working-class people in developing countries may not be able to maintain even basic living standards if they pursue 'balance'",
+      "topic_sentence": "对许多人而言，工作生活平衡是一种经济奢侈。",
+      "topic_sentence_en": "For many people, work-life balance is an economic luxury they cannot afford.",
+      "memory_anchor": "正方想\"平衡的好处\"（不猝死=健康、休息好反而干得好=效率）；反方想\"不平衡的理由\"（年轻该拼=阶段、没钱谈什么平衡=现实）"
     },
     {
       "topic": "government",
@@ -608,7 +826,12 @@
       "angle": "长远回报",
       "angle_index": 1,
       "reasoning_chain": "教育提升人口素质 → 高素质劳动力创造更多经济价值 → 回报是几十年的复利效应",
-      "example": "韩国60年代起重金投入教育，一代人内从贫困国跃升为发达经济体"
+      "reasoning_chain_en": "Education raises population quality → a high-quality workforce creates more economic value → returns compound over decades",
+      "example": "韩国60年代起重金投入教育，一代人内从贫困国跃升为发达经济体",
+      "example_en": "South Korea invested heavily in education from the 1960s and rose from a poor nation to a developed economy within one generation",
+      "topic_sentence": "教育是回报最高的长期公共投资。",
+      "topic_sentence_en": "Education is the highest-return long-term public investment.",
+      "memory_anchor": "正方（教育优先）想\"教育回报\"（人才=长远回报、脱贫=根治贫困）；反方（医疗/基建优先）想\"基础先行\"（没命怎么学=健康优先、没路怎么到=基建支撑）"
     },
     {
       "topic": "government",
@@ -620,7 +843,12 @@
       "angle": "根治贫困",
       "angle_index": 2,
       "reasoning_chain": "教育是脱贫最有效手段 → 受教育者收入更高 → 减少对福利系统的长期依赖",
-      "example": "世界银行数据：每多受一年教育，个人终身收入平均增加10%"
+      "reasoning_chain_en": "Education is the most effective means to escape poverty → educated people earn more → reducing long-term dependence on the welfare system",
+      "example": "世界银行数据：每多受一年教育，个人终身收入平均增加10%",
+      "example_en": "World Bank data: each additional year of education raises an individual's lifetime income by an average of 10%",
+      "topic_sentence": "教育是打破贫困循环最有效的途径。",
+      "topic_sentence_en": "Education is the most effective way to break the cycle of poverty.",
+      "memory_anchor": "正方（教育优先）想\"教育回报\"（人才=长远回报、脱贫=根治贫困）；反方（医疗/基建优先）想\"基础先行\"（没命怎么学=健康优先、没路怎么到=基建支撑）"
     },
     {
       "topic": "government",
@@ -632,8 +860,12 @@
       "angle": "基本需求优先",
       "angle_index": 1,
       "reasoning_chain": "没有健康就无法学习和工作 → 如果国民连基本医疗都没有，教育投资的效果会被疾病抵消 → 培养出的人才因健康问题无法产出，教育投入被浪费",
+      "reasoning_chain_en": "Without health one cannot study or work → if citizens lack basic healthcare, the benefits of educational investment are cancelled out by disease → trained talent cannot be productive due to health problems, wasting the education investment",
       "example": "非洲疟疾高发地区的儿童因反复患病缺课率极高，教育投资效果大打折扣",
-      "reasoning_chain_en": null
+      "example_en": "In malaria-prone regions of Africa, children miss school repeatedly due to illness, greatly diminishing the impact of educational investment",
+      "topic_sentence": "医疗保障比教育投资更为紧迫。",
+      "topic_sentence_en": "Healthcare provision is more urgent than investment in education.",
+      "memory_anchor": "正方（教育优先）想\"教育回报\"（人才=长远回报、脱贫=根治贫困）；反方（医疗/基建优先）想\"基础先行\"（没命怎么学=健康优先、没路怎么到=基建支撑）"
     },
     {
       "topic": "government",
@@ -645,8 +877,12 @@
       "angle": "教育需要基础设施支撑",
       "angle_index": 2,
       "reasoning_chain": "道路不通/电力不足 → 学校建了学生也无法到达或正常上课 → 教育投资因基础设施缺失而无法产生效果",
+      "reasoning_chain_en": "Roads are impassable and electricity is insufficient → even if schools are built, students cannot reach them or attend classes normally → educational investment fails to produce results due to lack of infrastructure",
       "example": "印度农村通电通网后，在线教育参与率大幅上升",
-      "reasoning_chain_en": null
+      "example_en": "After rural India gained electricity and internet access, online education participation rates rose dramatically",
+      "topic_sentence": "基础设施建设是教育投资发挥效果的前提。",
+      "topic_sentence_en": "Infrastructure development is a prerequisite for educational investment to be effective.",
+      "memory_anchor": "正方（教育优先）想\"教育回报\"（人才=长远回报、脱贫=根治贫困）；反方（医疗/基建优先）想\"基础先行\"（没命怎么学=健康优先、没路怎么到=基建支撑）"
     },
     {
       "topic": "government",
@@ -658,8 +894,12 @@
       "angle": "成本效益",
       "angle_index": 1,
       "reasoning_chain": "一个囚犯每年花费纳税人数万美元 → 同样的钱用于教育/就业培训可帮助数十人不走上犯罪道路 → 预防性投入的社会回报远高于监禁",
+      "reasoning_chain_en": "One prisoner costs taxpayers tens of thousands of dollars per year → the same money spent on education/job training can keep dozens from turning to crime → the social return on preventive investment far exceeds that of imprisonment",
       "example": "美国每年监狱支出超800亿美元，但再犯率高达76%",
-      "reasoning_chain_en": null
+      "example_en": "The U.S. spends over $80 billion annually on prisons, yet the recidivism rate is as high as 76%",
+      "topic_sentence": "犯罪预防比事后惩罚更具成本效益。",
+      "topic_sentence_en": "Crime prevention is more cost-effective than punishment after the fact.",
+      "memory_anchor": "正方（预防）想\"省钱治本\"（监狱太贵=成本、根源在贫困=治本）；反方（惩罚）想\"吓人公平\"（严刑=威慑、受害者需要=正义）"
     },
     {
       "topic": "government",
@@ -671,7 +911,12 @@
       "angle": "治本而非治标",
       "angle_index": 2,
       "reasoning_chain": "犯罪根源是贫困/教育缺失/心理问题 → 只惩罚不解决根源 → 出狱后再犯率高",
-      "example": "挪威以教育康复为核心的监狱模式，再犯率仅20%，全球最低"
+      "reasoning_chain_en": "The root causes of crime are poverty, lack of education, and psychological problems → punishment alone does not address the root causes → reoffending rates after release remain high",
+      "example": "挪威以教育康复为核心的监狱模式，再犯率仅20%，全球最低",
+      "example_en": "Norway's prison model centred on education and rehabilitation has a reoffending rate of just 20%, the lowest in the world",
+      "topic_sentence": "只有解决犯罪根源才能真正降低犯罪率。",
+      "topic_sentence_en": "Only by addressing the root causes of crime can society truly reduce crime rates.",
+      "memory_anchor": "正方（预防）想\"省钱治本\"（监狱太贵=成本、根源在贫困=治本）；反方（惩罚）想\"吓人公平\"（严刑=威慑、受害者需要=正义）"
     },
     {
       "topic": "government",
@@ -683,8 +928,12 @@
       "angle": "威慑作用",
       "angle_index": 1,
       "reasoning_chain": "严厉惩罚的案例被媒体报道 → 潜在犯罪者看到后果而放弃犯罪念头 → 整体犯罪率因此下降",
+      "reasoning_chain_en": "Cases of severe punishment are reported by media → potential criminals see the consequences and abandon criminal intentions → overall crime rates fall as a result",
       "example": "新加坡严刑峻法（鞭刑/死刑），犯罪率极低，社会治安全球领先",
-      "reasoning_chain_en": null
+      "example_en": "Singapore's harsh penalties (caning, death penalty) are associated with extremely low crime rates and world-leading public safety",
+      "topic_sentence": "严厉的惩罚能有效威慑潜在犯罪者。",
+      "topic_sentence_en": "Severe punishment effectively deters potential criminals.",
+      "memory_anchor": "正方（预防）想\"省钱治本\"（监狱太贵=成本、根源在贫困=治本）；反方（惩罚）想\"吓人公平\"（严刑=威慑、受害者需要=正义）"
     },
     {
       "topic": "government",
@@ -695,8 +944,13 @@
       "stance_label": "反方",
       "angle": "公平正义",
       "angle_index": 2,
-      "reasoning_chain": "受害者需要正义 → 惩罚是对受害者的交代 → 没有惩罚则法律失去权威",
-      "example": "民调显示大多数犯罪受害者认为适当惩罚对其心理康复至关重要"
+      "reasoning_chain": "受害者遭受了实际伤害，需要看到加害者承担后果 → 惩罚给受害者提供心理上的正义感和安慰 → 如果犯罪不受惩罚，公众会认为法律无用，法律权威就会瓦解",
+      "reasoning_chain_en": "Victims suffer real harm and need to see offenders face consequences → punishment provides victims with a sense of justice and comfort → if crime goes unpunished, the public loses faith in the law and legal authority collapses",
+      "example": "民调显示大多数犯罪受害者认为适当惩罚对其心理康复至关重要",
+      "example_en": "Polls show that most crime victims consider appropriate punishment essential to their psychological recovery",
+      "topic_sentence": "惩罚是维护法律权威和社会正义的基础。",
+      "topic_sentence_en": "Punishment is fundamental to upholding legal authority and social justice.",
+      "memory_anchor": "正方（预防）想\"省钱治本\"（监狱太贵=成本、根源在贫困=治本）；反方（惩罚）想\"吓人公平\"（严刑=威慑、受害者需要=正义）"
     },
     {
       "topic": "government",
@@ -707,8 +961,13 @@
       "stance_label": "正方",
       "angle": "社会稳定",
       "angle_index": 1,
-      "reasoning_chain": "差距过大 → 底层绝望感增强 → 社会动荡/犯罪/民粹政治风险上升",
-      "example": "拉丁美洲贫富悬殊的国家普遍社会犯罪率高、政治不稳定"
+      "reasoning_chain": "贫富差距过大 → 底层民众感到绝望和愤怒 → 这种情绪转化为犯罪、抗议甚至民粹政治 → 社会动荡风险上升",
+      "reasoning_chain_en": "Excessive wealth gap → the lower class feels desperate and angry → this emotion turns into crime, protests, or even populist politics → the risk of social unrest rises",
+      "example": "拉丁美洲贫富悬殊的国家普遍社会犯罪率高、政治不稳定",
+      "example_en": "Latin American countries with extreme wealth gaps generally suffer from high crime rates and political instability",
+      "topic_sentence": "贫富差距过大会威胁社会稳定。",
+      "topic_sentence_en": "Excessive wealth inequality threatens social stability.",
+      "memory_anchor": "正方想\"不管会怎样\"（穷人暴动=不稳定、富人垄断机会=不公平）；反方想\"管了会怎样\"（富人跑了=损害激励、官僚截留=低效）"
     },
     {
       "topic": "government",
@@ -720,8 +979,12 @@
       "angle": "机会公平",
       "angle_index": 2,
       "reasoning_chain": "富人子女享有更好的教育和人脉资源 → 阶层固化，穷人后代无论多努力都难以突破 → 社会丧失活力，底层人才被浪费，整体创新力下降",
+      "reasoning_chain_en": "Children of the wealthy enjoy better education and networks → class becomes rigid, and the poor cannot break through no matter how hard they try → society loses vitality, talent at the bottom is wasted, and overall innovation declines",
       "example": "美国顶尖大学学生中来自最富有20%家庭的比例超过70%",
-      "reasoning_chain_en": null
+      "example_en": "Over 70% of students at top U.S. universities come from the wealthiest 20% of families",
+      "topic_sentence": "政府干预贫富差距对于保障机会公平不可或缺。",
+      "topic_sentence_en": "Government intervention in wealth inequality is essential for ensuring equal opportunity.",
+      "memory_anchor": "正方想\"不管会怎样\"（穷人暴动=不稳定、富人垄断机会=不公平）；反方想\"管了会怎样\"（富人跑了=损害激励、官僚截留=低效）"
     },
     {
       "topic": "government",
@@ -733,7 +996,12 @@
       "angle": "损害激励",
       "angle_index": 1,
       "reasoning_chain": "高税收重分配 → 成功者积极性受挫 → 创新和创业动力下降 → 经济总量萎缩",
-      "example": "法国曾征收75%超级富人税，导致大量富人和企业外迁，税收反而减少"
+      "reasoning_chain_en": "High taxes and heavy redistribution → successful people lose motivation → innovation and entrepreneurial drive decline → the overall economy shrinks",
+      "example": "法国曾征收75%超级富人税，导致大量富人和企业外迁，税收反而减少",
+      "example_en": "France once imposed a 75% super-rich tax, causing many wealthy individuals and businesses to leave, which actually reduced tax revenue",
+      "topic_sentence": "过度的财富再分配会抑制创新和创业动力。",
+      "topic_sentence_en": "Excessive wealth redistribution stifles innovation and entrepreneurial motivation.",
+      "memory_anchor": "正方想\"不管会怎样\"（穷人暴动=不稳定、富人垄断机会=不公平）；反方想\"管了会怎样\"（富人跑了=损害激励、官僚截留=低效）"
     },
     {
       "topic": "government",
@@ -744,8 +1012,13 @@
       "stance_label": "反方",
       "angle": "效率优先",
       "angle_index": 2,
-      "reasoning_chain": "市场自然分配更高效 → 政府干预容易造成资源浪费和腐败 → 最终穷人也没得到真正帮助",
-      "example": "委内瑞拉大规模国有化和再分配政策最终导致经济全面崩溃"
+      "reasoning_chain": "政府再分配需要庞大官僚机构来执行 → 执行过程中容易产生效率损耗和腐败 → 税收被层层截留，最终穷人拿到的远少于被征收的总额",
+      "reasoning_chain_en": "Government redistribution requires a massive bureaucracy to execute → the process is prone to inefficiency and corruption → taxes are siphoned off at every level, and the poor ultimately receive far less than the total collected",
+      "example": "世界银行报告显示，许多发展中国家的福利金从拨付到受益人手中，途中损耗高达30%-50%",
+      "example_en": "World Bank reports show that in many developing countries, 30-50% of welfare funds are lost between disbursement and reaching the final beneficiary",
+      "topic_sentence": "政府的再分配政策往往因官僚低效而效果大打折扣。",
+      "topic_sentence_en": "Government redistribution policies are often undermined by bureaucratic inefficiency.",
+      "memory_anchor": "正方想\"不管会怎样\"（穷人暴动=不稳定、富人垄断机会=不公平）；反方想\"管了会怎样\"（富人跑了=损害激励、官僚截留=低效）"
     },
     {
       "topic": "urbanisation",
@@ -757,8 +1030,12 @@
       "angle": "个人发展",
       "angle_index": 1,
       "reasoning_chain": "城市提供更多就业和教育机会 → 年轻人能获得更高收入和更快的职业成长 → 个人和家庭的生活水平显著提升",
+      "reasoning_chain_en": "Cities offer more employment and education opportunities → young people earn higher incomes and experience faster career growth → individuals and families enjoy significantly improved living standards",
       "example": "中国一线城市平均工资是农村的3-5倍，吸引大量人才流入",
-      "reasoning_chain_en": null
+      "example_en": "Average wages in China's first-tier cities are 3-5 times those in rural areas, attracting a massive influx of talent",
+      "topic_sentence": "城市化为个人提供了更好的发展机会。",
+      "topic_sentence_en": "Urbanisation provides individuals with better opportunities for development.",
+      "memory_anchor": "正方（城市化好）想\"城市的好\"（工资高=个人发展、人才聚集=经济效率）；反方想\"城市化的代价\"（房价交通=城市病、村里没人了=乡村凋敝）"
     },
     {
       "topic": "urbanisation",
@@ -770,7 +1047,12 @@
       "angle": "经济效率",
       "angle_index": 2,
       "reasoning_chain": "人口集中 → 产业聚集效应 → 创新协作更高效 → 推动整体经济增长",
-      "example": "硅谷/深圳等城市因人才密度高形成创新生态，产出全球领先"
+      "reasoning_chain_en": "Population concentrates → agglomeration effects emerge → innovation and collaboration become more efficient → driving overall economic growth",
+      "example": "硅谷/深圳等城市因人才密度高形成创新生态，产出全球领先",
+      "example_en": "Cities like Silicon Valley and Shenzhen have formed innovation ecosystems due to high talent density, with globally leading output",
+      "topic_sentence": "人口集中有利于提升经济效率和创新能力。",
+      "topic_sentence_en": "Population concentration boosts economic efficiency and innovation.",
+      "memory_anchor": "正方（城市化好）想\"城市的好\"（工资高=个人发展、人才聚集=经济效率）；反方想\"城市化的代价\"（房价交通=城市病、村里没人了=乡村凋敝）"
     },
     {
       "topic": "urbanisation",
@@ -782,7 +1064,12 @@
       "angle": "城市病",
       "angle_index": 1,
       "reasoning_chain": "人口过度涌入 → 房价暴涨/交通拥堵/环境恶化 → 城市生活质量下降",
-      "example": "东京/北京等超级城市房价让年轻人绝望，「逃离北上广」成为社会议题"
+      "reasoning_chain_en": "Excessive population influx → soaring house prices, traffic congestion, and environmental degradation → urban quality of life declines",
+      "example": "东京/北京等超级城市房价让年轻人绝望，「逃离北上广」成为社会议题",
+      "example_en": "Housing prices in megacities like Tokyo and Beijing leave young people in despair; 'fleeing first-tier cities' has become a social phenomenon",
+      "topic_sentence": "过度城市化会严重降低居民的生活质量。",
+      "topic_sentence_en": "Excessive urbanisation significantly reduces residents' quality of life.",
+      "memory_anchor": "正方（城市化好）想\"城市的好\"（工资高=个人发展、人才聚集=经济效率）；反方想\"城市化的代价\"（房价交通=城市病、村里没人了=乡村凋敝）"
     },
     {
       "topic": "urbanisation",
@@ -794,7 +1081,12 @@
       "angle": "乡村凋敝",
       "angle_index": 2,
       "reasoning_chain": "年轻人流失 → 农村只剩老人孩子 → 农业衰退/公共服务萎缩 → 城乡差距恶性循环",
-      "example": "日本农村大量「消亡村落」，空置房屋超800万套"
+      "reasoning_chain_en": "Young people leave → only the elderly and children remain in rural areas → agriculture declines and public services shrink → the urban-rural gap worsens in a vicious cycle",
+      "example": "日本农村大量「消亡村落」，空置房屋超800万套",
+      "example_en": "Japan has numerous 'dying villages' in rural areas, with over 8 million vacant houses",
+      "topic_sentence": "城市化正在加速农村社区的衰落。",
+      "topic_sentence_en": "Urbanisation is accelerating the decline of rural communities.",
+      "memory_anchor": "正方（城市化好）想\"城市的好\"（工资高=个人发展、人才聚集=经济效率）；反方想\"城市化的代价\"（房价交通=城市病、村里没人了=乡村凋敝）"
     },
     {
       "topic": "urbanisation",
@@ -806,8 +1098,12 @@
       "angle": "丰富个人选择",
       "angle_index": 1,
       "reasoning_chain": "接触多元文化 → 个人视野和审美更加开阔 → 在饮食/艺术/生活方式上有了更多选择，生活满意度提升",
+      "reasoning_chain_en": "Exposure to diverse cultures → broader personal horizons and aesthetics → more choices in food, art, and lifestyle, raising life satisfaction",
       "example": "全球各城市都能吃到各国美食、看到各国电影，生活多样性前所未有",
-      "reasoning_chain_en": null
+      "example_en": "Cities worldwide now offer cuisines and films from every country, creating unprecedented diversity in daily life",
+      "topic_sentence": "文化全球化丰富了人们的生活选择。",
+      "topic_sentence_en": "Cultural globalisation enriches people's lifestyle choices.",
+      "memory_anchor": "正方（好）想\"个人得到了什么\"（选择多=丰富生活、理解多=和平）；反方（坏）想\"弱者失去了什么\"（本土文化=消亡、本土产业=被挤压）"
     },
     {
       "topic": "urbanisation",
@@ -819,7 +1115,12 @@
       "angle": "促进理解与和平",
       "angle_index": 2,
       "reasoning_chain": "文化交流 → 减少偏见和误解 → 不同国家人民更容易相互尊重和合作",
-      "example": "欧盟国家间文化交流项目(Erasmus)使参与者对他国好感度显著上升"
+      "reasoning_chain_en": "Cultural exchange → reduces prejudice and misunderstanding → people of different countries find it easier to respect and cooperate with each other",
+      "example": "欧盟国家间文化交流项目(Erasmus)使参与者对他国好感度显著上升",
+      "example_en": "The EU's Erasmus cultural exchange programme significantly increased participants' positive attitudes toward other countries",
+      "topic_sentence": "文化交流有助于促进国际理解与和平。",
+      "topic_sentence_en": "Cultural exchange promotes international understanding and peace.",
+      "memory_anchor": "正方（好）想\"个人得到了什么\"（选择多=丰富生活、理解多=和平）；反方（坏）想\"弱者失去了什么\"（本土文化=消亡、本土产业=被挤压）"
     },
     {
       "topic": "urbanisation",
@@ -831,7 +1132,12 @@
       "angle": "本土文化消亡",
       "angle_index": 1,
       "reasoning_chain": "强势文化（美国/西方）输出 → 本地语言/传统/艺术被边缘化 → 文化多样性不可逆地减少",
-      "example": "全球每两周消亡一种语言（联合国教科文组织数据）；年轻一代不再会说祖辈方言"
+      "reasoning_chain_en": "Dominant cultures (American/Western) export their products → local languages, traditions, and arts are marginalised → cultural diversity irreversibly decreases",
+      "example": "全球每两周消亡一种语言（联合国教科文组织数据）；年轻一代不再会说祖辈方言",
+      "example_en": "A language dies every two weeks worldwide (UNESCO data); younger generations no longer speak their grandparents' dialects",
+      "topic_sentence": "文化全球化正在导致本土文化的消亡。",
+      "topic_sentence_en": "Cultural globalisation is leading to the disappearance of local cultures.",
+      "memory_anchor": "正方（好）想\"个人得到了什么\"（选择多=丰富生活、理解多=和平）；反方（坏）想\"弱者失去了什么\"（本土文化=消亡、本土产业=被挤压）"
     },
     {
       "topic": "urbanisation",
@@ -842,9 +1148,13 @@
       "stance_label": "反方",
       "angle": "经济不平等",
       "angle_index": 2,
-      "reasoning_chain": "文化产业利润流向发达国家 → 发展中国家本土文化产业无法获得市场和资金 → 本国创作者流失、文化产业长期无法壮大",
+      "reasoning_chain": "好莱坞等强势文化产品以低成本大规模涌入 → 本土影视音乐等产业在竞争中被挤压、失去市场份额 → 本国创作者收入锐减、人才流失，文化产业长期无法壮大",
+      "reasoning_chain_en": "Dominant cultural products like Hollywood flood in at low cost → local film, TV, and music industries are squeezed and lose market share → domestic creators' incomes plummet, talent drains away, and the cultural industry cannot grow",
       "example": "好莱坞占据全球70%以上电影市场份额，本土电影产业在多数国家难以生存",
-      "reasoning_chain_en": null
+      "example_en": "Hollywood commands over 70% of the global film market share, making it difficult for domestic film industries to survive in most countries",
+      "topic_sentence": "文化全球化严重挤压了发展中国家本土文化产业的生存空间。",
+      "topic_sentence_en": "Cultural globalisation severely squeezes the survival space of domestic cultural industries in developing countries.",
+      "memory_anchor": "正方（好）想\"个人得到了什么\"（选择多=丰富生活、理解多=和平）；反方（坏）想\"弱者失去了什么\"（本土文化=消亡、本土产业=被挤压）"
     },
     {
       "topic": "urbanisation",
@@ -856,7 +1166,12 @@
       "angle": "经济收入",
       "angle_index": 1,
       "reasoning_chain": "旅游业创造大量就业 → 带动酒店/餐饮/交通等产业链 → 对发展中国家尤其是重要收入来源",
-      "example": "泰国旅游业占GDP约20%，为数百万人提供生计"
+      "reasoning_chain_en": "Tourism creates massive employment → drives hotel, catering, and transport industries → and is an especially important income source for developing countries",
+      "example": "泰国旅游业占GDP约20%，为数百万人提供生计",
+      "example_en": "Tourism accounts for about 20% of Thailand's GDP and provides livelihoods for millions",
+      "topic_sentence": "国际旅游是许多国家重要的经济支柱。",
+      "topic_sentence_en": "International tourism is a vital economic pillar for many countries.",
+      "memory_anchor": "正方想\"旅游带来了什么\"（带来钱=经济、带来理解=文化交流）；反方想\"旅游破坏了什么\"（破坏环境=污染过度开发、破坏文化=商业化表演）"
     },
     {
       "topic": "urbanisation",
@@ -868,7 +1183,12 @@
       "angle": "文化交流",
       "angle_index": 2,
       "reasoning_chain": "游客亲身体验异国文化 → 促进跨文化理解 → 减少偏见和歧视",
-      "example": "研究显示有国际旅行经验的人对其他文化的包容度显著更高"
+      "reasoning_chain_en": "Tourists experience foreign cultures firsthand → promote cross-cultural understanding → reduce prejudice and discrimination",
+      "example": "研究显示有国际旅行经验的人对其他文化的包容度显著更高",
+      "example_en": "Research shows that people with international travel experience are significantly more tolerant of other cultures",
+      "topic_sentence": "国际旅游有效促进跨文化理解。",
+      "topic_sentence_en": "International tourism effectively promotes cross-cultural understanding.",
+      "memory_anchor": "正方想\"旅游带来了什么\"（带来钱=经济、带来理解=文化交流）；反方想\"旅游破坏了什么\"（破坏环境=污染过度开发、破坏文化=商业化表演）"
     },
     {
       "topic": "urbanisation",
@@ -880,7 +1200,12 @@
       "angle": "环境破坏",
       "angle_index": 1,
       "reasoning_chain": "大量航班碳排放 + 旅游热点过度开发 → 自然环境不堪重负 → 生态系统退化",
-      "example": "威尼斯/巴厘岛因游客过多导致环境和基础设施严重承压，居民生活质量下降"
+      "reasoning_chain_en": "Massive flight carbon emissions + overdevelopment of tourist hotspots → the natural environment is overwhelmed → ecosystems degrade",
+      "example": "威尼斯/巴厘岛因游客过多导致环境和基础设施严重承压，居民生活质量下降",
+      "example_en": "Venice and Bali suffer severe environmental and infrastructure strain from overtourism, reducing residents' quality of life",
+      "topic_sentence": "国际旅游对自然环境造成严重破坏。",
+      "topic_sentence_en": "International tourism causes serious damage to the natural environment.",
+      "memory_anchor": "正方想\"旅游带来了什么\"（带来钱=经济、带来理解=文化交流）；反方想\"旅游破坏了什么\"（破坏环境=污染过度开发、破坏文化=商业化表演）"
     },
     {
       "topic": "urbanisation",
@@ -892,7 +1217,12 @@
       "angle": "文化商业化",
       "angle_index": 2,
       "reasoning_chain": "为迎合游客 → 传统文化被简化为表演和纪念品 → 失去真实性和内在价值",
-      "example": "许多原住民社区的传统仪式变成「旅游表演」，年轻一代不再认真对待自身文化"
+      "reasoning_chain_en": "To cater to tourists → traditional culture is reduced to performances and souvenirs → losing its authenticity and intrinsic value",
+      "example": "巴厘岛的传统宗教仪式原本每年只举办一次，为满足游客需求改为每周表演，当地年轻人已不再理解仪式的宗教含义",
+      "example_en": "Traditional religious ceremonies in Bali, originally held once a year, are now performed weekly for tourists, and local young people no longer understand their religious significance",
+      "topic_sentence": "国际旅游导致传统文化被商业化和庸俗化。",
+      "topic_sentence_en": "International tourism leads to the commercialisation and trivialisation of traditional cultures.",
+      "memory_anchor": "正方想\"旅游带来了什么\"（带来钱=经济、带来理解=文化交流）；反方想\"旅游破坏了什么\"（破坏环境=污染过度开发、破坏文化=商业化表演）"
     }
   ],
   "keywords": [

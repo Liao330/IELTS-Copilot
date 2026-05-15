@@ -24,10 +24,14 @@ class WritingMaterial(Base):
     angle: Mapped[str] = mapped_column(String, nullable=False)          # 角度名
     angle_index: Mapped[int] = mapped_column(Integer, nullable=False)   # 1/2
 
-    reasoning_chain: Mapped[str] = mapped_column(Text, nullable=False)  # 理由链（→分隔）
+    topic_sentence: Mapped[Optional[str]] = mapped_column(Text)         # 观点句（中）— TEE结构中的T
+    topic_sentence_en: Mapped[Optional[str]] = mapped_column(Text)     # 观点句（英）
+    reasoning_chain: Mapped[str] = mapped_column(Text, nullable=False)  # 理由链（→分隔）— TEE结构中的E(xplanation)
     reasoning_chain_en: Mapped[Optional[str]] = mapped_column(Text)     # 理由链降级英文
-    example: Mapped[str] = mapped_column(Text, nullable=False)          # 例子
+    example: Mapped[str] = mapped_column(Text, nullable=False)          # 例子 — TEE结构中的E(xample)
     example_en: Mapped[Optional[str]] = mapped_column(Text)             # 例子关键词英文
+
+    memory_anchor: Mapped[Optional[str]] = mapped_column(Text)   # 记忆锚点（按direction共享）
 
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
 

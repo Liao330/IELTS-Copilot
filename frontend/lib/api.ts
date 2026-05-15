@@ -168,6 +168,15 @@ export const api = {
     return request<any[]>(`/api/writing-materials?${sp}`);
   },
   getWritingMaterialStats: () => request<any>("/api/writing-materials/stats"),
+  getWritingMaterialL1Directions: () => request<any[]>("/api/writing-materials/l1-directions"),
+  passWritingMaterialL1: (topic: string, direction_index: number, stance: string) =>
+    request<any>("/api/writing-materials/l1-pass", {
+      method: "POST", body: JSON.stringify({ topic, direction_index, stance }),
+    }),
+  failWritingMaterialL1: (topic: string, direction_index: number, stance: string) =>
+    request<any>("/api/writing-materials/l1-fail", {
+      method: "POST", body: JSON.stringify({ topic, direction_index, stance }),
+    }),
   getWritingMaterialsNewToday: (limit = 4) =>
     request<any[]>(`/api/writing-materials/new-today?limit=${limit}`),
   getWritingMaterialsLearned: () => request<any[]>("/api/writing-materials/learned-today"),
@@ -193,6 +202,12 @@ export const api = {
     request<any>(`/api/writing-materials/keywords/${id}/review`, {
       method: "POST", body: JSON.stringify({ quality }),
     }),
+  updateWritingMaterial: (id: string, data: Record<string, string>) =>
+    request<any>(`/api/writing-materials/${id}`, {
+      method: "PATCH", body: JSON.stringify(data),
+    }),
+  batchGenerateTopicSentences: () =>
+    request<any>("/api/writing-materials/batch-generate-topic-sentences", { method: "POST" }),
 
   // Writing Materials - Downgrade Practice (降级练习)
   getDowngradeSentences: () =>
@@ -205,6 +220,18 @@ export const api = {
     request<any>("/api/writing-materials/downgrade-check", {
       method: "POST", body: JSON.stringify({ chinese, answer, source_material_id: source_material_id || null }),
     }),
+
+  // Template Vocab (句型关键词汇)
+  getTemplateVocabToday: () =>
+    request<{ pending: any[]; reviewed: any[]; total_active: number; new_remaining: number }>("/api/template-vocab/today"),
+  reviewTemplateVocab: (id: string, result: string) =>
+    request<any>(`/api/template-vocab/${id}/review`, {
+      method: "POST", body: JSON.stringify({ result }),
+    }),
+  seedTemplateVocab: () =>
+    request<any>("/api/template-vocab/seed", { method: "POST" }),
+  getTemplateVocabStats: () =>
+    request<any>("/api/template-vocab/stats"),
 
   // Speaking Corrections
   createSpeakingCorrection: (correct_text: string, error_type: string) =>
@@ -509,12 +536,20 @@ export const api = {
     }),
   getWritingTemplateBlankSlots: (id: string) =>
     request<import("@/types").BlankSlotsInfo>(`/api/writing-templates/${id}/blank-slots`),
+  updateWritingTemplate: (id: string, data: Record<string, string>) =>
+    request<import("@/types").WritingTemplate>(`/api/writing-templates/${id}`, {
+      method: "PATCH", body: JSON.stringify(data),
+    }),
   reviewWritingTemplate: (id: string, quality: number) =>
     request<import("@/types").WritingTemplate>(`/api/writing-templates/${id}/review`, {
       method: "POST", body: JSON.stringify({ quality }),
     }),
   getWritingTemplateStats: () =>
     request<import("@/types").WritingTemplateStats>("/api/writing-templates/stats"),
+  getSampleBreakdowns: (category?: string) => {
+    const params = category ? `?category=${category}` : "";
+    return request<any[]>(`/api/writing-templates/sample-breakdowns${params}`);
+  },
 
 };
 
