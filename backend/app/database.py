@@ -35,6 +35,7 @@ async def init_db():
         ListeningPracticeGenerated, ListeningDictationAttempt,
         ListeningDiscoveredWord,
     )
+    from app.models.speaking_material import SpeakingMaterial  # noqa: F401
     
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

@@ -27,7 +27,7 @@ const MASTERY_COLORS = ["bg-gray-200 text-gray-700", "bg-amber-100 text-amber-70
 type MainTab = "template" | "material" | "speaking";
 type TemplateSubTab = "daily" | "dictation" | "flashcard" | "library" | "stats" | "breakdown";
 type MaterialSubTab = "m-daily" | "m-flashcard" | "m-dictation" | "m-library" | "m-stats" | "m-downgrade";
-type SpeakingSubTab = "s-today" | "s-add" | "s-phrases" | "s-passed" | "s-stats";
+type SpeakingSubTab = "s-today" | "s-material" | "s-material-lib" | "s-add" | "s-phrases" | "s-passed" | "s-stats";
 
 export default function WritingPracticePage() {
   const router = useRouter();
@@ -67,6 +67,8 @@ export default function WritingPracticePage() {
 
   const speakingSubTabs = [
     { key: "s-today" as const, label: "今日复习", icon: "🎤" },
+    { key: "s-material" as const, label: "素材背诵", icon: "📝" },
+    { key: "s-material-lib" as const, label: "素材库", icon: "📚" },
     { key: "s-add" as const, label: "录入", icon: "➕" },
     { key: "s-phrases" as const, label: "降级表达", icon: "💬" },
     { key: "s-passed" as const, label: "已过关", icon: "✅" },
@@ -2435,6 +2437,8 @@ function MaterialStatsSubTab() {
 
 function SpeakingTab({ subTab, onSwitchToAdd }: { subTab: string; onSwitchToAdd: () => void }) {
   if (subTab === "s-today") return <SpeakingTodaySubTab onSwitchToAdd={onSwitchToAdd} />;
+  if (subTab === "s-material") return <SpeakingMaterialSubTab />;
+  if (subTab === "s-material-lib") return <SpeakingMaterialLibSubTab />;
   if (subTab === "s-add") return <SpeakingAddSubTab />;
   if (subTab === "s-phrases") return <SpeakingPhrasesSubTab />;
   if (subTab === "s-passed") return <SpeakingPassedSubTab />;
@@ -2940,6 +2944,420 @@ function SpeakingStatsSubTab() {
               <span className="text-xs text-muted-foreground w-6 text-right">{count as number}</span>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ─── Speaking Material Sub Tab (口语素材背诵) ────────────────────
+
+function SpeakingMaterialSubTab() {
+  const [pending, setPending] = useState<any[]>([]);
+  const [reviewed, setReviewed] = useState<any[]>([]);
+  const [totalActive, setTotalActive] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [phase, setPhase] = useState<"learn" | "recite">("learn"); // 先学习，再背诵
+  const [streakThreshold, setStreakThreshold] = useState(5);
+  const { toast } = useToast();
+
+  const fetchToday = useCallback(async () => {
+    try {
+      const data = await api.getSpeakingMaterialsToday();
+      setPending(data.pending);
+      setReviewed(data.reviewed);
+      setTotalActive(data.total_active);
+      setStreakThreshold(data.streak_threshold);
+    } catch {} finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchToday(); }, [fetchToday]);
+
+  const handleReview = async (id: string, result: string) => {
+    try {
+      const updated = await api.reviewSpeakingMaterial(id, result);
+      if (updated.status === "passed") {
+        toast({ title: "🎉 素材过关！", description: `连续${streakThreshold}天背诵流利，已归档` });
+      }
+      // 移动到下一个
+      if (currentIndex + 1 < pending.length) {
+        setCurrentIndex(currentIndex + 1);
+        setPhase("learn");
+      } else {
+        setCurrentIndex(0);
+        setPhase("learn");
+      }
+      fetchToday();
+    } catch {}
+  };
+
+  if (loading) return <div className="text-center py-10 text-muted-foreground animate-pulse">加载中...</div>;
+
+  if (pending.length === 0 && reviewed.length === 0 && totalActive === 0) {
+    return (
+      <div className="text-center py-16 space-y-3">
+        <p className="text-4xl">📝</p>
+        <p className="text-muted-foreground">暂无素材数据</p>
+        <p className="text-xs text-muted-foreground">请先通过后端导入口语素材</p>
+      </div>
+    );
+  }
+
+  // 今日全部完成
+  if (pending.length === 0 && reviewed.length > 0) {
+    return (
+      <div className="text-center py-10 space-y-3">
+        <p className="text-3xl">✅</p>
+        <p className="font-semibold">今日背诵已完成！</p>
+        <p className="text-sm text-muted-foreground">已练 {reviewed.length} 篇</p>
+        <div className="pt-3 border-t max-w-md mx-auto">
+          {reviewed.map((item) => (
+            <div key={item.id} className="flex items-center gap-2 py-1.5 text-sm text-muted-foreground">
+              <span>{item.last_result === "fluent" ? "✅" : "❌"}</span>
+              <span className="truncate flex-1">{item.title}</span>
+              <span className="text-[10px] shrink-0">{item.part} · 🔥{item.streak_days}/{streakThreshold}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const current = pending[currentIndex];
+  if (!current) return null;
+
+  return (
+    <div className="space-y-3">
+      {/* 统计栏 */}
+      <div className="flex gap-3 text-xs text-muted-foreground mb-2">
+        <span>待背诵 <strong className="text-foreground">{pending.length}</strong></span>
+        <span>今日已练 <strong className="text-foreground">{reviewed.length}</strong></span>
+        <span>总素材 <strong className="text-foreground">{totalActive}</strong></span>
+        <span className="ml-auto">过关需连续 <strong className="text-orange-500">{streakThreshold}</strong> 天</span>
+      </div>
+
+      {/* 进度指示 */}
+      {pending.length > 1 && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>第 {currentIndex + 1}/{pending.length} 篇</span>
+          <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+            <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${((currentIndex + 1) / pending.length) * 100}%` }} />
+          </div>
+        </div>
+      )}
+
+      {/* 当前素材卡片 */}
+      <div className="rounded-xl border bg-card overflow-hidden">
+        {/* 头部 */}
+        <div className="px-4 pt-4 pb-2 flex items-start justify-between gap-2">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium">
+                {current.part}
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted">
+                {current.score}分
+              </span>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full ${phase === "learn" ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300" : "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"}`}>
+                {phase === "learn" ? "📖 学习" : "🎯 背诵"}
+              </span>
+            </div>
+            <h3 className="text-sm font-semibold leading-snug">{current.title}</h3>
+          </div>
+          {current.streak_days > 0 && (
+            <span className="text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-600 px-2 py-0.5 rounded-full shrink-0">
+              🔥 {current.streak_days}/{streakThreshold}天
+            </span>
+          )}
+        </div>
+
+        {/* 中文关键词 */}
+        <div className="px-4 pb-3">
+          <div className="flex flex-wrap gap-1.5">
+            {(current.keywords_cn || []).map((kw: string, i: number) => (
+              <span key={i} className="text-xs px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border border-amber-200/50 dark:border-amber-800/30">
+                {kw}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* 学习阶段：展示全文，阅读后进入背诵 */}
+        {phase === "learn" && (
+          <div className="px-4 pb-4 space-y-3">
+            <div className="rounded-lg bg-muted/50 p-4 max-h-72 overflow-y-auto">
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">{current.content}</p>
+            </div>
+            <p className="text-xs text-center text-muted-foreground">
+              仔细阅读并熟悉内容，准备好后点击下方进入背诵
+            </p>
+            <button
+              onClick={() => setPhase("recite")}
+              className="w-full py-3 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              ✓ 已熟悉，开始背诵
+            </button>
+          </div>
+        )}
+
+        {/* 背诵阶段：只看关键词，尝试背诵，然后自评 */}
+        {phase === "recite" && (
+          <div className="px-4 pb-4 space-y-3">
+            <div className="rounded-lg border-2 border-dashed border-amber-300/50 dark:border-amber-700/30 bg-amber-50/30 dark:bg-amber-950/10 p-4 text-center">
+              <p className="text-sm text-muted-foreground mb-2">看着上面的关键词，尝试完整背诵</p>
+              <p className="text-xs text-muted-foreground">背完后自评：是否流利完成？</p>
+            </div>
+            <details className="group">
+              <summary className="cursor-pointer text-sm text-muted-foreground hover:text-primary transition-colors text-center py-2">
+                👀 点击查看原文对照
+              </summary>
+              <div className="rounded-lg bg-muted/50 p-3 mt-2 max-h-48 overflow-y-auto">
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">{current.content}</p>
+              </div>
+            </details>
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => handleReview(current.id, "fluent")}
+                className="flex-1 py-2.5 rounded-lg bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-600 transition-colors">
+                ✓ 背诵流利
+              </button>
+              <button onClick={() => handleReview(current.id, "hesitant")}
+                className="flex-1 py-2.5 rounded-lg bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 transition-colors">
+                ✗ 还不熟
+              </button>
+            </div>
+            <button onClick={() => setPhase("learn")}
+              className="w-full text-xs text-muted-foreground hover:text-primary py-1">
+              ← 返回学习
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* 切换卡片（多篇时） */}
+      {pending.length > 1 && (
+        <div className="flex justify-center gap-2">
+          <button
+            onClick={() => { setCurrentIndex(Math.max(0, currentIndex - 1)); setPhase("learn"); }}
+            disabled={currentIndex === 0}
+            className="px-3 py-1 text-xs rounded border disabled:opacity-30 hover:bg-accent"
+          >
+            ← 上一篇
+          </button>
+          <button
+            onClick={() => { setCurrentIndex(Math.min(pending.length - 1, currentIndex + 1)); setPhase("learn"); }}
+            disabled={currentIndex >= pending.length - 1}
+            className="px-3 py-1 text-xs rounded border disabled:opacity-30 hover:bg-accent"
+          >
+            下一篇 →
+          </button>
+        </div>
+      )}
+
+      {/* 今日已复习 */}
+      {reviewed.length > 0 && (
+        <div className="pt-3 border-t">
+          <p className="text-xs text-muted-foreground mb-2">今日已背诵 ({reviewed.length})</p>
+          {reviewed.map((item) => (
+            <div key={item.id} className="flex items-center gap-2 py-1.5 text-sm text-muted-foreground">
+              <span>{item.last_result === "fluent" ? "✅" : "❌"}</span>
+              <span className="truncate flex-1">{item.title}</span>
+              <span className="text-[10px] shrink-0">{item.part} · 🔥{item.streak_days}/{streakThreshold}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ─── Speaking Material Library (素材库) ────────────────────
+
+function SpeakingMaterialLibSubTab() {
+  const [materials, setMaterials] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<"all" | "active" | "passed">("all");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [stats, setStats] = useState<any>(null);
+  const [editingItem, setEditingItem] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState({ title: "", content: "", keywords_cn: "" });
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+
+  const load = useCallback(async () => {
+    try {
+      const [items, statsData] = await Promise.all([
+        api.getSpeakingMaterials(filter === "all" ? undefined : filter),
+        api.getSpeakingMaterialsStats(),
+      ]);
+      setMaterials(items);
+      setStats(statsData);
+    } catch {} finally { setLoading(false); }
+  }, [filter]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const openEdit = (item: any) => {
+    setEditingItem(item);
+    setEditForm({
+      title: item.title,
+      content: item.content,
+      keywords_cn: (item.keywords_cn || []).join("、"),
+    });
+  };
+
+  const handleSave = async () => {
+    if (!editingItem) return;
+    setSaving(true);
+    try {
+      const keywords = editForm.keywords_cn.split(/[、,，]/).map((s: string) => s.trim()).filter(Boolean);
+      await api.updateSpeakingMaterial(editingItem.id, {
+        title: editForm.title,
+        content: editForm.content,
+        keywords_cn: keywords,
+      });
+      toast({ description: "保存成功" });
+      setEditingItem(null);
+      setLoading(true);
+      load();
+    } catch {
+      toast({ variant: "destructive", description: "保存失败" });
+    } finally { setSaving(false); }
+  };
+
+  if (loading) return <div className="text-center py-10 text-muted-foreground animate-pulse">加载中...</div>;
+
+  return (
+    <div className="space-y-4">
+      {/* 统计卡片 */}
+      {stats && (
+        <div className="grid grid-cols-3 gap-2">
+          <div className="rounded-lg border bg-card p-3 text-center">
+            <p className="text-xl font-bold">{stats.total}</p>
+            <p className="text-[10px] text-muted-foreground">总素材</p>
+          </div>
+          <div className="rounded-lg border bg-card p-3 text-center">
+            <p className="text-xl font-bold text-blue-600">{stats.active}</p>
+            <p className="text-[10px] text-muted-foreground">学习中</p>
+          </div>
+          <div className="rounded-lg border bg-card p-3 text-center">
+            <p className="text-xl font-bold text-emerald-600">{stats.passed}</p>
+            <p className="text-[10px] text-muted-foreground">已过关</p>
+          </div>
+        </div>
+      )}
+
+      {/* 筛选 */}
+      <div className="flex gap-2">
+        {([["all", "全部"], ["active", "学习中"], ["passed", "已过关"]] as const).map(([key, label]) => (
+          <button key={key}
+            onClick={() => { setFilter(key); setLoading(true); }}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              filter === key ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* 素材列表 */}
+      {materials.length === 0 ? (
+        <div className="text-center py-10 text-muted-foreground">暂无数据</div>
+      ) : (
+        <div className="space-y-2">
+          {materials.map((item) => (
+            <div key={item.id} className="rounded-lg border bg-card overflow-hidden">
+              <button
+                onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-accent/50 transition-colors"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                      {item.part}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">{item.score}分</span>
+                    {item.status === "passed" && <span className="text-[10px]">✅ 已过关</span>}
+                    {item.streak_days > 0 && item.status === "active" && (
+                      <span className="text-[10px] text-orange-500">🔥{item.streak_days}/5天</span>
+                    )}
+                  </div>
+                  <p className="text-sm font-medium truncate">{item.title}</p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {(item.keywords_cn || []).slice(0, 3).map((kw: string, i: number) => (
+                      <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300">
+                        {kw}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${expandedId === item.id ? "rotate-90" : ""}`} />
+              </button>
+              {expandedId === item.id && (
+                <div className="px-4 pb-4 border-t">
+                  <div className="rounded-lg bg-muted/50 p-3 mt-3 max-h-64 overflow-y-auto">
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{item.content}</p>
+                  </div>
+                  <div className="mt-2 flex justify-end">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openEdit(item); }}
+                      className="text-xs text-primary hover:underline flex items-center gap-1"
+                    >
+                      ✏️ 编辑
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 编辑对话框 */}
+      {editingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setEditingItem(null)}>
+          <div className="bg-background rounded-xl border shadow-lg w-full max-w-lg mx-4 max-h-[85vh] overflow-y-auto p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold text-base">编辑素材</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">标题</label>
+                <input
+                  className="w-full px-3 py-2 rounded-lg border text-sm bg-background"
+                  value={editForm.title}
+                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">中文关键词（用顿号或逗号分隔）</label>
+                <input
+                  className="w-full px-3 py-2 rounded-lg border text-sm bg-background"
+                  value={editForm.keywords_cn}
+                  onChange={(e) => setEditForm({ ...editForm, keywords_cn: e.target.value })}
+                  placeholder="关键词1、关键词2、关键词3"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">内容</label>
+                <textarea
+                  className="w-full px-3 py-2 rounded-lg border text-sm bg-background min-h-[200px] resize-y"
+                  value={editForm.content}
+                  onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end pt-2">
+              <button onClick={() => setEditingItem(null)} className="px-4 py-2 rounded-lg border text-sm hover:bg-accent">
+                取消
+              </button>
+              <button onClick={handleSave} disabled={saving}
+                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50">
+                {saving ? "保存中..." : "保存"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

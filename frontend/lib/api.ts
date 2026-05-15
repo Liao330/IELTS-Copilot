@@ -278,6 +278,26 @@ export const api = {
       method: "POST", body: JSON.stringify({ text }),
     }),
 
+  // Speaking Materials (口语素材背诵)
+  getSpeakingMaterialsToday: () =>
+    request<{ pending: any[]; reviewed: any[]; total_active: number; new_remaining: number; streak_threshold: number }>("/api/speaking-materials/today"),
+  reviewSpeakingMaterial: (id: string, result: string) =>
+    request<any>(`/api/speaking-materials/${id}/review`, {
+      method: "POST", body: JSON.stringify({ result }),
+    }),
+  getSpeakingMaterials: (status?: string, part?: string) => {
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    if (part) params.set("part", part);
+    return request<any[]>(`/api/speaking-materials?${params}`);
+  },
+  getSpeakingMaterialsStats: () =>
+    request<{ total: number; active: number; passed: number; by_part: Record<string, number>; streak_threshold: number }>("/api/speaking-materials/stats"),
+  updateSpeakingMaterial: (id: string, data: { title?: string; topic?: string; part?: string; content?: string; keywords_cn?: string[] }) =>
+    request<any>(`/api/speaking-materials/${id}`, {
+      method: "PATCH", body: JSON.stringify(data),
+    }),
+
   // Vocabulary - Words
   getWords: (params?: { category?: string; search?: string; mastery_level?: number; due_only?: boolean; sort?: string; page?: number; page_size?: number }) => {
     const searchParams = new URLSearchParams();
