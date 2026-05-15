@@ -23,10 +23,11 @@ async def init_db():
     from app.models import Agent, Conversation, Message, File, Note, Setting, Homework, HomeworkFile, HomeworkFeedback, VocabularyWord, FavoriteSentence, ContextMaterial, DailyReportCache  # noqa
     from app.models.feedback import FeedbackItem  # noqa
     from app.models.schedule import ScheduleTask  # noqa
-    from app.models.writing_template import WritingTemplate  # noqa
+    from app.models.writing_template import WritingTemplate, TemplateVocab  # noqa
     from app.models.writing_material import WritingMaterial, WritingMaterialKeyword, DowngradeAttempt  # noqa
     from app.models.speaking_correction import SpeakingCorrection  # noqa
     from app.models.speaking_phrase import SpeakingPhrase  # noqa
+    from app.models.listening_practice import ListeningPracticeSession, ListeningPracticeSentence, ListeningPracticeGenerated, ListeningDictationAttempt, ListeningDiscoveredWord  # noqa
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         # Add new columns if they don't exist (SQLite doesn't support IF NOT EXISTS for columns)
@@ -79,6 +80,10 @@ async def _migrate_add_columns(conn):
         ("listening_practice_sessions", "duration_snapshot", "INTEGER DEFAULT 0"),
         ("listening_practice_sessions", "snapshot_date", "TEXT"),
         ("writing_material_keywords", "level", "TEXT DEFAULT 'basic'"),
+        ("writing_materials", "topic_sentence", "TEXT"),
+        ("writing_materials", "topic_sentence_en", "TEXT"),
+        ("writing_templates", "scene_detail", "TEXT"),
+        ("writing_templates", "template_cn", "TEXT"),
     ]
     for table, column, col_type in new_columns:
         try:
