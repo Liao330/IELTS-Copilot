@@ -466,7 +466,7 @@ function DictationTab({ onUpdate }: { onUpdate: () => void }) {
     setLoading(true);
     setFinished(false);
     const [due, stats] = await Promise.all([
-      api.getWritingTemplatesDue(20),
+      api.getWritingTemplatesDue(50),
       api.getWritingTemplateStats(),
     ]);
     const eligible = due.filter((t) => t.mastery_level >= 2);
@@ -586,7 +586,18 @@ function DictationTab({ onUpdate }: { onUpdate: () => void }) {
           <p className="text-sm text-muted-foreground">📋 {(current as any).scene_detail}</p>
         )}
 
-        {/* 提示按钮（折叠） */}
+        {/* 主语英文提示：默写时直接给出的关键词（从数据库读取） */}
+        {(current as any).subject_hint && (
+          <div className="flex flex-wrap gap-2 mt-1">
+            {(current as any).subject_hint.split(";").map((hint: string, i: number) => (
+              <span key={i} className="text-xs px-2 py-0.5 rounded-md bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300 border border-sky-200/50 dark:border-sky-800/30">
+                🔑 <span className="font-medium">{hint.trim()}</span>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* 提示按钮（折叠）- 显示完整例句 */}
         {!result && (current.example_en || current.note) && (
           <div>
             {!showHint ? (
@@ -594,31 +605,23 @@ function DictationTab({ onUpdate }: { onUpdate: () => void }) {
                 💡 看提示
               </button>
             ) : (
-              <div className="space-y-1.5 bg-muted/50 rounded p-2">
-                {current.example_en && (() => {
-                  // Mask key verbs/adjectives from example to avoid giving away the answer
-                  const template = current.template_en;
-                  // Extract key words from template (words that aren't placeholders/common words)
-                  const commonWords = new Set(['the','a','an','in','of','to','by','and','from','at','for','between','with','was','were','is','are','has','have','been','that','this','it','its','which','while','after','before','once','then','both','over','than','as','not','only','also']);
-                  const templateWords = template.match(/[a-zA-Z]+/g)?.filter(w =>
-                    w.length > 3 && !commonWords.has(w.toLowerCase()) && !w.startsWith('[')
-                  ) || [];
-                  // Build regex to mask these words (and their forms) in example
-                  let masked = current.example_en;
-                  for (const word of templateWords) {
-                    const stem = word.replace(/(?:ed|ing|ly|s|er|est|tion|ment|ness)$/i, '');
-                    if (stem.length >= 3) {
-                      const re = new RegExp(stem + '\\w*', 'gi');
-                      masked = masked.replace(re, '______');
-                    }
-                  }
-                  return masked !== current.example_en ? (
-                    <p className="text-xs font-mono text-muted-foreground italic">例：{masked}</p>
-                  ) : (
-                    <p className="text-xs font-mono text-muted-foreground italic">例：{current.example_en}</p>
-                  );
-                })()}
-                {current.note && <p className="text-xs text-muted-foreground">💡 {current.note}</p>}
+              <div className="space-y-2 bg-muted/50 rounded p-3">
+                {/* 显示完整例句 */}
+                {current.example_en && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">完整例句参考：</p>
+                    <p className="text-xs text-foreground/80 italic">
+                      例：{current.example_en}
+                    </p>
+                  </div>
+                )}
+
+                {/* 显示备注 */}
+                {current.note && (
+                  <p className="text-xs text-muted-foreground pt-1 border-t border-muted-foreground/10">
+                    💡 {current.note}
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -815,7 +818,7 @@ function SentenceFlashcard({ onUpdate }: { onUpdate: () => void }) {
     setLoading(true);
     setFinished(false);
     const [due, stats] = await Promise.all([
-      api.getWritingTemplatesDue(20),
+      api.getWritingTemplatesDue(50),
       api.getWritingTemplateStats(),
     ]);
     // 闪卡复习 mastery_level 1-2（1=首次看英文，2=看场景回忆英文）
@@ -1486,6 +1489,15 @@ function MaterialDailySubTab() {
                     {item.reasoning_chain_en && (
                       <p className="text-sm bg-sky-50 dark:bg-sky-950/20 rounded p-2 text-sky-700 dark:text-sky-400">{item.reasoning_chain_en}</p>
                     )}
+                    {item.chain_sentence_en && (
+                      <p className="text-[10px] text-muted-foreground font-medium mt-1.5 mb-0.5">✍️ 完整写法</p>
+                    )}
+                    {item.chain_sentence_en && (
+                      <p className="text-sm bg-emerald-50 dark:bg-emerald-950/20 rounded p-2 text-emerald-700 dark:text-emerald-400 italic">{item.chain_sentence_en}</p>
+                    )}
+                    {item.reuse_hint && (
+                      <p className="text-[10px] mt-1.5 px-2 py-1 rounded bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-300 border border-violet-200/50 dark:border-violet-800/30">{item.reuse_hint}</p>
+                    )}
                   </div>
                   <div>
                     <p className="text-[10px] text-muted-foreground font-medium mb-1">📖 例子（中文）</p>
@@ -1819,6 +1831,12 @@ function MaterialFlashcardContent() {
                 <p className="text-sm text-foreground/70">{current.reasoning_chain}</p>
                 {current.reasoning_chain_en && (
                   <p className="text-sm font-medium text-sky-700 dark:text-sky-400 mt-1">{current.reasoning_chain_en}</p>
+                )}
+                {current.chain_sentence_en && (
+                  <p className="text-sm text-emerald-700 dark:text-emerald-400 mt-1 italic">{current.chain_sentence_en}</p>
+                )}
+                {current.reuse_hint && (
+                  <p className="text-[10px] mt-1.5 px-2 py-1 rounded bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-300 border border-violet-200/50 dark:border-violet-800/30">{current.reuse_hint}</p>
                 )}
               </div>
               <div>
@@ -2207,6 +2225,7 @@ function MaterialLibrarySubTab() {
       topic_sentence_en: item.topic_sentence_en || "",
       reasoning_chain: item.reasoning_chain || "",
       reasoning_chain_en: item.reasoning_chain_en || "",
+      chain_sentence_en: item.chain_sentence_en || "",
       example: item.example || "",
       example_en: item.example_en || "",
     });
@@ -2280,6 +2299,12 @@ function MaterialLibrarySubTab() {
                         onChange={e => setEditForm(f => ({ ...f, reasoning_chain_en: e.target.value }))} />
                     </div>
                     <div>
+                      <label className="text-[10px] font-medium text-emerald-600">完整写法（英）</label>
+                      <textarea className="w-full text-xs border border-emerald-200 rounded p-1.5 mt-0.5 resize-none" rows={2}
+                        value={editForm.chain_sentence_en}
+                        onChange={e => setEditForm(f => ({ ...f, chain_sentence_en: e.target.value }))} />
+                    </div>
+                    <div>
                       <label className="text-[10px] font-medium text-muted-foreground">例子（中）</label>
                       <textarea className="w-full text-xs border rounded p-1.5 mt-0.5 resize-none" rows={2}
                         value={editForm.example}
@@ -2318,6 +2343,9 @@ function MaterialLibrarySubTab() {
                     <p className="text-xs"><span className="font-medium text-muted-foreground">理由链：</span>{item.reasoning_chain}</p>
                     {item.reasoning_chain_en && (
                       <p className="text-xs text-sky-700 dark:text-sky-400"><span className="font-medium">EN：</span>{item.reasoning_chain_en}</p>
+                    )}
+                    {item.chain_sentence_en && (
+                      <p className="text-xs text-emerald-700 dark:text-emerald-400 italic"><span className="font-medium">✍️ </span>{item.chain_sentence_en}</p>
                     )}
                     <p className="text-xs"><span className="font-medium text-muted-foreground">例子：</span>{item.example}</p>
                     {item.example_en && (
@@ -2472,7 +2500,9 @@ function SpeakingTodaySubTab({ onSwitchToAdd }: { onSwitchToAdd: () => void }) {
     try {
       const updated = await api.reviewSpeakingCorrection(id, result);
       if (updated.status === "passed") {
-        toast({ title: "🎉 过关！", description: "连续3天脱口而出，已归档" });
+        toast({ title: "🎉 过关！", description: "已掌握，进入长期巩固" });
+      } else if (result === "fluent") {
+        toast({ description: `下次复习：${updated.interval_days || 1}天后` });
       }
       setAudioUrl(null);
       fetchToday();
@@ -2802,7 +2832,8 @@ function SpeakingPhrasesSubTab() {
       if (currentIdx < pending.length - 1) {
         setCurrentIdx(currentIdx + 1);
       } else {
-        // Refresh
+        // 最后一张完成，强制刷新
+        loadedRef.current = false;
         fetchToday();
       }
     } catch {}
@@ -2960,7 +2991,6 @@ function SpeakingMaterialSubTab() {
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [phase, setPhase] = useState<"learn" | "recite">("learn"); // 先学习，再背诵
-  const [streakThreshold, setStreakThreshold] = useState(5);
   const { toast } = useToast();
 
   const fetchToday = useCallback(async () => {
@@ -2969,7 +2999,6 @@ function SpeakingMaterialSubTab() {
       setPending(data.pending);
       setReviewed(data.reviewed);
       setTotalActive(data.total_active);
-      setStreakThreshold(data.streak_threshold);
     } catch {} finally { setLoading(false); }
   }, []);
 
@@ -2979,7 +3008,9 @@ function SpeakingMaterialSubTab() {
     try {
       const updated = await api.reviewSpeakingMaterial(id, result);
       if (updated.status === "passed") {
-        toast({ title: "🎉 素材过关！", description: `连续${streakThreshold}天背诵流利，已归档` });
+        toast({ title: "🎉 素材过关！", description: "已掌握，进入长期巩固" });
+      } else if (result === "fluent") {
+        toast({ description: `下次复习：${updated.interval_days}天后` });
       }
       // 移动到下一个
       if (currentIndex + 1 < pending.length) {
@@ -3017,7 +3048,7 @@ function SpeakingMaterialSubTab() {
             <div key={item.id} className="flex items-center gap-2 py-1.5 text-sm text-muted-foreground">
               <span>{item.last_result === "fluent" ? "✅" : "❌"}</span>
               <span className="truncate flex-1">{item.title}</span>
-              <span className="text-[10px] shrink-0">{item.part} · 🔥{item.streak_days}/{streakThreshold}</span>
+              <span className="text-[10px] shrink-0">{item.part} · Lv{item.mastery_level || 0}/3</span>
             </div>
           ))}
         </div>
@@ -3035,7 +3066,7 @@ function SpeakingMaterialSubTab() {
         <span>待背诵 <strong className="text-foreground">{pending.length}</strong></span>
         <span>今日已练 <strong className="text-foreground">{reviewed.length}</strong></span>
         <span>总素材 <strong className="text-foreground">{totalActive}</strong></span>
-        <span className="ml-auto">过关需连续 <strong className="text-orange-500">{streakThreshold}</strong> 天</span>
+        <span className="ml-auto text-[10px]">SM-2 间隔复习 · 最长7天</span>
       </div>
 
       {/* 进度指示 */}
@@ -3065,10 +3096,25 @@ function SpeakingMaterialSubTab() {
               </span>
             </div>
             <h3 className="text-sm font-semibold leading-snug">{current.title}</h3>
+            {current.story_line && (
+              <span className={`text-[10px] px-1.5 py-0.5 rounded mt-1 inline-block ${
+                current.story_line === "cs-growth" ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300" :
+                current.story_line === "japan-culture" ? "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300" :
+                current.story_line === "family-hometown" ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300" :
+                current.story_line === "school-life" ? "bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300" :
+                "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+              }`}>
+                {current.story_line === "cs-growth" ? "💻 CS成长线" :
+                 current.story_line === "japan-culture" ? "🇯🇵 日本文化线" :
+                 current.story_line === "family-hometown" ? "🏡 家乡家庭线" :
+                 current.story_line === "school-life" ? "🏫 校园生活线" :
+                 "📌 独立素材"}
+              </span>
+            )}
           </div>
-          {current.streak_days > 0 && (
+          {(current.mastery_level || 0) > 0 && (
             <span className="text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-600 px-2 py-0.5 rounded-full shrink-0">
-              🔥 {current.streak_days}/{streakThreshold}天
+              Lv{current.mastery_level}/3 · {current.interval_days || 1}天后复习
             </span>
           )}
         </div>
@@ -3163,7 +3209,7 @@ function SpeakingMaterialSubTab() {
             <div key={item.id} className="flex items-center gap-2 py-1.5 text-sm text-muted-foreground">
               <span>{item.last_result === "fluent" ? "✅" : "❌"}</span>
               <span className="truncate flex-1">{item.title}</span>
-              <span className="text-[10px] shrink-0">{item.part} · 🔥{item.streak_days}/{streakThreshold}</span>
+              <span className="text-[10px] shrink-0">{item.part} · Lv{item.mastery_level || 0}/3</span>
             </div>
           ))}
         </div>
@@ -3284,6 +3330,21 @@ function SpeakingMaterialLibSubTab() {
                     {item.streak_days > 0 && item.status === "active" && (
                       <span className="text-[10px] text-orange-500">🔥{item.streak_days}/5天</span>
                     )}
+                    {item.story_line && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                        item.story_line === "cs-growth" ? "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300" :
+                        item.story_line === "japan-culture" ? "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300" :
+                        item.story_line === "family-hometown" ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300" :
+                        item.story_line === "school-life" ? "bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300" :
+                        "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+                      }`}>
+                        {item.story_line === "cs-growth" ? "💻 CS成长" :
+                         item.story_line === "japan-culture" ? "🇯🇵 日本文化" :
+                         item.story_line === "family-hometown" ? "🏡 家乡家庭" :
+                         item.story_line === "school-life" ? "🏫 校园生活" :
+                         "📌 独立"}
+                      </span>
+                    )}
                   </div>
                   <p className="text-sm font-medium truncate">{item.title}</p>
                   <div className="flex flex-wrap gap-1 mt-1">
@@ -3301,6 +3362,18 @@ function SpeakingMaterialLibSubTab() {
                   <div className="rounded-lg bg-muted/50 p-3 mt-3 max-h-64 overflow-y-auto">
                     <p className="text-sm leading-relaxed whitespace-pre-wrap">{item.content}</p>
                   </div>
+                  {item.reuse_topics && item.reuse_topics.length > 0 && (
+                    <div className="mt-3">
+                      <p className="text-[10px] text-muted-foreground mb-1.5">🔄 此素材可复用于：</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {item.reuse_topics.map((topic: string, i: number) => (
+                          <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300 border border-violet-200/50 dark:border-violet-800/30">
+                            {topic}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div className="mt-2 flex justify-end">
                     <button
                       onClick={(e) => { e.stopPropagation(); openEdit(item); }}

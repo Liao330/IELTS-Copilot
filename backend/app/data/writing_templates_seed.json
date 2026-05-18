@@ -8,7 +8,8 @@
     "template_cn": "[主语]出现了剧烈/急剧的增长/上升，从XX上升到XX（在[时间1]到[时间2]之间）。",
     "example_en": "There was a dramatic increase in online shoppers in the UK, from 2 million to 8 million between 2015 and 2020, representing a fourfold rise.",
     "note": "形容词可替换: dramatic/sharp/significant/steady/slight; 倍数表达: a twofold/threefold/fourfold rise; tripling/quadrupling",
-    "difficulty": 1
+    "difficulty": 1,
+    "subject_hint": "online shoppers in the UK"
   },
   {
     "category": "data",
@@ -19,7 +20,8 @@
     "template_cn": "[主语]急剧飙升/猛增，到[时间]达到了[最终数字]。",
     "example_en": "The number of online shoppers in the city soared dramatically to reach 3 million by 2020, a sixfold increase from 500,000.",
     "note": "动词可替换: soared/surged/rose/climbed/increased/edged up",
-    "difficulty": 1
+    "difficulty": 1,
+    "subject_hint": "The number of online shoppers in the city"
   },
   {
     "category": "data",
@@ -30,7 +32,8 @@
     "template_cn": "[主语]显著上升/攀升，到[时间]达到了[数字]。",
     "example_en": "The number of international students at the university climbed significantly to reach 5,000 by 2015.",
     "note": null,
-    "difficulty": 1
+    "difficulty": 1,
+    "subject_hint": "The number of international students at the university"
   },
   {
     "category": "data",
@@ -41,7 +44,8 @@
     "template_cn": "[主语]在该时期内稳步增长/逐渐上升。",
     "example_en": "Australia's unemployment rate increased steadily from 5% to 12% over the decade.",
     "note": null,
-    "difficulty": 1
+    "difficulty": 1,
+    "subject_hint": "Australia's unemployment rate"
   },
   {
     "category": "data",
@@ -52,7 +56,8 @@
     "template_cn": "[主语]在[时间]微微上升到[数字]。",
     "example_en": "The crime rate in the region edged up slightly to 23% in the final year.",
     "note": null,
-    "difficulty": 1
+    "difficulty": 1,
+    "subject_hint": "The crime rate in the region"
   },
   {
     "category": "data",
@@ -63,7 +68,8 @@
     "template_cn": "[主语]从[数字]暴跌到[数字]（在[时间1]到[时间2]之间）。",
     "example_en": "The brand's mobile phone sales plummeted from 800,000 to 200,000 units between 2015 and 2020.",
     "note": null,
-    "difficulty": 1
+    "difficulty": 1,
+    "subject_hint": "The brand's mobile phone sales"
   },
   {
     "category": "data",
@@ -85,7 +91,8 @@
     "template_cn": "[主语]在[时间段]内从[数字]稳步/逐渐下降到[数字]。",
     "example_en": "Germany's unemployment rate declined steadily from 10% to 6% over the decade.",
     "note": null,
-    "difficulty": 1
+    "difficulty": 1,
+    "subject_hint": "Germany's unemployment rate"
   },
   {
     "category": "data",
@@ -107,7 +114,8 @@
     "template_cn": "该比率在整个时期内在XX和XX之间波动。",
     "example_en": "Oil prices fluctuated between $20 and $35 throughout the period.",
     "note": null,
-    "difficulty": 2
+    "difficulty": 2,
+    "subject_hint": "Oil prices"
   },
   {
     "category": "data",
@@ -129,7 +137,8 @@
     "template_cn": "[时间]之后，[主语]趋于平稳，稳定在XX。",
     "example_en": "After 2015, electric car sales levelled off at 500 units.",
     "note": null,
-    "difficulty": 2
+    "difficulty": 2,
+    "subject_hint": "electric car sales"
   },
   {
     "category": "data",
@@ -140,7 +149,8 @@
     "template_cn": "[主语]在[年份]达到了XX的峰值/最高点。",
     "example_en": "The number of tourists reached a peak of 9 million in 2018.",
     "note": null,
-    "difficulty": 1
+    "difficulty": 1,
+    "subject_hint": "The number of tourists"
   },
   {
     "category": "data",
@@ -162,7 +172,8 @@
     "template_cn": "[主语]上升到[年份]的峰值XX，随后急剧下降到[年份]的XX。",
     "example_en": "House prices rose to a peak of 800,000 in 2015, before declining sharply to 400,000 by 2020.",
     "note": null,
-    "difficulty": 2
+    "difficulty": 2,
+    "subject_hint": "House prices"
   },
   {
     "category": "data",
@@ -184,7 +195,8 @@
     "template_cn": "A是最突出的项目，占了XX%。",
     "example_en": "Food was the most dominant item in household spending, accounting for 35%.",
     "note": "替换: registered the highest percentage / topped the list",
-    "difficulty": 1
+    "difficulty": 1,
+    "subject_hint": "Food"
   },
   {
     "category": "data",
@@ -195,7 +207,8 @@
     "template_cn": "B以XX%排名第二，紧随其后的是C，占XX%。",
     "example_en": "Housing ranked second with 25%, followed by transport at 15%.",
     "note": null,
-    "difficulty": 1
+    "difficulty": 1,
+    "subject_hint": "Housing; transport"
   },
   {
     "category": "data",
@@ -206,7 +219,8 @@
     "template_cn": "E是最不起眼的，仅占XX%。",
     "example_en": "Entertainment was the least significant category, making up merely 5%.",
     "note": null,
-    "difficulty": 1
+    "difficulty": 1,
+    "subject_hint": "Entertainment"
   },
   {
     "category": "data",
@@ -217,7 +231,8 @@
     "template_cn": "A明显高于B（XX%对XX%）。",
     "example_en": "Food spending was significantly higher than clothing spending (35% vs. 8%).",
     "note": null,
-    "difficulty": 1
+    "difficulty": 1,
+    "subject_hint": "Food spending; clothing spending"
   },
   {
     "category": "data",
@@ -228,7 +243,8 @@
     "template_cn": "A大约是B的两倍/三倍。",
     "example_en": "Spending on food was approximately twice as high as that on transport, at 30% and 15% respectively.",
     "note": null,
-    "difficulty": 2
+    "difficulty": 2,
+    "subject_hint": "Spending on food; that on transport"
   },
   {
     "category": "data",
@@ -239,7 +255,8 @@
     "template_cn": "E和F大致相当，都在XX%左右。",
     "example_en": "In 2019, Japan and South Korea's internet penetration rates were roughly equal, both at around 91%.",
     "note": null,
-    "difficulty": 1
+    "difficulty": 1,
+    "subject_hint": "Japan; South Korea"
   },
   {
     "category": "data",
@@ -250,7 +267,8 @@
     "template_cn": "X和Y呈现出大致相似的趋势，都记录了约XX%。",
     "example_en": "Japan and South Korea followed a broadly similar urbanisation pattern, both recording around 40%.",
     "note": null,
-    "difficulty": 2
+    "difficulty": 2,
+    "subject_hint": "Japan; South Korea"
   },
   {
     "category": "data",
@@ -261,7 +279,8 @@
     "template_cn": "X远远超过Y，为XX%，而Y仅为XX%。",
     "example_en": "In 2020, China's solar power capacity significantly outstripped India's, at 250 GW compared to only 40 GW.",
     "note": null,
-    "difficulty": 2
+    "difficulty": 2,
+    "subject_hint": "China's solar power capacity; India's"
   },
   {
     "category": "data",
@@ -272,7 +291,8 @@
     "template_cn": "X和Y之间存在显著的差异。",
     "example_en": "There was a striking disparity in per capita carbon emissions between developed and developing nations.",
     "note": null,
-    "difficulty": 2
+    "difficulty": 2,
+    "subject_hint": "developed and developing nations"
   },
   {
     "category": "data",
@@ -283,7 +303,8 @@
     "template_cn": "A占总数的XX%。",
     "example_en": "Food accounted for 35% of total household expenditure.",
     "note": null,
-    "difficulty": 1
+    "difficulty": 1,
+    "subject_hint": "Food"
   },
   {
     "category": "data",
@@ -294,7 +315,8 @@
     "template_cn": "A以XX%的比例占据了最大份额。",
     "example_en": "Housing made up the largest share of household spending at 42%, accounting for nearly half of the total.",
     "note": null,
-    "difficulty": 1
+    "difficulty": 1,
+    "subject_hint": "Housing"
   },
   {
     "category": "data",
@@ -305,7 +327,8 @@
     "template_cn": "A和B合计占了超过XX%。",
     "example_en": "Food and housing combined accounted for over 70% of household expenditure.",
     "note": null,
-    "difficulty": 2
+    "difficulty": 2,
+    "subject_hint": "Food and housing"
   },
   {
     "category": "data",
@@ -316,7 +339,8 @@
     "template_cn": "剩余的XX%由C、D和E分摊。",
     "example_en": "The remaining 30% was shared among transport, entertainment and clothing.",
     "note": null,
-    "difficulty": 1
+    "difficulty": 1,
+    "subject_hint": "transport, entertainment and clothing"
   },
   {
     "category": "data",
@@ -327,7 +351,8 @@
     "template_cn": "总体来看，A始终是最高的，而E在整个时期内一直是最低的。",
     "example_en": "Overall, food expenditure was consistently the highest, while entertainment remained the lowest throughout the period.",
     "note": null,
-    "difficulty": 2
+    "difficulty": 2,
+    "subject_hint": "food expenditure; entertainment"
   },
   {
     "category": "data",
@@ -338,7 +363,8 @@
     "template_cn": "总体来看，A和B呈上升趋势，而C和D则经历了下降。",
     "example_en": "Overall, spending on food and housing showed upward trends, whereas transport and entertainment experienced declines.",
     "note": null,
-    "difficulty": 2
+    "difficulty": 2,
+    "subject_hint": "spending on food and housing; transport and entertainment"
   },
   {
     "category": "data",
@@ -349,7 +375,8 @@
     "template_cn": "总体来看，虽然A最初占主导地位，但到期末被B反超了。",
     "example_en": "Overall, while food expenditure initially dominated, it was overtaken by housing costs by the end of the period.",
     "note": null,
-    "difficulty": 2
+    "difficulty": 2,
+    "subject_hint": "food expenditure; housing costs"
   },
   {
     "category": "data",
@@ -360,7 +387,8 @@
     "template_cn": "总体来看，各类别之间差异显著，其中A远远超过其他项。",
     "example_en": "Overall, there were considerable variations among the spending categories, with food significantly outstripping the others.",
     "note": null,
-    "difficulty": 2
+    "difficulty": 2,
+    "subject_hint": "food"
   },
   {
     "category": "map",
@@ -371,7 +399,8 @@
     "template_cn": "这两张地图展示了[地名]在[年份1]到[年份2]之间经历的变化。",
     "example_en": "The two maps illustrate the changes that the small town has undergone between 1980 and 2020.",
     "note": "show→illustrate/depict/present; changes→transformations/developments",
-    "difficulty": 1
+    "difficulty": 1,
+    "subject_hint": "the small town"
   },
   {
     "category": "map",
@@ -382,7 +411,8 @@
     "template_cn": "这些地图将[地名]的现有布局与其改造规划进行了对比。",
     "example_en": "The maps compare the current layout of the village with the government's proposed plans for its redevelopment.",
     "note": null,
-    "difficulty": 1
+    "difficulty": 1,
+    "subject_hint": "the village"
   },
   {
     "category": "map",
@@ -393,7 +423,8 @@
     "template_cn": "所给地图描绘了[地名]在[X]年间如何被改造/重新开发的。",
     "example_en": "The given maps depict how the town has been transformed over a 40-year period.",
     "note": null,
-    "difficulty": 1
+    "difficulty": 1,
+    "subject_hint": "the town"
   },
   {
     "category": "map",
@@ -404,7 +435,8 @@
     "template_cn": "总体来看，[地名]经历了重大的改造。最显著的变化是[最大变化]，同时[次要变化]。",
     "example_en": "Overall, the town has undergone significant redevelopment. The most noticeable change is that the farmland has been replaced by housing estates, while the town centre has been considerably modernised.",
     "note": "可替换: experienced dramatic transformation / been considerably modernised",
-    "difficulty": 2
+    "difficulty": 2,
+    "subject_hint": "the town"
   },
   {
     "category": "map",
@@ -437,7 +469,8 @@
     "template_cn": "原来[位置描述]的[旧物]已被拆除，取而代之的是[新物]。",
     "example_en": "The row of houses that formerly lined Oak Street has been demolished and replaced by a shopping centre.",
     "note": null,
-    "difficulty": 2
+    "difficulty": 2,
+    "subject_hint": "Oak Street"
   },
   {
     "category": "map",
@@ -448,7 +481,8 @@
     "template_cn": "一个新的[新物]被建造在[方位]，那里以前是[旧物/旧状态]。",
     "example_en": "A new car park has been constructed to the south of the town, where open farmland previously existed.",
     "note": null,
-    "difficulty": 2
+    "difficulty": 2,
+    "subject_hint": "to the south of the town"
   },
   {
     "category": "map",
@@ -459,7 +493,8 @@
     "template_cn": "[原物]向[方向]进行了大幅扩建/扩展。",
     "example_en": "The hospital has been significantly extended to the east, nearly doubling in size.",
     "note": null,
-    "difficulty": 1
+    "difficulty": 1,
+    "subject_hint": "The hospital"
   },
   {
     "category": "map",
@@ -470,7 +505,8 @@
     "template_cn": "[原物]的面积被缩小了，现在只占据[描述]。",
     "example_en": "The central park has been reduced in size, now occupying only a small green area in the northern corner.",
     "note": null,
-    "difficulty": 2
+    "difficulty": 2,
+    "subject_hint": "The central park"
   },
   {
     "category": "map",
@@ -481,7 +517,8 @@
     "template_cn": "[原物]从[旧位置]搬迁到了[新位置]。",
     "example_en": "The bus station has been relocated from the town centre to the outskirts.",
     "note": null,
-    "difficulty": 1
+    "difficulty": 1,
+    "subject_hint": "The bus station"
   },
   {
     "category": "map",
@@ -492,7 +529,8 @@
     "template_cn": "[方位描述]的旧[旧物]已被改建/改造成[新物]。",
     "example_en": "The old factory opposite the river has been converted into an apartment complex.",
     "note": null,
-    "difficulty": 2
+    "difficulty": 2,
+    "subject_hint": "the river"
   },
   {
     "category": "map",
@@ -503,7 +541,8 @@
     "template_cn": "一座新的[设施]被修建/安装，连接了[A]和[B]。",
     "example_en": "A new bridge has been built over the river, connecting the northern and southern banks.",
     "note": null,
-    "difficulty": 1
+    "difficulty": 1,
+    "subject_hint": "the river"
   },
   {
     "category": "map",
@@ -514,7 +553,8 @@
     "template_cn": "然而，[事物]保持不变/仍在原来的位置。",
     "example_en": "The old church, however, remains unchanged in the centre of the town.",
     "note": null,
-    "difficulty": 1
+    "difficulty": 1,
+    "subject_hint": "The old church"
   },
   {
     "category": "map",
@@ -525,7 +565,8 @@
     "template_cn": "[原物]已被翻新/现代化改造，但保留了原有功能。",
     "example_en": "The library has been modernised, though it retains its original function.",
     "note": null,
-    "difficulty": 2
+    "difficulty": 2,
+    "subject_hint": "The library"
   },
   {
     "category": "map",
@@ -558,7 +599,8 @@
     "template_cn": "在[A]曾经所在的地方，现在是[B]占据了该位置。",
     "example_en": "Where the old market once stood, a modern shopping mall now occupies the site.",
     "note": null,
-    "difficulty": 2
+    "difficulty": 2,
+    "subject_hint": "the old market; a modern shopping mall"
   },
   {
     "category": "process",
@@ -569,7 +611,8 @@
     "template_cn": "总体来看，该流程包含[数字]个主要阶段，从[初始阶段]开始，最终以[最终结果]结束。",
     "example_en": "Overall, the process involves eight main stages, beginning with the harvesting of cocoa beans and culminating in the production of chocolate bars.",
     "note": null,
-    "difficulty": 1
+    "difficulty": 1,
+    "subject_hint": "cocoa beans; chocolate bars"
   },
   {
     "category": "process",
@@ -580,7 +623,8 @@
     "template_cn": "该流程是循环的，最后一个阶段会回到[某阶段]重新开始。",
     "example_en": "The process is cyclical, with the final stage of evaporation feeding back into the rainfall stage.",
     "note": null,
-    "difficulty": 2
+    "difficulty": 2,
+    "subject_hint": "evaporation; the rainfall stage"
   },
   {
     "category": "process",
@@ -591,7 +635,8 @@
     "template_cn": "值得注意的是，该流程在[某阶段]分成了两条不同的路径。",
     "example_en": "Notably, the process diverges into two separate paths at the bleaching stage, producing either white paper or kraft paper.",
     "note": null,
-    "difficulty": 2
+    "difficulty": 2,
+    "subject_hint": "the bleaching stage; white paper; kraft paper"
   },
   {
     "category": "process",
@@ -646,7 +691,8 @@
     "template_cn": "[物质/材料]被+动词+（方式/地点/目的）。",
     "example_en": "The mixture is heated to 200°C in a large oven.",
     "note": null,
-    "difficulty": 1
+    "difficulty": 1,
+    "subject_hint": "The mixture"
   },
   {
     "category": "process",
@@ -657,7 +703,8 @@
     "template_cn": "一旦/在[前一步]之后，[物质]被+动词。",
     "example_en": "Once cooled, the solid material is cut into uniform blocks.",
     "note": null,
-    "difficulty": 2
+    "difficulty": 2,
+    "subject_hint": "the solid material"
   },
   {
     "category": "process",
@@ -668,7 +715,8 @@
     "template_cn": "这会产生[结果]，然后[结果]被+动词。",
     "example_en": "The grinding process produces a fine powder, which is then transferred to a storage container.",
     "note": null,
-    "difficulty": 2
+    "difficulty": 2,
+    "subject_hint": "The grinding process; a fine powder; a storage container"
   },
   {
     "category": "process",
@@ -679,7 +727,8 @@
     "template_cn": "在这个阶段，流程分成两条路径：一条涉及[动作A]，另一条涉及[动作B]。",
     "example_en": "At the sorting stage, the process splits into two paths: one involves cleaning the materials, while the other involves recycling them.",
     "note": null,
-    "difficulty": 2
+    "difficulty": 2,
+    "subject_hint": "the sorting stage"
   },
   {
     "category": "process",
@@ -690,7 +739,8 @@
     "template_cn": "……之后流程回到[某阶段]，循环重复。",
     "example_en": "The treated wastewater is then sent back to the filtration stage, and the cycle repeats.",
     "note": null,
-    "difficulty": 2
+    "difficulty": 2,
+    "subject_hint": "the filtration stage"
   },
   {
     "category": "essay",

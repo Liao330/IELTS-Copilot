@@ -93,6 +93,19 @@ async def _migrate_add_columns(conn):
         ("writing_materials", "topic_sentence_en", "TEXT"),
         ("writing_templates", "scene_detail", "TEXT"),
         ("writing_templates", "template_cn", "TEXT"),
+        ("speaking_corrections", "mastery_level", "INTEGER DEFAULT 0"),
+        ("speaking_corrections", "interval_days", "INTEGER DEFAULT 1"),
+        ("speaking_corrections", "next_review_at", "DATETIME"),
+        ("speaking_corrections", "ease_factor", "REAL DEFAULT 2.5"),
+        ("speaking_materials", "mastery_level", "INTEGER DEFAULT 0"),
+        ("speaking_materials", "interval_days", "INTEGER DEFAULT 1"),
+        ("speaking_materials", "next_review_at", "DATETIME"),
+        ("speaking_materials", "ease_factor", "REAL DEFAULT 2.5"),
+        ("speaking_materials", "story_line", "TEXT"),
+        ("speaking_materials", "reuse_topics", "TEXT"),
+        ("writing_materials", "reuse_hint", "TEXT"),
+        ("writing_materials", "chain_sentence_en", "TEXT"),
+        ("writing_templates", "subject_hint", "TEXT"),
     ]
     for table, column, col_type in new_columns:
         try:

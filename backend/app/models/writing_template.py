@@ -22,6 +22,7 @@ class WritingTemplate(Base):
     template_en: Mapped[str] = mapped_column(Text, nullable=False)  # 英文句型模板
     template_cn: Mapped[Optional[str]] = mapped_column(Text)  # 中文翻译
     example_en: Mapped[Optional[str]] = mapped_column(Text)  # 完整示例句
+    subject_hint: Mapped[Optional[str]] = mapped_column(Text)  # 默写时直接给出的关键词提示（主语等）
     note: Mapped[Optional[str]] = mapped_column(Text)  # 备注
     difficulty: Mapped[int] = mapped_column(Integer, default=1)  # 1=简单 2=中等 3=较难
     sort_order: Mapped[int] = mapped_column(Integer, default=0)

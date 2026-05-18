@@ -38,6 +38,7 @@ class TemplateOut(BaseModel):
     template_en: str
     template_cn: Optional[str]
     example_en: Optional[str]
+    subject_hint: Optional[str]
     note: Optional[str]
     difficulty: int
     sort_order: int
@@ -353,15 +354,19 @@ async def check_answer(template_id: str, body: CheckRequest, db: AsyncSession = 
 1. 核心结构/搭配正确（主要词组一致）：60分
 2. 关键动词/介词到位：25分
 3. 拼写正确：15分
-4. 允许同义替换（dramatic→sharp, increase→rise等）
-5. 不要求 [占位符] 内容，只看学生是否写出了核心英文结构
-6. 允许省略选项符号如"/"，只写其中一个选项也算对
+
+⭐ 最重要原则 — 合理添加绝不扣分：
+✓ 同义替换（plummeted=fell=dropped, dramatic=sharp, increase=rise等）
+✓ 省略选项符号"/"，只写其中一个选项也算对
+✓ 添加合理修饰词（dramatically, sharply, significantly等）是加分项
+✓ 不要求 [占位符] 内容
+✗ 绝不能把学生合理添加的词说成"多余"
 
 输出严格 JSON：
-{{"score": 80, "correct": true, "feedback": "核心搭配正确，minor问题说明"}}
+{{"score": 80, "correct": true, "feedback": "核心搭配正确"}}
 
 score >= {pass_threshold} 则 correct=true。
-feedback要求：中文不超过60字；只指出学生答案中实际存在的错误或遗漏，不要凭空推荐学生没涉及的词汇。
+feedback要求：中文不超过60字，指出实际存在的问题和做得好的地方。
 只输出JSON。"""
     else:
         # 提供 example 和 scene_detail 作为参考
@@ -376,23 +381,35 @@ feedback要求：中文不超过60字；只指出学生答案中实际存在的�
 学生答案：{body.answer}
 
 评分规则（完整默写）：
-1. 核心结构正确（主要句式骨架一致）：50分
-2. 关键词覆盖（重要的动词/连接词/固定搭配到位）：30分
-3. 语法和拼写无误：20分
+1. **核心句式结构（50分）**：主要句式骨架与模板一致
+2. **关键词汇覆盖（30分）**：重要动词、连词、固定搭配到位
+3. **拼写和语法（20分）**：无拼写错误，语法正确
 
-重要说明：
-- 模板中的[占位符]（如[主语][数字][时间段]）可以用任何具体词替代，只要合理就不扣分
-- "over the decade" 填充 [时间段] 是完全正确的
-- 允许同义替换（dramatic→sharp, rise→increase, declined→fell→dropped等）
-- 如果学生用具体数据填充了模板（如参考例句那样），这是正确的做法
-- 拼写错误要准确指出具体拼错了哪个词（对比学生实际写的和正确拼写）
-- 不要凭空编造学生没犯的错误
+⭐⭐⭐ 最重要的原则 — 学生添加的合理内容绝不扣分：
+   - 添加副词修饰（dramatically, significantly, sharply, steadily 等）：这是锦上添花，不扣分
+   - 添加形容词、短语来丰富表达：不扣分
+   - 同义词替换完全正确（plummeted=fell sharply=dropped dramatically等）
+   - 用具体数据填充[占位符]完全正确
+   - 只要语义和句式骨架正确，任何合理的润色修饰都应获得正面评价
+
+❌ 仅在以下情况扣分：
+   - 拼写错误（指出具体拼错的词和正确拼写）
+   - 语法明显错误
+   - 核心句式结构改变（如把from...to...改成了其他结构）
+   - 改变了句子原意
+
+⚠️ 绝对禁止（违反任何一条评分无效）：
+   - 把学生合理添加的修饰词说成"多余"或"模板中无此词"
+   - 凭空编造学生没有的错误
+   - 对正确的同义替换进行惩罚
+   - 因为学生写的比模板多就扣分
 
 输出严格 JSON 格式：
-{{"score": 85, "correct": true, "feedback": "简短中文点评"}}
+{{"score": 85, "correct": true, "feedback": "核心结构正确，修饰词添加恰当"}}
 
-score >= {pass_threshold} 则 correct=true，否则 correct=false。
-feedback要求：中文不超过60字，只指出实际存在的问题。
+score >= {pass_threshold} 则 correct=true。
+feedback简要指出：1）做得好的地方 2）有问题的地方（仅实际错误，如拼写）
+中文不超过80字，鼓励性语气。
 只输出JSON。"""
 
     try:
@@ -444,7 +461,7 @@ feedback要求：中文不超过60字，只指出实际存在的问题。
             t.mastery_level = 2
             t.slots_passed = "[]"
             t.interval_days = 1
-            t.next_review_at = datetime.utcnow() + timedelta(days=1)
+            t.next_review_at = _next_review_time(1)
             t.last_reviewed_at = datetime.utcnow()
             t.review_count = (t.review_count or 0) + 1
 
@@ -482,7 +499,7 @@ async def review_template(template_id: str, body: ReviewRequest, db: AsyncSessio
         # 模糊：间隔重置为1天，但 mastery 不变
         now = datetime.utcnow()
         t.interval_days = 1
-        t.next_review_at = now + timedelta(days=1)
+        t.next_review_at = _next_review_time(1)
         t.last_reviewed_at = now
         t.review_count = (t.review_count or 0) + 1
         if not t.first_learned_at:
@@ -584,6 +601,21 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
 
 # ─── SM-2 Helper ──────────────────────────────────────────
 
+def _next_review_time(interval_days: int) -> datetime:
+    """计算下次复习时间：对齐到 CST 8:00 日界线。
+    interval_days=1 → 明天 CST 8:00；interval_days=2 → 后天 CST 8:00。
+    返回 UTC naive datetime。"""
+    now_cst = datetime.now(_CST)
+    # 当前"今天"的起点 = 今天 CST 8:00（如果现在还不到8点，则算昨天的8:00）
+    if now_cst.hour < 8:
+        today_start_cst = (now_cst - timedelta(days=1)).replace(hour=8, minute=0, second=0, microsecond=0)
+    else:
+        today_start_cst = now_cst.replace(hour=8, minute=0, second=0, microsecond=0)
+    # 下次复习 = 今天起点 + interval_days 天（即第 N 天的 8:00 AM CST）
+    next_cst = today_start_cst + timedelta(days=interval_days)
+    return next_cst.astimezone(timezone.utc).replace(tzinfo=None)
+
+
 def _sm2_update(t: WritingTemplate, quality: int, cap_mastery: int = 3):
     """Update spaced repetition fields. quality: 0=fail, 3=pass. cap_mastery: max mastery level allowed.
     interval 封顶7天（备考冲刺期，需要高频复习）。"""
@@ -613,7 +645,7 @@ def _sm2_update(t: WritingTemplate, quality: int, cap_mastery: int = 3):
     t.review_count = (t.review_count or 0) + 1
     if quality >= 2:
         t.correct_count = (t.correct_count or 0) + 1
-    t.next_review_at = now + timedelta(days=t.interval_days)
+    t.next_review_at = _next_review_time(t.interval_days)
     t.last_reviewed_at = now
     # 首次学习时记录
     if not t.first_learned_at:
@@ -656,6 +688,34 @@ async def backfill_scene_detail(force: bool = Query(False), db: AsyncSession = D
                 t.example_en = ex
             if tcn:
                 t.template_cn = tcn
+            count += 1
+
+    await db.commit()
+    return {"backfilled": count, "total": len(items)}
+
+
+@router.post("/backfill-subject-hints")
+async def backfill_subject_hints(db: AsyncSession = Depends(get_db)):
+    """从seed数据回填 subject_hint 字段"""
+    import os
+    seed_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "writing_templates_seed.json")
+    with open(seed_path, "r", encoding="utf-8") as f:
+        seed_data = json.load(f)
+
+    lookup = {}
+    for item in seed_data:
+        key = (item["category"], item["sub_category"], item["scene_cn"])
+        sh = item.get("subject_hint")
+        if sh:
+            lookup[key] = sh
+
+    result = await db.execute(select(WritingTemplate))
+    items = result.scalars().all()
+    count = 0
+    for t in items:
+        key = (t.category, t.sub_category, t.scene_cn)
+        if key in lookup:
+            t.subject_hint = lookup[key]
             count += 1
 
     await db.commit()

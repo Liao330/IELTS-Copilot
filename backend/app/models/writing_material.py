@@ -28,10 +28,12 @@ class WritingMaterial(Base):
     topic_sentence_en: Mapped[Optional[str]] = mapped_column(Text)     # 观点句（英）
     reasoning_chain: Mapped[str] = mapped_column(Text, nullable=False)  # 理由链（→分隔）— TEE结构中的E(xplanation)
     reasoning_chain_en: Mapped[Optional[str]] = mapped_column(Text)     # 理由链降级英文
+    chain_sentence_en: Mapped[Optional[str]] = mapped_column(Text)      # 证据链完整句（可直接入文）
     example: Mapped[str] = mapped_column(Text, nullable=False)          # 例子 — TEE结构中的E(xample)
     example_en: Mapped[Optional[str]] = mapped_column(Text)             # 例子关键词英文
 
     memory_anchor: Mapped[Optional[str]] = mapped_column(Text)   # 记忆锚点（按direction共享）
+    reuse_hint: Mapped[Optional[str]] = mapped_column(Text)     # 复用提示（关联已学素材）
 
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
 

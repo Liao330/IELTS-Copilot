@@ -19,6 +19,17 @@ router = APIRouter(prefix="/api/writing-materials", tags=["writing-materials"])
 _CST = timezone(timedelta(hours=8))
 
 
+def _next_review_time(interval_days: int) -> datetime:
+    """计算下次复习时间：对齐到 CST 8:00 日界线。返回 UTC naive datetime。"""
+    now_cst = datetime.now(_CST)
+    if now_cst.hour < 8:
+        today_start_cst = (now_cst - timedelta(days=1)).replace(hour=8, minute=0, second=0, microsecond=0)
+    else:
+        today_start_cst = now_cst.replace(hour=8, minute=0, second=0, microsecond=0)
+    next_cst = today_start_cst + timedelta(days=interval_days)
+    return next_cst.astimezone(timezone.utc).replace(tzinfo=None)
+
+
 def _today_start_cst() -> datetime:
     """系统以每天CST 8:00为新的一天"""
     now_cst = datetime.now(_CST)
@@ -44,9 +55,11 @@ class MaterialOut(BaseModel):
     topic_sentence_en: Optional[str]
     reasoning_chain: str
     reasoning_chain_en: Optional[str]
+    chain_sentence_en: Optional[str]
     example: str
     example_en: Optional[str]
     memory_anchor: Optional[str]
+    reuse_hint: Optional[str]
     sort_order: int
     mastery_level: int
     review_count: int
@@ -66,6 +79,7 @@ class MaterialUpdateRequest(BaseModel):
     topic_sentence_en: Optional[str] = None
     reasoning_chain: Optional[str] = None
     reasoning_chain_en: Optional[str] = None
+    chain_sentence_en: Optional[str] = None
     example: Optional[str] = None
     example_en: Optional[str] = None
 
@@ -147,7 +161,7 @@ def _sm2_update_material(m: WritingMaterial, quality: int, max_mastery: int = 5)
     m.review_count = (m.review_count or 0) + 1
     if quality >= 2:
         m.correct_count = (m.correct_count or 0) + 1
-    m.next_review_at = now + timedelta(days=m.interval_days)
+    m.next_review_at = _next_review_time(m.interval_days)
     m.last_reviewed_at = now
     if not m.first_learned_at:
         m.first_learned_at = now
@@ -172,7 +186,7 @@ def _sm2_update_keyword(k: WritingMaterialKeyword, quality: int):
 
     k.interval_days = min(7, k.interval_days)
     k.review_count = (k.review_count or 0) + 1
-    k.next_review_at = now + timedelta(days=k.interval_days)
+    k.next_review_at = _next_review_time(k.interval_days)
     k.last_reviewed_at = now
     if not k.first_learned_at:
         k.first_learned_at = now
@@ -202,7 +216,7 @@ async def update_material(material_id: str, body: MaterialUpdateRequest, db: Asy
     if not m:
         raise HTTPException(404, "素材不存在")
 
-    for field in ("topic_sentence", "topic_sentence_en", "reasoning_chain", "reasoning_chain_en", "example", "example_en"):
+    for field in ("topic_sentence", "topic_sentence_en", "reasoning_chain", "reasoning_chain_en", "chain_sentence_en", "example", "example_en"):
         val = getattr(body, field, None)
         if val is not None:
             setattr(m, field, val)
@@ -658,6 +672,7 @@ async def seed_materials(db: AsyncSession = Depends(get_db)):
             topic_sentence=item.get("topic_sentence"),
             topic_sentence_en=item.get("topic_sentence_en"),
             reasoning_chain_en=item.get("reasoning_chain_en"),
+            chain_sentence_en=item.get("chain_sentence_en"),
             example_en=item.get("example_en"),
             memory_anchor=item.get("memory_anchor"),
             sort_order=sort,
@@ -733,6 +748,31 @@ async def backfill_memory_anchors(db: AsyncSession = Depends(get_db)):
         key = (m.topic, m.direction_index, m.stance, m.angle_index)
         if key in lookup:
             m.memory_anchor = lookup[key]
+            count += 1
+
+    await db.commit()
+    return {"backfilled": count, "total": len(items)}
+
+
+@router.post("/backfill-chain-sentences")
+async def backfill_chain_sentences(db: AsyncSession = Depends(get_db)):
+    """从 seed JSON 回填 chain_sentence_en 到已有素材"""
+    from app.data.writing_materials_seed import MATERIALS_DATA
+
+    lookup: dict[tuple, str] = {}
+    for item in MATERIALS_DATA:
+        key = (item["topic"], item["direction_index"], item["stance"], item["angle_index"])
+        cs = item.get("chain_sentence_en")
+        if cs:
+            lookup[key] = cs
+
+    result = await db.execute(select(WritingMaterial))
+    items = result.scalars().all()
+    count = 0
+    for m in items:
+        key = (m.topic, m.direction_index, m.stance, m.angle_index)
+        if key in lookup:
+            m.chain_sentence_en = lookup[key]
             count += 1
 
     await db.commit()
